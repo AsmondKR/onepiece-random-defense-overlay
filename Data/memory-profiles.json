@@ -1,0 +1,32 @@
+[
+  {
+    "profileSchemaVersion": 1,
+    "profileId": "war3-2.0.4.23745-unverified",
+    "profileRevision": 1,
+    "fileVersion": "2.0.4.23745",
+    "moduleName": "Warcraft III.exe",
+    "enabled": false,
+    "verified": false,
+    "executableSha256": "",
+    "locatorKind": "SignatureRelative",
+    "moduleOffset": 0,
+    "signature": "",
+    "relativeDisplacementOffset": 0,
+    "instructionLength": 0,
+    "pointerOffsets": [],
+    "countOffset": 0,
+    "entriesPointerOffset": 0,
+    "entriesAreInline": false,
+    "entryStride": 8,
+    "entryPointerOffset": 0,
+    "entriesContainPointers": true,
+    "ownerPointerOffsets": [],
+    "ownerOffset": 0,
+    "rawcodePointerOffsets": [],
+    "rawcodeOffset": 0,
+    "localPlayerSlot": 0,
+    "maximumUnits": 5000,
+    "requireNonEmptyInventory": true,
+    "minimumCatalogMatchRatio": 0.6
+  }
+]

@@ -1,0 +1,2764 @@
+{
+  "schemaVersion": 1,
+  "guideId": 43747,
+  "source": "https://tmo.gg/g/ord/build-helper/43747",
+  "capturedAt": "2026-08-16T09:09:25.973Z",
+  "unitOverrides": [
+    {
+      "rawcode": "300h",
+      "guideUnitId": "300h",
+      "guideName": "루피",
+      "tier": "흔함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "200h",
+      "guideUnitId": "200h",
+      "guideName": "조로",
+      "tier": "흔함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "100h",
+      "guideUnitId": "100h",
+      "guideName": "나미",
+      "tier": "흔함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "700h",
+      "guideUnitId": "700h",
+      "guideName": "우솝",
+      "tier": "흔함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "400h",
+      "guideUnitId": "400h",
+      "guideName": "상디",
+      "tier": "흔함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "800h",
+      "guideUnitId": "800h",
+      "guideName": "쵸파",
+      "tier": "흔함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "500h",
+      "guideUnitId": "500h",
+      "guideName": "버기",
+      "tier": "흔함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "900h",
+      "guideUnitId": "900h",
+      "guideName": "해군 총병",
+      "tier": "흔함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "600h",
+      "guideUnitId": "600h",
+      "guideName": "해군 칼병",
+      "tier": "흔함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "O00h",
+      "guideUnitId": "O00h",
+      "guideName": "로빈",
+      "tier": "안흔함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "C00h",
+      "guideUnitId": "C00h",
+      "guideName": "베포",
+      "tier": "안흔함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "D00h",
+      "guideUnitId": "D00h",
+      "guideName": "브룩",
+      "tier": "안흔함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "M00h",
+      "guideUnitId": "M00h",
+      "guideName": "블루노",
+      "tier": "안흔함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "K00h",
+      "guideUnitId": "K00h",
+      "guideName": "에이스",
+      "tier": "안흔함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "I00h",
+      "guideUnitId": "I00h",
+      "guideName": "이나즈마",
+      "tier": "안흔함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "N00h",
+      "guideUnitId": "N00h",
+      "guideName": "저격왕 우솝",
+      "tier": "안흔함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "G00h",
+      "guideUnitId": "G00h",
+      "guideName": "쵸파 럼블볼",
+      "tier": "안흔함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "E00h",
+      "guideUnitId": "E00h",
+      "guideName": "타시기",
+      "tier": "안흔함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "J00h",
+      "guideUnitId": "J00h",
+      "guideName": "페로나",
+      "tier": "안흔함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "L00h",
+      "guideUnitId": "L00h",
+      "guideName": "프랑키",
+      "tier": "안흔함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "F00h",
+      "guideUnitId": "F00h",
+      "guideName": "하찌",
+      "tier": "안흔함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "A00h",
+      "guideUnitId": "A00h",
+      "guideName": "후쿠로",
+      "tier": "안흔함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "K10h",
+      "guideUnitId": "K10h",
+      "guideName": "X-드레이크",
+      "tier": "특별함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "Q00h",
+      "guideUnitId": "Q00h",
+      "guideName": "에넬",
+      "tier": "특별함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "B00h",
+      "guideUnitId": "B00h",
+      "guideName": "겟코 모리아",
+      "tier": "특별함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "P00h",
+      "guideUnitId": "P00h",
+      "guideName": "나미 크리마텍트",
+      "tier": "특별함",
+      "abilities": {
+        "발동이동속도 감소": 11
+      },
+      "description": "발동이동속도 감소(발동이감): 11"
+    },
+    {
+      "rawcode": "R00h",
+      "guideUnitId": "R00h",
+      "guideName": "로브 루치",
+      "tier": "특별함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "S00h",
+      "guideUnitId": "S00h",
+      "guideName": "로빈 오하라",
+      "tier": "특별함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "H10h",
+      "guideUnitId": "H10h",
+      "guideName": "트라팔가 로우 (공속버프)",
+      "tier": "특별함",
+      "abilities": {
+        "공격속도 증가": ""
+      },
+      "description": "공속 100퍼 버프7초"
+    },
+    {
+      "rawcode": "U00h",
+      "guideUnitId": "U00h",
+      "guideName": "루피 기어세컨드",
+      "tier": "특별함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "T00h",
+      "guideUnitId": "T00h",
+      "guideName": "마르코",
+      "tier": "특별함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "610h",
+      "guideUnitId": "610h",
+      "guideName": "바질 호킨스 (방깍3)",
+      "tier": "특별함",
+      "abilities": {
+        "방어력 감소": 3
+      },
+      "description": "방어력 감소(방깎): 3\n\n*바질 희귀와 방깎 중첩 안 되고, 초월은 가능"
+    },
+    {
+      "rawcode": "510h",
+      "guideUnitId": "510h",
+      "guideName": "버기 마기탄",
+      "tier": "특별함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "410h",
+      "guideUnitId": "410h",
+      "guideName": "봉쿠레",
+      "tier": "특별함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "310h",
+      "guideUnitId": "310h",
+      "guideName": "상디 검은다리",
+      "tier": "특별함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "F10h",
+      "guideUnitId": "F10h",
+      "guideName": "스모커  (이감5)",
+      "tier": "특별함",
+      "abilities": {
+        "이동속도 감소": 5
+      },
+      "description": "이동속도 감소(이감): 5"
+    },
+    {
+      "rawcode": "210h",
+      "guideUnitId": "210h",
+      "guideName": "스쿼드",
+      "tier": "특별함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "110h",
+      "guideUnitId": "110h",
+      "guideName": "아론",
+      "tier": "특별함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "010h",
+      "guideUnitId": "010h",
+      "guideName": "압살롬 ",
+      "tier": "특별함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "J10h",
+      "guideUnitId": "J10h",
+      "guideName": "에이스",
+      "tier": "특별함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "Z00h",
+      "guideUnitId": "Z00h",
+      "guideName": "우솝 화염탄",
+      "tier": "특별함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "X00h",
+      "guideUnitId": "X00h",
+      "guideName": "이나즈마 혁명군",
+      "tier": "특별함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "W00h",
+      "guideUnitId": "W00h",
+      "guideName": "조로 귀기",
+      "tier": "특별함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "810h",
+      "guideUnitId": "810h",
+      "guideName": "징베",
+      "tier": "특별함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "910h",
+      "guideUnitId": "910h",
+      "guideName": "챠카",
+      "tier": "특별함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "E10h",
+      "guideUnitId": "E10h",
+      "guideName": "쵸파 두뇌강화 (방깍3)",
+      "tier": "특별함",
+      "abilities": {
+        "방어력 감소": 3
+      },
+      "description": "방어력 감소(방깍): 3"
+    },
+    {
+      "rawcode": "D10h",
+      "guideUnitId": "D10h",
+      "guideName": "쵸파 가드포인트 (공증7)",
+      "tier": "특별함",
+      "abilities": {
+        "공격력 증가": 7
+      },
+      "description": "공격력 증가(공증): 7"
+    },
+    {
+      "rawcode": "C10h",
+      "guideUnitId": "C10h",
+      "guideName": "카포네 갱 벳지",
+      "tier": "특별함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "V00h",
+      "guideUnitId": "V00h",
+      "guideName": "캡틴 크로",
+      "tier": "특별함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "710h",
+      "guideUnitId": "710h",
+      "guideName": "바솔로뮤 쿠마",
+      "tier": "특별함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "A10h",
+      "guideUnitId": "A10h",
+      "guideName": "크로커다일 (이감5)",
+      "tier": "특별함",
+      "abilities": {
+        "이동속도 감소": 5
+      },
+      "description": "이동속도 감소(이감): 5"
+    },
+    {
+      "rawcode": "Y00h",
+      "guideUnitId": "Y00h",
+      "guideName": "유스타드 키드 (이감5)",
+      "tier": "특별함",
+      "abilities": {
+        "이동속도 감소": 5
+      },
+      "description": "이동속도 감소(이감): 5"
+    },
+    {
+      "rawcode": "B10h",
+      "guideUnitId": "B10h",
+      "guideName": "킬러",
+      "tier": "특별함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "G10h",
+      "guideUnitId": "G10h",
+      "guideName": "파이러츠 도킹5",
+      "tier": "특별함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "I10h",
+      "guideUnitId": "I10h",
+      "guideName": "헤르메포",
+      "tier": "특별함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "X90h",
+      "guideUnitId": "X90h",
+      "guideName": "X-드레이크 🚩(이감 10, 깍 5)",
+      "tier": "희귀함",
+      "abilities": {
+        "방어력 감소": 5,
+        "이동속도 감소": 10
+      },
+      "description": "이감10 방깍5\n\n*킹 전설과 중복 안됨"
+    },
+    {
+      "rawcode": "Q10h",
+      "guideUnitId": "Q10h",
+      "guideName": "거프 🚩",
+      "tier": "희귀함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "120h",
+      "guideUnitId": "120h",
+      "guideName": "검은수염",
+      "tier": "희귀함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "L10h",
+      "guideUnitId": "L10h",
+      "guideName": "도플라밍고",
+      "tier": "희귀함",
+      "abilities": {
+        "공중이동": "true"
+      },
+      "description": ""
+    },
+    {
+      "rawcode": "L20h",
+      "guideUnitId": "L20h",
+      "guideName": "로우 (공속버프) ",
+      "tier": "희귀함",
+      "abilities": {
+        "공격속도 증가": 0,
+        "순간이동": "true"
+      },
+      "description": "단일 공격속도 8초간 120%증가"
+    },
+    {
+      "rawcode": "X10h",
+      "guideUnitId": "X10h",
+      "guideName": "루피 기어서드",
+      "tier": "희귀함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "520h",
+      "guideUnitId": "520h",
+      "guideName": "류마",
+      "tier": "희귀함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "220h",
+      "guideUnitId": "220h",
+      "guideName": "마르코",
+      "tier": "희귀함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "Z10h",
+      "guideUnitId": "Z10h",
+      "guideName": "마젤란",
+      "tier": "희귀함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "Y10h",
+      "guideUnitId": "Y10h",
+      "guideName": "모몬가 🚩",
+      "tier": "희귀함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "H40h",
+      "guideUnitId": "H40h",
+      "guideName": "미호크",
+      "tier": "희귀함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "W10h",
+      "guideUnitId": "W10h",
+      "guideName": "바르톨로메오",
+      "tier": "희귀함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "V10h",
+      "guideUnitId": "V10h",
+      "guideName": "바제스",
+      "tier": "희귀함",
+      "abilities": {
+        "스턴": 0.2
+      },
+      "description": ""
+    },
+    {
+      "rawcode": "U10h",
+      "guideUnitId": "U10h",
+      "guideName": "바질 호킨스 (깍 10)",
+      "tier": "희귀함",
+      "abilities": {
+        "방어력 감소": 10
+      },
+      "description": "방어력 감소(방깍) : 10\n\n*방깍 중첩\n┣ 바질 특별 X\n┗ 바질 초월 O"
+    },
+    {
+      "rawcode": "T10h",
+      "guideUnitId": "T10h",
+      "guideName": "반 더 데켄",
+      "tier": "희귀함",
+      "abilities": {
+        "공중이동": "true"
+      },
+      "description": ""
+    },
+    {
+      "rawcode": "M20h",
+      "guideUnitId": "M20h",
+      "guideName": "베이비 5",
+      "tier": "희귀함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "S10h",
+      "guideUnitId": "S10h",
+      "guideName": "벤 베크만",
+      "tier": "희귀함",
+      "abilities": {
+        "순간이동": "true"
+      },
+      "description": ""
+    },
+    {
+      "rawcode": "N10h",
+      "guideUnitId": "N10h",
+      "guideName": "브룩 음악가  (공속 10)",
+      "tier": "희귀함",
+      "abilities": {
+        "공격속도 증가": 10
+      },
+      "description": "공격속도 증가(공속): 10"
+    },
+    {
+      "rawcode": "O10h",
+      "guideUnitId": "O10h",
+      "guideName": "비비",
+      "tier": "희귀함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "L50h",
+      "guideUnitId": "L50h",
+      "guideName": "사보 (깍10)",
+      "tier": "희귀함",
+      "abilities": {
+        "방어력 감소": 10
+      },
+      "description": "방어력 감소(방깎): 10"
+    },
+    {
+      "rawcode": "I20h",
+      "guideUnitId": "I20h",
+      "guideName": "상디 디아블잠브 🚩",
+      "tier": "희귀함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "920h",
+      "guideUnitId": "920h",
+      "guideName": "샹크스",
+      "tier": "희귀함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "820h",
+      "guideUnitId": "820h",
+      "guideName": "센토마루",
+      "tier": "희귀함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "720h",
+      "guideUnitId": "720h",
+      "guideName": "슈가 (마젠0.6)",
+      "tier": "희귀함",
+      "abilities": {
+        "마나 재생": 0.6
+      },
+      "description": "마나 재생(마젠): 0.6"
+    },
+    {
+      "rawcode": "620h",
+      "guideUnitId": "620h",
+      "guideName": "시류",
+      "tier": "희귀함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "B20h",
+      "guideUnitId": "B20h",
+      "guideName": "아오키지  (이감10, 0.2스턴)",
+      "tier": "희귀함",
+      "abilities": {
+        "스턴": 0.2,
+        "이동속도 감소": 10
+      },
+      "description": "이동속도 감소(이감): 10\n스턴: 0.2"
+    },
+    {
+      "rawcode": "P10h",
+      "guideUnitId": "P10h",
+      "guideName": "아카이누",
+      "tier": "희귀함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "020h",
+      "guideUnitId": "020h",
+      "guideName": "오즈",
+      "tier": "희귀함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "420h",
+      "guideUnitId": "420h",
+      "guideName": "와이퍼",
+      "tier": "희귀함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "C20h",
+      "guideUnitId": "C20h",
+      "guideName": "우솝  (0.2스턴)",
+      "tier": "희귀함",
+      "abilities": {
+        "순간이동": "true",
+        "스턴": 0.2
+      },
+      "description": ""
+    },
+    {
+      "rawcode": "A20h",
+      "guideUnitId": "A20h",
+      "guideName": "이완코브  (0.2스턴, 1인공증)",
+      "tier": "희귀함",
+      "abilities": {
+        "공격력 증가": 35,
+        "스턴": 0.2
+      },
+      "description": "단일 공격력 증가(공증): 35\n스턴: 0.2"
+    },
+    {
+      "rawcode": "G20h",
+      "guideUnitId": "G20h",
+      "guideName": "제프 ",
+      "tier": "희귀함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "F20h",
+      "guideUnitId": "F20h",
+      "guideName": "조로 현상금 사냥",
+      "tier": "희귀함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "E20h",
+      "guideUnitId": "E20h",
+      "guideName": "죠즈 🚩",
+      "tier": "희귀함",
+      "abilities": {
+        "스턴": 0.1
+      },
+      "description": ""
+    },
+    {
+      "rawcode": "K20h",
+      "guideUnitId": "K20h",
+      "guideName": "쵸파 혼포인트 (공증25)",
+      "tier": "희귀함",
+      "abilities": {
+        "공격력 증가": 25
+      },
+      "description": "공격력 증가(공증): 30"
+    },
+    {
+      "rawcode": "320h",
+      "guideUnitId": "320h",
+      "guideName": "카쿠",
+      "tier": "희귀함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "D20h",
+      "guideUnitId": "D20h",
+      "guideName": "유스타드 키드  (이감15)",
+      "tier": "희귀함",
+      "abilities": {
+        "이동속도 감소": 15
+      },
+      "description": "이동속도 감소(이감): 15"
+    },
+    {
+      "rawcode": "H20h",
+      "guideUnitId": "H20h",
+      "guideName": "크로커다일 (이감15)",
+      "tier": "희귀함",
+      "abilities": {
+        "공격력 증가": 20,
+        "이동속도 감소": 15
+      },
+      "description": "이동속도 감소(이감): 15\n스킬 공격력 증가(공증): 20"
+    },
+    {
+      "rawcode": "R10h",
+      "guideUnitId": "R10h",
+      "guideName": "키자루",
+      "tier": "희귀함",
+      "abilities": {
+        "순간이동": "true"
+      },
+      "description": ""
+    },
+    {
+      "rawcode": "J20h",
+      "guideUnitId": "J20h",
+      "guideName": "킨에몬",
+      "tier": "희귀함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "K50h",
+      "guideUnitId": "K50h",
+      "guideName": "페로나  (이감 20)",
+      "tier": "희귀함",
+      "abilities": {
+        "이동속도 감소": 20
+      },
+      "description": "이동속도 감소(이감): 20"
+    },
+    {
+      "rawcode": "M10h",
+      "guideUnitId": "M10h",
+      "guideName": "보아 핸콕",
+      "tier": "희귀함",
+      "abilities": {},
+      "description": ""
+    },
+    {
+      "rawcode": "A30h",
+      "guideUnitId": "A30h",
+      "guideName": "레일리 💙(깍20 암브 공증25)",
+      "tier": "전설 [물딜]",
+      "abilities": {
+        "공격력 증가": 30,
+        "바제스": true,
+        "방어력 감소": 20,
+        "보조딜": true,
+        "아머브레이크": true
+      },
+      "description": "*레일리 필요함!\n▶ 방깍20 공증25\n▶ 스플딜러 단일스턴"
+    },
+    {
+      "rawcode": "T20h",
+      "guideUnitId": "T20h",
+      "guideName": "마르코 💖 (이감30)",
+      "tier": "전설 [물딜]",
+      "abilities": {
+        "공중이동": "true",
+        "바제스": true,
+        "보조딜": true,
+        "이동속도 감소": 30
+      },
+      "description": "이동속도 감소(이감): 30\n보조딜\n바제스 클리어 가능"
+    },
+    {
+      "rawcode": "H30h",
+      "guideUnitId": "H30h",
+      "guideName": "크래커 (깍25 버프)",
+      "tier": "전설 [물딜]",
+      "abilities": {
+        "방어력 감소": 25
+      },
+      "description": "방어력 감소(방깎): 25\n공증,공속 영구버프 부여(쿨240초)"
+    },
+    {
+      "rawcode": "630h",
+      "guideUnitId": "630h",
+      "guideName": "센고쿠 (이감20 발동깍20 발동공증)",
+      "tier": "전설 [물딜]",
+      "abilities": {
+        "광폭화": true,
+        "발동공격력 증가": 30,
+        "발동방어력 감소": 20,
+        "보조딜": true,
+        "이동속도 감소": 20
+      },
+      "description": "▶ 보조딜\n▶ 발동공증30 발동깍20\n▶ 이감20"
+    },
+    {
+      "rawcode": "V20h",
+      "guideUnitId": "V20h",
+      "guideName": "스모커 💙(이감50 암브)",
+      "tier": "전설 [물딜]",
+      "abilities": {
+        "아머브레이크": "true",
+        "이동속도 감소": 50
+      },
+      "description": "이동속도 감소(이감): 50\n아머브레이크(암브)"
+    },
+    {
+      "rawcode": "830h",
+      "guideUnitId": "830h",
+      "guideName": "시저 (깍30)",
+      "tier": "전설 [물딜]",
+      "abilities": {
+        "공중이동": "true",
+        "방어력 감소": 30
+      },
+      "description": "▶ 방깍30 지형무시이동(1시가능)"
+    },
+    {
+      "rawcode": "O20h",
+      "guideUnitId": "O20h",
+      "guideName": "에이스 (깍33)",
+      "tier": "전설 [물딜]",
+      "abilities": {
+        "방어력 감소": 33
+      },
+      "description": "방어력 감소(방깎): 33"
+    },
+    {
+      "rawcode": "S30h",
+      "guideUnitId": "S30h",
+      "guideName": "울티 💖🚩(깍27)",
+      "tier": "전설 [물딜]",
+      "abilities": {
+        "바제스": true,
+        "방어력 감소": 27,
+        "보조딜": "true"
+      },
+      "description": "방어력 감소(방깎): 27\n바제스 클리어 가능"
+    },
+    {
+      "rawcode": "F30h",
+      "guideUnitId": "F30h",
+      "guideName": "카르가라 🚩(깍20 단일깍20)",
+      "tier": "전설 [물딜]",
+      "abilities": {
+        "공중이동": "true",
+        "단일방어력 감소": 20,
+        "방어력 감소": 20
+      },
+      "description": "방어력 감소(방깎): 20\n단일방어력 감소(단일방깎): 40\n스토리 대상으로는 20 방어력 감소 적용\n가반 중첩 불가"
+    },
+    {
+      "rawcode": "HA0h",
+      "guideUnitId": "HA0h",
+      "guideName": "킹 🚩(이감10 깍5 발동깍30)",
+      "tier": "전설 [물딜]",
+      "abilities": {
+        "공중이동": "true",
+        "발동방어력 감소": 30,
+        "방어력 감소": 5,
+        "이동속도 감소": 10
+      },
+      "description": "이동속도 감소 : 10\n방어력 감소 : 5\n발동방어력 감소 : 30\n\n*킹 제한, X드레이크와 방깍 중복 안됨"
+    },
+    {
+      "rawcode": "B30h",
+      "guideUnitId": "B30h",
+      "guideName": "흰수염 💖 (깍15 발동이감)",
+      "tier": "전설 [물딜]",
+      "abilities": {
+        "바제스": true,
+        "발동이동속도 감소": 35,
+        "방어력 감소": 15,
+        "보조딜": true
+      },
+      "description": "방어력 감소(방깎): 15\n발동이감 : 35\n보스, 스토리에서 추가 방어력 감소: 30\n바제스 클리어 가능\n\n*흰수염 불멸과 방깎 중첩 가능"
+    },
+    {
+      "rawcode": "MC0h",
+      "guideUnitId": "MC0h",
+      "guideName": "히바리 🚩 (깍22)",
+      "tier": "전설 [물딜]",
+      "abilities": {
+        "방어력 감소": 22,
+        "보스 잡기": "true"
+      },
+      "description": "2,000 범위 방어력 22 감소\n3단계크립까지 가능\n도시락 1회 공속버프부여\n파랑자리 -> 베이비5 창고 이동 -> 히바리 조합 = 1시 미션 가능"
+    },
+    {
+      "rawcode": "U20h",
+      "guideUnitId": "U20h",
+      "guideName": "검은수염 💖🚩🚩(마증)",
+      "tier": "전설 [마딜]",
+      "abilities": {
+        "광폭화": "true",
+        "단일마법 데미지 증가": 8,
+        "모든피해증가": 10
+      },
+      "description": "모든피해증가: 10\n단일마법 대미지 증가(단일마댐증폭): 8\n범위 적 현재 체력 % 대미지(범위현퍼): 1%\n광폭화 방어력 버프 제거 후 400만 마법 대미지"
+    },
+    {
+      "rawcode": "N20h",
+      "guideUnitId": "N20h",
+      "guideName": "모리아 (유닛삭제 이감30 공비례폭뎀)",
+      "tier": "전설 [마딜]",
+      "abilities": {
+        "유닛삭제": true,
+        "이동속도 감소": 30,
+        "폭발형 데미지": "true"
+      },
+      "description": "▶ 공비례폭뎀딜러\n▶ 이감30 라인몹삭제9초쿨"
+    },
+    {
+      "rawcode": "P20h",
+      "guideUnitId": "P20h",
+      "guideName": "나미 💖(마뎀증 발동이감)",
+      "tier": "전설 [마딜]",
+      "abilities": {
+        "마법데미지 증폭": 1,
+        "발동이동속도 감소": 45
+      },
+      "description": "마뎀증 1% (25%까지 중첩)\n발동이감\n\n골드획득량 증가\n탐색 보상 증가"
+    },
+    {
+      "rawcode": "Z90h",
+      "guideUnitId": "Z90h",
+      "guideName": "네코마 💖🚩(보잡 이감30)",
+      "tier": "전설 [마딜]",
+      "abilities": {
+        "공격력 증가": 32,
+        "광폭화": true,
+        "바제스": true,
+        "범위 전체 체력 퍼센트 데미지": "true",
+        "보스 잡기": true,
+        "보조딜": "true",
+        "이동속도 감소": 30
+      },
+      "description": "공격력 증가(공증): 32\n범위 전체 체력 퍼센트 대미지(범위전퍼)\n이동속도 감소: 30\n스킬 발동 시 대상이 광폭화 유닛이면 전체 체력 9%의 추가 대미지\n보스 잡기에 특화됨\n바제스 클리어 가능"
+    },
+    {
+      "rawcode": "330h",
+      "guideUnitId": "330h",
+      "guideName": "레이쥬 (폭뎀단일 이감35)",
+      "tier": "전설 [마딜]",
+      "abilities": {
+        "공중이동": "true",
+        "단일": 0.8,
+        "이동속도 감소": 35
+      },
+      "description": "▶ 폭뎀단일\n▶ 공중이동, 이감35"
+    },
+    {
+      "rawcode": "R20h",
+      "guideUnitId": "R20h",
+      "guideName": "루치 🚩🚩(단일1.2)",
+      "tier": "전설 [마딜]",
+      "abilities": {
+        "단일": 1.2
+      },
+      "description": "▶ 단일스턴 단일"
+    },
+    {
+      "rawcode": "C30h",
+      "guideUnitId": "C30h",
+      "guideName": "로우 (단일이감99 범퍼)",
+      "tier": "전설 [마딜]",
+      "abilities": {
+        "공격속도 증가": 150,
+        "광폭화": true,
+        "범위 현재 체력 퍼센트 데미지": true,
+        "보조딜": "true",
+        "순간이동": "true"
+      },
+      "description": "범위 현재 체력 퍼센트 대미지(범위현퍼)\n(W) 스킬 사용 시 12초 동안 단일 공격속도 150% 증가(쿨타임 50초)\n단일 적에게 2.5초 동안 이동속도 99% 감소\n광폭화 방어력 버프 제거 후 현재 체력 22.5%의 마법 대미지"
+    },
+    {
+      "rawcode": "X20h",
+      "guideUnitId": "X20h",
+      "guideName": "블랙마리아 🚩(공비례폭뎀)",
+      "tier": "전설 [마딜]",
+      "abilities": {
+        "범위 전체 체력 퍼센트 데미지": "true",
+        "보조딜": "true",
+        "폭발형 데미지": "true"
+      },
+      "description": "▶ 공비례폭뎀딜러 보조딜\n▶ 범위 전체 체력 퍼센트 데미지\n▶ 단일스턴"
+    },
+    {
+      "rawcode": "Y20h",
+      "guideUnitId": "Y20h",
+      "guideName": "루나메 🚩🚩(광보잡)",
+      "tier": "전설 [마딜]",
+      "abilities": {
+        "공중이동": "true",
+        "광폭화": true,
+        "바제스": true,
+        "보스 잡기": true
+      },
+      "description": "▶ 단일스턴 광보잡 공중이동\n*광보잡 성능 매우 뛰어남"
+    },
+    {
+      "rawcode": "430h",
+      "guideUnitId": "430h",
+      "guideName": "상디 🚩(단일1.4)",
+      "tier": "전설 [마딜]",
+      "abilities": {
+        "단일": 1.4
+      },
+      "description": ""
+    },
+    {
+      "rawcode": "730h",
+      "guideUnitId": "730h",
+      "guideName": "슈가 🚩(마젠 1.25)",
+      "tier": "전설 [마딜]",
+      "abilities": {
+        "마나 재생": 1.25,
+        "유닛삭제": 0
+      },
+      "description": "삭제 시 적 유닛을 로봇으로 바꿈\n마나 재생: 1.25\n공격 시 단일 적 50% 확률로 0.5초 스턴\n잡동사니 판매"
+    },
+    {
+      "rawcode": "240h",
+      "guideUnitId": "240h",
+      "guideName": "시노부 (끝딜 탐색)",
+      "tier": "전설 [마딜]",
+      "abilities": {
+        "끝딜": 1,
+        "보스 잡기": true
+      },
+      "description": "보물 탐색(R 스킬)"
+    },
+    {
+      "rawcode": "780h",
+      "guideUnitId": "780h",
+      "guideName": "토키 (이감25 공속20)",
+      "tier": "전설 [마딜]",
+      "abilities": {
+        "공격속도 증가": 20,
+        "이동속도 감소": 25
+      },
+      "description": "9초마다 450 범위의 전설 이상 랜덤 유닛 2기를 6초 동안 공격속도 35% 증가\n이동속도 감소: 25"
+    },
+    {
+      "rawcode": "S20h",
+      "guideUnitId": "S20h",
+      "guideName": "조로 🚩🚩(처형)",
+      "tier": "전설 [마딜]",
+      "abilities": {
+        "바제스": true,
+        "보스 잡기": "true",
+        "처형": "true"
+      },
+      "description": "▶ 단일스턴\n▶ 체력 15%이하 라인몹 처형"
+    },
+    {
+      "rawcode": "G30h",
+      "guideUnitId": "G30h",
+      "guideName": "징베 💙🚩(마젠2.5 조건깍25)",
+      "tier": "전설 [물딜]",
+      "abilities": {
+        "마나 재생": 2.5
+      },
+      "description": "마나 재생: 2.5\n마나 스킬(광역마댐)\n아머브레이크 10이상인 적에게 방어력 25 감소 (1회 적용)\n\n바다 이동\n2.200바제스 클리어 불가능?"
+    },
+    {
+      "rawcode": "I30h",
+      "guideUnitId": "I30h",
+      "guideName": "제파 🚩(광보잡)",
+      "tier": "전설 [마딜]",
+      "abilities": {
+        "광폭화": true,
+        "보스 잡기": true
+      },
+      "description": "▶ 단일스턴, 광보잡"
+    },
+    {
+      "rawcode": "E30h",
+      "guideUnitId": "E30h",
+      "guideName": "코비 💙(폭뎀단일1)",
+      "tier": "전설 [마딜]",
+      "abilities": {
+        "단일": 1
+      },
+      "description": "▶ 폭뎀단일\n▶ 마나스킬: 공증20 체젠1 마젠1"
+    },
+    {
+      "rawcode": "230h",
+      "guideUnitId": "230h",
+      "guideName": "보아 핸콕 (끝딜)",
+      "tier": "전설 [마딜]",
+      "abilities": {
+        "끝딜": 1
+      },
+      "description": "피스톨 키스 발동 시 매 공격마다 단일 적에게 전체 체력의 7% 폭발형 대미지"
+    },
+    {
+      "rawcode": "K30h",
+      "guideUnitId": "unit_1752901441310_3608",
+      "guideName": "쵸파 유력강화 (깍18 공속20)",
+      "tier": "전설 [물딜]",
+      "abilities": {
+        "공격속도 증가": 20,
+        "방어력 감소": 18
+      },
+      "description": "방어력 감소 : 18\n공격속도 증가 : 20"
+    },
+    {
+      "rawcode": "W20h",
+      "guideUnitId": "W20h",
+      "guideName": "드래곤 (0.9스턴, 이감10, 깍10, 공속5, 공증25)",
+      "tier": "전설 [스턴]",
+      "abilities": {
+        "공격력 증가": 25,
+        "공격속도 증가": 5,
+        "방어력 감소": 10,
+        "스턴": 0.9,
+        "이동속도 감소": 10
+      },
+      "description": "스토리 진입 시 스토리 방어력 추가로 45 감소\n스턴: 0.9\n이동속도 감소(이감): 10\n방어력 감소(방깎): 10\n공격속도 증가(공속): 5\n공격력 증가(공증): 25"
+    },
+    {
+      "rawcode": "Q20h",
+      "guideUnitId": "Q20h",
+      "guideName": "라분 🚩(0.9스턴, 공속17)",
+      "tier": "전설 [스턴]",
+      "abilities": {
+        "공격속도 증가": 17,
+        "스턴": 0.9
+      },
+      "description": "스턴: 0.9\n공격속도 증가: 17\n수중이동"
+    },
+    {
+      "rawcode": "Z20h",
+      "guideUnitId": "Z20h",
+      "guideName": "바르톨로메오 (1스턴, 깍12)",
+      "tier": "전설 [스턴]",
+      "abilities": {
+        "방어력 감소": 12,
+        "스턴": 1
+      },
+      "description": "스턴: 1\n방어력 감소: 12"
+    },
+    {
+      "rawcode": "530h",
+      "guideUnitId": "530h",
+      "guideName": "샹크스 (0.9 스턴)",
+      "tier": "전설 [스턴]",
+      "abilities": {
+        "스턴": 0.9
+      },
+      "description": "스턴: 0.9"
+    },
+    {
+      "rawcode": "930h",
+      "guideUnitId": "930h",
+      "guideName": " 시키 (1스턴, 암브)",
+      "tier": "전설 [스턴]",
+      "abilities": {
+        "공중이동": "true",
+        "스턴": 1,
+        "아머브레이크": "true"
+      },
+      "description": "스턴: 1\n공중이동\n아머브레이크"
+    },
+    {
+      "rawcode": "130h",
+      "guideUnitId": "130h",
+      "guideName": "후지토라 (0.7스턴, 이감25, 마방깍)",
+      "tier": "전설 [스턴]",
+      "abilities": {
+        "마법방어력 감소": 1,
+        "스턴": 0.7,
+        "이동속도 감소": 25
+      },
+      "description": "스턴: 0.7\n이동속도 감소(이감): 25\n마법방어력 감소"
+    },
+    {
+      "rawcode": "030h",
+      "guideUnitId": "030h",
+      "guideName": "쿠마 💙(0.5스턴, w자석)",
+      "tier": "전설 [스턴]",
+      "abilities": {
+        "바제스": "true",
+        "순간이동": "true",
+        "스턴": 0.5
+      },
+      "description": "*그린블러드 주면 스턴 사라짐\n스턴: 0.5\n마나스킬로 바제스 가능"
+    },
+    {
+      "rawcode": "U30h",
+      "guideUnitId": "U30h",
+      "guideName": "레드포스호 🚩(깍20 공증35)",
+      "tier": "해적선🚁",
+      "abilities": {
+        "공격력 증가": 35,
+        "공중이동": "true",
+        "광폭화": true,
+        "방어력 감소": 20,
+        "보스 잡기": true
+      },
+      "description": "방어력 감소(방깎): 20\n공격력 증가(공증): 35\n광폭화 추가 대미지\n4명의 적에게 공격을 동시에 가함\n스토리 공격시 30% 확률로 3배 크리티컬"
+    },
+    {
+      "rawcode": "Q30h",
+      "guideUnitId": "Q30h",
+      "guideName": "모비딕호  (이감40 체젠1.25)",
+      "tier": "해적선🚁",
+      "abilities": {
+        "공중이동": "true",
+        "이동속도 감소": 40,
+        "체력 재생": 1.25
+      },
+      "description": "이동속도 감소(이감): 40\n체력 재생: 1.25"
+    },
+    {
+      "rawcode": "R30h",
+      "guideUnitId": "R30h",
+      "guideName": "반 더 데켄 💙(마딜보조 1시가능)",
+      "tier": "해적선🚁",
+      "abilities": {
+        "공중이동": "true",
+        "바제스": true
+      },
+      "description": "6.25% 확률로 단일 적에게 30만 마법 대미지 또는 단일 적 제외 400범위에 60% 마법 대미지\n보조딜\n노아 스킬(마나 95 소모) 사용 시 800범위 적에게 스턴 3초, 300만 + 잃은 체력의 4% 대미지\n바다이동\n바제스 클리어 가능"
+    },
+    {
+      "rawcode": "P30h",
+      "guideUnitId": "P30h",
+      "guideName": "발라티에  (공속22 단일공속150)",
+      "tier": "해적선🚁",
+      "abilities": {
+        "공격속도 증가": 22,
+        "공중이동": "true"
+      },
+      "description": "단일 공격속도 증가(공속): 150"
+    },
+    {
+      "rawcode": "X30h",
+      "guideUnitId": "X30h",
+      "guideName": "방주맥심 💙(발동이감30 마방깍10)",
+      "tier": "해적선🚁",
+      "abilities": {
+        "공중이동": "true",
+        "마법방어력 감소": 10,
+        "바제스": "true",
+        "발동이동속도 감소": 30,
+        "폭발형 데미지 증폭": 10
+      },
+      "description": "마방깍 폭뎀증\n발동이동속도 감소: 30\n"
+    },
+    {
+      "rawcode": "L30h",
+      "guideUnitId": "L30h",
+      "guideName": "써니호 💙(0.7스턴 광보잡)",
+      "tier": "해적선🚁",
+      "abilities": {
+        "공중이동": "true",
+        "광폭화": true,
+        "스턴": 0.7
+      },
+      "description": ""
+    },
+    {
+      "rawcode": "T30h",
+      "guideUnitId": "T30h",
+      "guideName": "레베카 (깍18)",
+      "tier": "히든 [물딜]",
+      "abilities": {
+        "방어력 감소": 18
+      },
+      "description": "방어력 감소(방깎): 18"
+    },
+    {
+      "rawcode": "N30h",
+      "guideUnitId": "N30h",
+      "guideName": "료쿠규 💙🚩(깍25 발동깍15 발동이감20)",
+      "tier": "히든 [물딜]",
+      "abilities": {
+        "바제스": true,
+        "발동방어력 감소": 15,
+        "발동이동속도 감소": 20,
+        "방어력 감소": 25
+      },
+      "description": "방깍: 25  발동방깍: 15\n발동이감: 20\n\n바제스 가능"
+    },
+    {
+      "rawcode": "340h",
+      "guideUnitId": "340h",
+      "guideName": "미호크 (깍25)",
+      "tier": "히든 [물딜]",
+      "abilities": {
+        "방어력 감소": 25
+      },
+      "description": "방어력 감소(방깎): 25"
+    },
+    {
+      "rawcode": "W30h",
+      "guideUnitId": "W30h",
+      "guideName": "베르고 💙 (암브)",
+      "tier": "히든 [물딜]",
+      "abilities": {
+        "아머브레이크": "true"
+      },
+      "description": "마나스킬(최대방깎 30, 스턴 2.5)\n공성업 할 수록 마나스킬깍 증가"
+    },
+    {
+      "rawcode": "M30h",
+      "guideUnitId": "M30h",
+      "guideName": "사보 🚩(깍20 이감25)",
+      "tier": "히든 [물딜]",
+      "abilities": {
+        "바제스": true,
+        "방어력 감소": 20,
+        "이동속도 감소": 25
+      },
+      "description": "이동속도 감소(이감): 25\n방어력 감소(방깎): 20\n바제스 클리어 가능"
+    },
+    {
+      "rawcode": "V30h",
+      "guideUnitId": "V30h",
+      "guideName": "코알라 💙🚩🚩(보잡 마젠 3.25)",
+      "tier": "왜곡됨",
+      "abilities": {
+        "마나 재생": 3.25,
+        "보스 잡기": "true",
+        "보조딜": "true"
+      },
+      "description": "[마딜] 보잡 마젠\n\n*마나스킬 있는 마딜과 시너지가 좋고 특히 키쿠(광보잡), 써니호(광폭 스턴)와 좋음\n\n*왜곡은 첫 조합에 목재 3개가 필요하고 이후 5개씩 증가합니다."
+    },
+    {
+      "rawcode": "540h",
+      "guideUnitId": "540h",
+      "guideName": "킬러 (광보잡, 깍12)",
+      "tier": "히든 [물딜]",
+      "abilities": {
+        "광폭화": true,
+        "방어력 감소": 12,
+        "보스 잡기": true
+      },
+      "description": "보스 공격 시 40% 확률로 보스 현재 체력의 0.85%만큼 대미지\n유닛 3개를 동시에 공격"
+    },
+    {
+      "rawcode": "IC0h",
+      "guideUnitId": "IC0h",
+      "guideName": "퀸 💙🚩🚩(0.4스턴 발깍20, 암브, 체마1)",
+      "tier": "왜곡됨",
+      "abilities": {
+        "마나 재생": 1,
+        "발동방어력 감소": 20,
+        "스턴": 0.4,
+        "아머브레이크": 1,
+        "체력 재생": 1
+      },
+      "description": "[물딜] 보조스턴 체젠 마젠 암브 발동깍20\n\n*광폭, 보스 칠 때 같이 쳐주면 좋음\n*퀸은 공중이동이 없어서 킹으로 크립부터 잡고 만들면 좋음\n\n*왜곡은 첫 조합에 목재 3개가 필요하고 이후 5개씩 증가합니다."
+    },
+    {
+      "rawcode": "440h",
+      "guideUnitId": "440h",
+      "guideName": "류마 (단일0.7)",
+      "tier": "히든 [마딜]",
+      "abilities": {
+        "단일": 0.7
+      },
+      "description": " "
+    },
+    {
+      "rawcode": "J30h",
+      "guideUnitId": "J30h",
+      "guideName": "시류 💙🚩(끝딜)",
+      "tier": "히든 [마딜]",
+      "abilities": {
+        "끝딜": 1,
+        "보조딜": "true"
+      },
+      "description": "끝딜 7\n마나스킬\n목업2 도킹1 혹은 도킹2 목업1시 바제스 클리어 가능"
+    },
+    {
+      "rawcode": "Z30h",
+      "guideUnitId": "Z30h",
+      "guideName": "아카이누 💖🚩(광보잡)",
+      "tier": "히든 [마딜]",
+      "abilities": {
+        "광폭화": true,
+        "바제스": "true",
+        "발동이동속도 감소": 10,
+        "보스 잡기": true
+      },
+      "description": "▶ 광보잡(매우좋음)\n▶ 단일적스턴\n▶ 발동이감10(믿음직)"
+    },
+    {
+      "rawcode": "L70h",
+      "guideUnitId": "L70h",
+      "guideName": "캐럿 (단일0.5 마뎀증)",
+      "tier": "히든 [마딜]",
+      "abilities": {
+        "단일": 0.5,
+        "마법데미지 증폭": 1
+      },
+      "description": "*레일리 필요!\n단일 마뎀증\n\n*변이하면 단일 없어지고 폭뎀딜러로 변함\n*단일컨 힘들면 변이해서 써도 좋음"
+    },
+    {
+      "rawcode": "640h",
+      "guideUnitId": "640h",
+      "guideName": "키쿠 💙(보잡)",
+      "tier": "히든 [마딜]",
+      "abilities": {
+        "광폭화": "true",
+        "보스 잡기": true
+      },
+      "description": "광보잡\n\n마젠 유닛과 조합이 매우 좋음"
+    },
+    {
+      "rawcode": "550h",
+      "guideUnitId": "550h",
+      "guideName": "스튜시 (단일1)",
+      "tier": "히든 [마딜]",
+      "abilities": {
+        "단일": 1,
+        "순간이동": "true"
+      },
+      "description": "1500 범위 순간이동"
+    },
+    {
+      "rawcode": "840h",
+      "guideUnitId": "840h",
+      "guideName": "페로나 💙🚩(이감45 삭제)",
+      "tier": "왜곡됨",
+      "abilities": {
+        "바제스": "true",
+        "유닛삭제": true,
+        "이동속도 감소": 45,
+        "폭발형 데미지": "true",
+        "폭발형 데미지 증폭": "true"
+      },
+      "description": "[마딜] 폭뎀딜러 이감45 폭뎀증10(1회) 공중이동 라인몹삭제\n\n*7.5초마다 폭뎀증 2% 누적(최대25%)\n\n*왜곡은 첫 조합에 목재 3개가 필요하고 이후 5개씩 증가합니다."
+    },
+    {
+      "rawcode": "O30h",
+      "guideUnitId": "O30h",
+      "guideName": "봉쿠레 (0.5스턴 깍11)",
+      "tier": "히든 [스턴]",
+      "abilities": {
+        "방어력 감소": 11,
+        "스턴": 0.5
+      },
+      "description": "*이완코브 히든과 깍 중복적용 안 됨"
+    },
+    {
+      "rawcode": "140h",
+      "guideUnitId": "140h",
+      "guideName": "아오키지 (0.5스턴 이감35 폭뎀증10)",
+      "tier": "히든 [스턴]",
+      "abilities": {
+        "스턴": 0.5,
+        "이동속도 감소": 35,
+        "폭발형 데미지 증폭": 10
+      },
+      "description": ""
+    },
+    {
+      "rawcode": "Y30h",
+      "guideUnitId": "Y30h",
+      "guideName": "이완코브 (0.5스턴 깍11 단일공증45)",
+      "tier": "히든 [스턴]",
+      "abilities": {
+        "공격력 증가": 45,
+        "방어력 감소": 11,
+        "스턴": 0.5
+      },
+      "description": "*봉쿠레와 깍 중복적용 안 됨"
+    },
+    {
+      "rawcode": "740h",
+      "guideUnitId": "740h",
+      "guideName": "피셔타이거 🚩🚩(0.9스턴 공증35)",
+      "tier": "히든 [스턴]",
+      "abilities": {
+        "공격력 증가": 35,
+        "공중이동": "true",
+        "광폭화": true,
+        "보스 잡기": true,
+        "스턴": 0.9
+      },
+      "description": "▶ 스턴 광보잡 지형무시이동(1시가능)"
+    },
+    {
+      "rawcode": "S50h",
+      "guideUnitId": "S50h",
+      "guideName": "도플라밍고 (단일0.6)",
+      "tier": "변화된",
+      "abilities": {
+        "공중이동": "true",
+        "단일": 0.6
+      },
+      "description": "▶ 공중이동, 단일"
+    },
+    {
+      "rawcode": "N70h",
+      "guideUnitId": "N70h",
+      "guideName": "베이비 5 (암브 공속버프)",
+      "tier": "변화된",
+      "abilities": {
+        "공격속도 증가": "true",
+        "광폭화": true,
+        "보스 잡기": true
+      },
+      "description": "[패치 후 광보잡 성능 삭제, 암브 추가 ]\n▶ 아머브레이크(암브)\n▶ 공속버프(12초간 150%, 50초쿨)"
+    },
+    {
+      "rawcode": "W50h",
+      "guideUnitId": "W50h",
+      "guideName": "비비 (이감20 깍11)",
+      "tier": "변화된",
+      "abilities": {
+        "방어력 감소": 11,
+        "이동속도 감소": 20
+      },
+      "description": ""
+    },
+    {
+      "rawcode": "KC0h",
+      "guideUnitId": "KC0h",
+      "guideName": "카쿠 (끝딜0.5 순간이동)",
+      "tier": "변화된",
+      "abilities": {
+        "끝딜": 0.5,
+        "순간이동": "true"
+      },
+      "description": ""
+    },
+    {
+      "rawcode": "V50h",
+      "guideUnitId": "unit_1779015467592_9245",
+      "guideName": "에이스 (깍40 공증25 이감25)",
+      "tier": "왜곡됨",
+      "recipe": [
+        {
+          "id": "O20h",
+          "count": 1
+        },
+        {
+          "id": "Z10h",
+          "count": 1
+        },
+        {
+          "id": "210h",
+          "count": 1
+        },
+        {
+          "id": "LUMBER",
+          "count": 3
+        }
+      ],
+      "abilities": {
+        "공격력 증가": 25,
+        "방어력 감소": 40,
+        "이동속도 감소": 25
+      },
+      "description": "[물딜] 방깍 이감 공증\n조합 조건: 해적왕의 아들\n*왜곡은 첫 조합에 목재 3개가 필요하고 이후 5개씩 증가합니다."
+    },
+    {
+      "rawcode": "J70h",
+      "guideUnitId": "J70h",
+      "guideName": "캐럿 🚩🚩(폭뎀증1)",
+      "tier": "변화된",
+      "abilities": {
+        "공중이동": "true",
+        "보조딜": "true",
+        "폭발형 데미지 증폭": 1
+      },
+      "description": "▶ 폭뎀증(폭발형 데미지 증폭)"
+    },
+    {
+      "rawcode": "E90H",
+      "guideUnitId": "E90H",
+      "guideName": "도플라밍고 💙 (스플딜러 혼자이감끝 발동깍60)",
+      "tier": "초월 [물딜]",
+      "abilities": {
+        "공중이동": "true",
+        "바제스": "true",
+        "발동방어력 감소": 60,
+        "발동이동속도 감소": 75,
+        "범위 현재 체력 퍼센트 데미지": "true"
+      },
+      "description": "▶ 스플딜러 발동이감(믿음직)\n▶ 혼자이감커버됨(발이감변수있음)\n▶ 마나스킬때강함 발동깍60\n▷ 특강(필수) : 마나스킬 때 적을 모아줌\n▶ 다른 상위를 섞기보다 솔딜로(또는 알비다정도만) 쓰고 부족한 방깎을 보완"
+    },
+    {
+      "rawcode": "890H",
+      "guideUnitId": "890H",
+      "guideName": "로빈 💖 (스킬딜러 깍45 스턴1.2)",
+      "tier": "초월 [물딜]",
+      "abilities": {
+        "공격력 증가": 25,
+        "바제스": true,
+        "방어력 감소": 45,
+        "스턴": 1.2
+      },
+      "description": "▶ 보조스킬딜러 깍45 스턴\n▷ 특강 : 액티브스킬(보조딜)\n[ 추천조합 : 카타쿠리 모비딕 마르코전설 흰수염전설 센고쿠전설 ]\n※ 보조딜러 필수"
+    },
+    {
+      "rawcode": "XB0H",
+      "guideUnitId": "XB0H",
+      "guideName": "보니 🤍 (스킬딜러 스턴0.6 중첩깍40)",
+      "tier": "초월 [물딜]",
+      "abilities": {
+        "바제스": "true",
+        "스턴": 0.6,
+        "중첩방어력 감소": 40
+      },
+      "description": "※ 비추천(어렵고 안 좋음)\n▶ 스킬딜러 보조스턴 나이조작\n▶ 나이조작(누적방깍40) 자리고정\n▶ 마나스킬 변신 했을 때 강함\n▷ 특강 : 마나 많이 쓰고 딜이 쎄짐\n\n※ 마딜에서 단일로 쓰는 게 더 좋음\n※ 마딜로 쓸 때는 특강 안 하고 변신을 더 오래 유지하는 걸 추천\n[ 추천조합(마딜) : 코알라 키쿠 방주맥심(에넬제한) ]"
+    },
+    {
+      "rawcode": "LB0H",
+      "guideUnitId": "LB0H",
+      "guideName": "료쿠규 💙 (스킬딜러 깍50 발이감25)",
+      "tier": "초월 [물딜]",
+      "abilities": {
+        "바제스": true,
+        "발동방어력 감소": 15,
+        "발동이동속도 감소": 25,
+        "방어력 감소": 35
+      },
+      "description": "▶ 스킬딜러 스플딜러(마나변신)\n▶ 방깍35 발동깍15 발이감25(믿음직)\n▷ 특강 : 보조딜 암브 피해량증폭\n※ 특강 시 암브25이상 필수(스킬발동조건)\n▶ 보잡이 약해 별도 보잡 유닛 필요"
+    },
+    {
+      "rawcode": "990H",
+      "guideUnitId": "990H",
+      "guideName": "루피 💙 (스플딜러 스턴0.5 발동이감33)",
+      "tier": "초월 [물딜]",
+      "abilities": {
+        "바제스": true,
+        "발동이동속도 감소": 33,
+        "스턴": 0.5,
+        "아머브레이크": 0
+      },
+      "description": "▶ 스플딜러 보조스턴 발동이감(믿음직)\n▷ 특강 : 딜증가 스턴 0.3→0.5\n※ 니카 예정이라면 특강X\n▶ 강력한 딜러지만 방깍이 없어 풀깍 맞추기 어려움\n▶ 다른 상위를 섞기보다 솔딜로 쓰고 부족한 방깍을 보완"
+    },
+    {
+      "rawcode": "490H",
+      "guideUnitId": "490H",
+      "guideName": "바질호킨스 🤍 (스킬딜러 깍32 이감7 점치기)",
+      "tier": "초월 [물딜]",
+      "abilities": {
+        "바제스": "ture",
+        "방어력 감소": 25
+      },
+      "description": "▶ 스킬딜러 방깍25\n▷ 특강(필수) : 미니 스트로맨 소환\n스킬쿨초 방깍7 이감7\n▶ 디버프 개수 비례 딜증가\n▶ 점치기로 전설 위습까지 획득 가능"
+    },
+    {
+      "rawcode": "290H",
+      "guideUnitId": "290H",
+      "guideName": "사보 🤍 (스플딜러 깍35 이감35)",
+      "tier": "초월 [물딜]",
+      "abilities": {
+        "바제스": true,
+        "발동이동속도 감소": 30,
+        "방어력 감소": 35,
+        "보스 잡기": "true",
+        "스턴": 0.1,
+        "이동속도 감소": 35
+      },
+      "description": "▶ 스플딜러 이감35 발이감30(못믿음)\n▶ 방깍35 버프개수비례딜증가\n▷ 특강(필수) : 범위딜 공속20 발이감30\n[추천조합 : 레일리전설 드래곤 센고쿠 퀸 이완히든 혼포인트 ]\n▶ 다른 상위를 섞기보다 솔딜로 쓰고 방깍과 버프를 집중적으로 보완\n▶ 상위 유닛 중에서는 패를 잘 먹었다면 버기 영원과 조합이 좋음"
+    },
+    {
+      "rawcode": "DB0H",
+      "guideUnitId": "DB0H",
+      "guideName": "야마토 💖 (스플딜러 방깍25 적이속+10)",
+      "tier": "초월 [물딜]",
+      "abilities": {
+        "바제스": true,
+        "방어력 감소": 25,
+        "이동속도 감소": -10
+      },
+      "description": "▶ 스플딜러 방깍25 단일스턴\n▷ 특강(필수) : 스킬강화(딜증가)\n▶ 적 이속+10 ※ 풀이감 필수\n▶ 적 이속이 낮을수록 딜 증가\n[추천조합 : 이완히든 모비딕 킹]"
+    },
+    {
+      "rawcode": "B90H",
+      "guideUnitId": "B90H",
+      "guideName": "우솝 💙 (스플딜러 깍30 보잡)",
+      "tier": "초월 [물딜]",
+      "abilities": {
+        "광폭화": true,
+        "바제스": "true",
+        "방어력 감소": 30,
+        "보스 잡기": true
+      },
+      "description": "▶ 스플딜러 방깍30 보잡\n▷ 특강(필수) : 식물 3개\n완두콩(스플뎀)\n백설콩(스턴0.27)\n해바라기(목재생성)\n먹깨비(유닛삭제)\n▶ 빨리 뽑아서 해바라기로 목재 얻고 50라 이후에 완두콩으로 교체(스턴 부족하면 백설콩)"
+    },
+    {
+      "rawcode": "F90H",
+      "guideUnitId": "F90H",
+      "guideName": "조로 💙 (스킬딜러 이감35 깍35 스턴0.4)",
+      "tier": "초월 [물딜]",
+      "abilities": {
+        "바제스": true,
+        "방어력 감소": 35,
+        "스턴": 0.4,
+        "이동속도 감소": 35
+      },
+      "description": "▶ 스킬딜러 이감 방깍 보조스턴\n▷ 특강(필수) : 스킬 강화\n이감30→35 / 방깍30→35\n[추천조합 : 크로커제한 봉쿠레히든 로져]\n※ 아이템 슈스이로 강화 가능"
+    },
+    {
+      "rawcode": "A90H",
+      "guideUnitId": "A90H",
+      "guideName": "징베 💙 (스플딜러 마젠 암브)",
+      "tier": "초월 [물딜]",
+      "abilities": {
+        "공격속도 증가": 20,
+        "마나 재생": 3,
+        "바제스": true,
+        "발동이동속도 감소": 50,
+        "아머브레이크": "true"
+      },
+      "description": "▶ 스플딜러 마젠 암브 발동이감(못믿음)\n▶ 보잡약간 암브비례딜증가\n▷ 특강 : 딜 스킬 추가\n▶ 스킬조건 때문에 다른 암브 유닛 필수\n[추천조합 : 카벤디슈 알비다 킹제한 퀸 스모커전설  베르고]\n※ 스모커 전설은 필수"
+    },
+    {
+      "rawcode": "190H",
+      "guideUnitId": "190H",
+      "guideName": "쵸파 💙(깍50 공증80 공속40)",
+      "tier": "초월 [물딜]",
+      "abilities": {
+        "공격력 증가": 80,
+        "공격속도 증가": 40,
+        "바제스": true,
+        "방어력 감소": 50
+      },
+      "description": "▶ 공증80 공속40 방깍50\n▷ 특강 : 공증40 없어지고 스플딜러\n▶ 다른 스플딜러와 조합이 좋음\n▶ 보잡 유닛 반드시 필요함"
+    },
+    {
+      "rawcode": "X80H",
+      "guideUnitId": "X80H",
+      "guideName": "후지토라 💙 (스플딜러 스턴1.1 이감55 암브)",
+      "tier": "초월 [물딜]",
+      "abilities": {
+        "바제스": true,
+        "스턴": 1.1,
+        "아머브레이크": 0,
+        "이동속도 감소": 55
+      },
+      "description": "▶ 스플딜러 이감 스턴 암브\n▷ 특강 : 딜 스킬 추가\n▶ 스킬조건 때문에 다른 암브 유닛 필수\n[추천조합 : 베르고 퀸 버기 영원]\n※ 원스턴 불안함"
+    },
+    {
+      "rawcode": "090H",
+      "guideUnitId": "090H",
+      "guideName": "검은수염 💖(발동이감65 끌당 피해증폭)",
+      "tier": "초월 [마딜]",
+      "abilities": {
+        "광폭화": "true",
+        "단일마법 데미지 증가": 10,
+        "모든피해증가": 25,
+        "바제스": "true",
+        "발동이동속도 감소": 65
+      },
+      "description": "※ 뉴비 절대 비추천\n▶ 발동이감 끌어당기기(마뎀증)\n▶ 한마리씩 끌어당겨서 단일 유닛이랑 같이 공격"
+    },
+    {
+      "rawcode": "V80H",
+      "guideUnitId": "V80H",
+      "guideName": "나미 (라인딜 발동이감45)",
+      "tier": "초월 [마딜]",
+      "abilities": {
+        "마법데미지 증폭": 2,
+        "바제스": "true",
+        "발동이동속도 감소": 45,
+        "범위 전체 체력 퍼센트 데미지": "true"
+      },
+      "description": "▶ 라인딜 마뎀증 발동이감(믿음직)\n▶ 골드획득량 증가\n▶ 탐색 보상 증가"
+    },
+    {
+      "rawcode": "690H",
+      "guideUnitId": "690H",
+      "guideName": "로우 🤍 (공비례폭뎀 발동이감40 현퍼딜 순간이동)",
+      "tier": "초월 [마딜]",
+      "abilities": {
+        "광폭화": true,
+        "바제스": true,
+        "발동이동속도 감소": 40,
+        "범위 현재 체력 퍼센트 데미지": "true",
+        "순간이동": "true",
+        "폭발형 데미지": "true"
+      },
+      "description": "▶ 공비례폭뎀딜러 발동이감40\n▷ 특강 : 공비례폭뎀 공증 사라지고 범위고정딜로 변경\n▶ 현재 체력 비례 범위딜\n▶ 순간이동(무제한)\n※ 폭뎀 조합이면 특강 안 함\n[추천조합 : 센고쿠 불멸(특강)]"
+    },
+    {
+      "rawcode": "W80H",
+      "guideUnitId": "W80H",
+      "guideName": "루치 (단일 폭뎀증10 순간이동)",
+      "tier": "초월 [마딜]",
+      "abilities": {
+        "광폭화": true,
+        "단일": 2,
+        "바제스": true,
+        "순간이동": "true",
+        "폭발형 데미지 증폭": 10
+      },
+      "description": "▶ 단일 폭뎀증10 순간이동 단일스턴"
+    },
+    {
+      "rawcode": "2B0H",
+      "guideUnitId": "2B0H",
+      "guideName": "스네이크맨 💙 (공비례폭뎀 보잡 라인딜",
+      "tier": "초월 [마딜]",
+      "abilities": {
+        "공중이동": "true",
+        "광폭화": "true",
+        "바제스": true,
+        "보스 잡기": "true",
+        "폭발형 데미지": "true"
+      },
+      "description": "▶ 공비례폭뎀딜러 공중이동\n▶ 적 이동속도가 높을 수록 스킬 대미지 증가\n▶ 특강(필수) : 단일스턴 광보잡\n[추천조합 : 센고쿠 불멸]"
+    },
+    {
+      "rawcode": "I90H",
+      "guideUnitId": "I90H",
+      "guideName": "브룩 💙 (끝딜 마뎀증10 마방깍3)",
+      "tier": "초월 [마딜]",
+      "abilities": {
+        "공중이동": "true",
+        "끝딜": 1.5,
+        "마법데미지 증폭": 10,
+        "마법방어력 감소": 3,
+        "바제스": "true",
+        "이동속도 감소": 15
+      },
+      "description": "▶ 끝딜 마방깍3(1번) 마뎀증\n▶ 이감15+맵전체이감5\n▷ 특강 : 미니라분 소환\n이감7 공속25 마젠5"
+    },
+    {
+      "rawcode": "H90H",
+      "guideUnitId": "H90H",
+      "guideName": "상디 💙(라인딜 단일 발동이감50)",
+      "tier": "초월 [마딜]",
+      "abilities": {
+        "공중이동": "true",
+        "단일": 1,
+        "바제스": true,
+        "발동이동속도 감소": 50
+      },
+      "description": "▶ 단일 발동이감50 라인딜 공중이동\n▷ 특강(필수) :  공속15 풀공속"
+    },
+    {
+      "rawcode": "Z80H",
+      "guideUnitId": "Z80H",
+      "guideName": "샹크스 💙 (라인딜 스턴2)",
+      "tier": "초월 [마딜]",
+      "abilities": {
+        "바제스": true,
+        "스턴": 2
+      },
+      "description": "▶ 라인딜보조 강한스턴\n▷ 특강 : 보잡, 스턴 스킬추가\n\n[추천조합 : 빅맘 에이스영원 에넬제한]\n※ 라인딜이 부족해서 딜러와 조합이 좋음\n※ 스턴이 좋아 단일을 치려면 검은수염전설이 있으면 편함"
+    },
+    {
+      "rawcode": "U80H",
+      "guideUnitId": "U80H",
+      "guideName": "시라호시 💙 (스턴1.2 잃퍼뎀)",
+      "tier": "초월 [마딜]",
+      "abilities": {
+        "공중이동": "true",
+        "바제스": true,
+        "범위 잃은 체력 퍼센트 데미지": "true",
+        "스턴": 1.2
+      },
+      "description": "▶ 스턴 잃퍼뎀(범위끝딜)\n▷ 특강 : 레벨업, 스킬강화\n※ 30라 안으로 빨리 뽑아야함(레벨중요)\n※ 항해목표 달성하면 경험치 획득"
+    },
+    {
+      "rawcode": "790H",
+      "guideUnitId": "790H",
+      "guideName": "아오키지 💙 (스턴1.2 이감70 폭뎀증10)",
+      "tier": "초월 [마딜]",
+      "abilities": {
+        "스턴": 1.2,
+        "이동속도 감소": 70,
+        "폭발형 데미지 증폭": 10
+      },
+      "description": "▶ 스턴 이감 폭뎀증\n▷ 특강 : 이감10 폭뎀증5\n▶ 딜이 약해서 다른딜러 필요함\n▶ 폭뎀 유닛과 조합이 좋음"
+    },
+    {
+      "rawcode": "590H",
+      "guideUnitId": "590H",
+      "guideName": "아카이누 💙 (광보잡 라인딜 발동이감12)",
+      "tier": "초월 [마딜]",
+      "abilities": {
+        "광폭화": true,
+        "바제스": true,
+        "발동이동속도 감소": 12,
+        "보스 잡기": true
+      },
+      "description": "▶ 라인딜 광보잡 발동이감(믿음직)"
+    },
+    {
+      "rawcode": "N50H",
+      "guideUnitId": "N50H",
+      "guideName": "타시기 💙 (라인딜 보잡)",
+      "tier": "초월 [마딜]",
+      "abilities": {
+        "바제스": "true",
+        "보스 잡기": "true",
+        "아머브레이크": 1
+      },
+      "description": "※  물마딜겸용(마딜이 더 좋음)\n▷ 특강(필수) : 스킬강화 레벨업\n=== [마딜] ===\n▶ 라인딜 보잡\n[추천조합(마딜) : 코알라 쿠라핌]\n\n=== [물딜] ===\n▶ 스킬딜러 암브 보잡"
+    },
+    {
+      "rawcode": "OC0H",
+      "guideUnitId": "OC0H",
+      "guideName": "코비 💖(공비례폭뎀 라인딜 폭뎀감소10))",
+      "tier": "초월 [마딜]",
+      "abilities": {
+        "공격속도 증가": 10,
+        "공중이동": "true",
+        "바제스": "true",
+        "순간이동": "true",
+        "폭발형 데미지": "true",
+        "폭발형 데미지 증폭": -10
+      },
+      "description": "▶ 공비례폭발형데미지 라인딜\n▶ 버프개수비례딜증가\n▷ 특강 : 딜증가+버프비례퍼딜\n[추천조합 : 핸라핌 네코마 드래곤 피셔 토키 모비딕]\n※ 폭뎀감10 있어서 폭뎀증 유닛과 조합이 좋음\n※ 5라운드마다 공속 증가해서 30라 전에 뽑는게 좋음\n※ 마나가 없어 마젠 버프는 안 받음"
+    },
+    {
+      "rawcode": "4B0H",
+      "guideUnitId": "4B0H",
+      "guideName": "키드 💖 (라인딜 이감33 스턴0.2)",
+      "tier": "초월 [마딜]",
+      "abilities": {
+        "바제스": true,
+        "스턴": 0.2,
+        "이동속도 감소": 33
+      },
+      "description": "▶ 라인딜 이감33 스턴0.2\n▶ 체젠 높으면 스턴 능력 오름(체젠4정도면 1스턴)\n\n[추천조합 : 모비딕호 ]"
+    },
+    {
+      "rawcode": "5B0H",
+      "guideUnitId": "5B0H",
+      "guideName": "키자루 💙 (스턴1 라인딜 순간이동)",
+      "tier": "초월 [마딜]",
+      "abilities": {
+        "바제스": true,
+        "순간이동": "true",
+        "스턴": 1
+      },
+      "description": "※ 레일리 희귀함 필요\n▶ 스턴 라인딜 보잡\n▷ 특강 : 특포 소모해서 스킬강화\n▶ 특성공학 항법 추천"
+    },
+    {
+      "rawcode": "Y80H",
+      "guideUnitId": "Y80H",
+      "guideName": "프랑키 💙(마나스킬딜러 마젠5)",
+      "tier": "초월 [마딜]",
+      "abilities": {
+        "마나 재생": 5,
+        "바제스": "true",
+        "범위 전체 체력 퍼센트 데미지": "true"
+      },
+      "description": "▶ 마나스킬딜러 마젠 써니호2대소환\n▶ 써니호 마나스킬 조절 필요 (번갈아가면서 마나스킬 사용하게 조절하면 써니호 2대로 스턴 잡힘)\n\n[추천조합 : 코알라 방주(에넬제한) 반더데켄 키쿠 시류 에영 미영 오뎅]\n※ 코알라 필수\n※ 써니호 2대 마나스킬 같이 쓰면 바제스 가능"
+    },
+    {
+      "rawcode": "C40h",
+      "guideUnitId": "C40h",
+      "guideName": "거프 💙 (스플딜러 스턴1.1 적방어+15 보잡)",
+      "tier": "불멸 [물딜]",
+      "abilities": {
+        "바제스": "true",
+        "방어력 감소": -15,
+        "보스 잡기": true,
+        "스턴": 1.1
+      },
+      "description": "▶ 스플딜러 범위스턴  보잡\n▶ 버프 개수 비례 딜 증가\n▶  패널티 : 적 방어력 15 증가\n▷ 특강 : 마나스킬 딜 2배정도 증가\n▶ 다른 상위를 섞기보다 솔딜로(또는 쵸초 정도만) 쓰고 부족한 방깎을 보완"
+    },
+    {
+      "rawcode": "940h",
+      "guideUnitId": "940h",
+      "guideName": "레일리 💙 (스플딜러 깍20 공속45 삭제)",
+      "tier": "불멸 [물딜]",
+      "abilities": {
+        "공격속도 증가": 45,
+        "바제스": true,
+        "방어력 감소": 20,
+        "아머브레이크": "true",
+        "유닛삭제": "true"
+      },
+      "description": "▶ 스플딜러 방깍20 공속45\n▶ 단일스턴 광잡 유닛삭제\n▷ 특강(필수) : 보조딜 노획물추가\n▶ 솔딜로 쓰거나 쵸초 or 크제와 조합\n▶ 보잡·이감·스턴·방깎이 부족하고 판매로 얻은 위습으로 유닛을 더 만들어야 해서 조합 난이도가 극악이므로 뉴비 비추천"
+    },
+    {
+      "rawcode": "J40h",
+      "guideUnitId": "J40h",
+      "guideName": "로져 💙 (스킬딜러 이감50 깍60 공증60)",
+      "tier": "불멸 [물딜]",
+      "abilities": {
+        "공격력 증가": 60,
+        "바제스": true,
+        "방어력 감소": 60,
+        "이동속도 감소": 50
+      },
+      "description": "▶ 스킬딜러 단일스턴\n▶ 이감50 방깍60 공증60\n▷ 특강 : 액티브스킬(보잡 스턴)"
+    },
+    {
+      "rawcode": "F40h",
+      "guideUnitId": "F40h",
+      "guideName": "스코퍼가반 💙 (단일방깍60 한마리씩잡음)",
+      "tier": "불멸 [물딜]",
+      "abilities": {
+        "광폭화": true,
+        "단일방어력 감소": 60,
+        "바제스": "true",
+        "보스 잡기": true
+      },
+      "description": "▶ 단일방깍60 단일스턴\n▶ 한마리씩잡는딜러\n▷ 특강 : [팔십효사] 딜비례 대상 추가\n[견문색패기] 자신공증50 / 보스깍180\n\n[ 추천조합 : 쵸파초월, 이감·스턴 없이 풀방깍으로 한마리씩 빠르게 정리 ]\n※ 카르가라와 스킬이 겹치니 주의"
+    },
+    {
+      "rawcode": "M70h",
+      "guideUnitId": "M70h",
+      "guideName": "카이도 💖 (스플딜러 이감60 중첩방깍 보잡약간)",
+      "tier": "불멸 [물딜]",
+      "abilities": {
+        "공격력 증가": -75,
+        "공중이동": "true",
+        "바제스": "true",
+        "이동속도 감소": 60,
+        "중첩방어력 감소": 30
+      },
+      "description": "▶ 스플딜러 이감60 중첩방깍 보잡약간\n▶ 아군공격력 75% 감소\n▶ 공속 챙겨줘야함(로우 베이비5변화)\n▶ 다른 상위를 섞기보다 솔딜로 쓰고 방깍을 보완\n▶ 상위 중에서는 알비다 베가펑크 쵸파초월(특강x)이 어울림"
+    },
+    {
+      "rawcode": "A40h",
+      "guideUnitId": "A40h",
+      "guideName": "흰수염 💖 (스플딜러 스턴0.6 깍45)",
+      "tier": "불멸 [물딜]",
+      "abilities": {
+        "바제스": true,
+        "발동이동속도 감소": 45,
+        "방어력 감소": 45,
+        "스턴": 0.6
+      },
+      "description": "▶스플딜러 보조스턴 발동이감(못믿음)\n▷ 특강 : 스킬강화\n[추천조합 : 쵸초 버영 크제]"
+    },
+    {
+      "rawcode": "D40h",
+      "guideUnitId": "D40h",
+      "guideName": "드래곤 💙 (스턴1.4 폭뎀증20 공속20)",
+      "tier": "불멸 [마딜]",
+      "abilities": {
+        "공격속도 증가": 20,
+        "스턴": 1.4,
+        "유닛삭제": "true",
+        "폭발형 데미지 증폭": 20
+      },
+      "description": "▶ 스턴 폭뎀증 공속\n▷ 특강 : 유닛삭제 딜증가\n▶ 폭발형 데미지 유닛과 조합이 좋음"
+    },
+    {
+      "rawcode": "Q40h",
+      "guideUnitId": "Q40h",
+      "guideName": "빅맘 💖 (라인딜러 이감40)",
+      "tier": "불멸 [마딜]",
+      "abilities": {
+        "공중이동": "true",
+        "유닛삭제": "true",
+        "이동속도 감소": 40
+      },
+      "description": "▶ 라인딜러 이감40\n▷ 특강 : 딜증가 이감70→ 40\n[추천조합 : 토키 ]"
+    },
+    {
+      "rawcode": "E40h",
+      "guideUnitId": "E40h",
+      "guideName": "센고쿠 💖(공비례폭뎀 스턴1.1 범퍼)",
+      "tier": "불멸 [마딜]",
+      "abilities": {
+        "공격력 증가": 33,
+        "범위 현재 체력 퍼센트 데미지": "true",
+        "스턴": 1.1,
+        "폭발형 데미지": "true"
+      },
+      "description": "▶ 공비례폭뎀딜러 공증33(자신제외)\n▶ 스턴 범위현재체력퍼센트데미지\n▷ 특강 : 추가스턴 본인공증10\n\n[ 추천조합 : 핸라핌 / 네코마 / 토키 / 오뎅 / 블랙마리아(전설) / 혼포인트 / 피셔 / 캐럿(변화) ]"
+    },
+    {
+      "rawcode": "B40h",
+      "guideUnitId": "B40h",
+      "guideName": "시키 💙 (스턴1.9 라인딜 마뎀증15)",
+      "tier": "불멸 [마딜]",
+      "abilities": {
+        "공중이동": "true",
+        "마법데미지 증폭": 15,
+        "바제스": "true",
+        "발동이동속도 감소": 35,
+        "스턴": 1.9,
+        "아머브레이크": "true"
+      },
+      "description": "※  물마딜 겸용(물딜은 특강필수)\n=== [마딜] ===\n▶ 스턴 라인딜 마뎀증\n▷ 특강 : 발동이감35 라인딜추가\n▶ 마딜은 특강 안 해도 잘 씀\n\n=== [물딜] ===\n※ 물딜은 특강 필수(매우좋음)\n▶ 스킬딜러 스턴 암브 발동이감35\n▷ 특강 : 스킬강화 발동이감(믿음직)\n[ 추천 운영 : 연속베팅 항법 → 중급도박 24번 ]\n▶ 다른 상위를 섞기보다 솔딜로(또는 쵸초 정도만) 쓰고 부족한 방깍을 보완\n※ 특강하고 강화하면 물딜 성능이 더 좋음"
+    },
+    {
+      "rawcode": "G40h",
+      "guideUnitId": "G40h",
+      "guideName": "제트 💙 (라인딜 이감35 보잡 단일스턴)",
+      "tier": "불멸 [마딜]",
+      "abilities": {
+        "광폭화": true,
+        "바제스": "true",
+        "보스 잡기": true,
+        "순간이동": "true",
+        "이동속도 감소": 35
+      },
+      "description": "▶ 라인딜 광보잡 이감35 단일스턴 순간이동\n▷ 특강 : 스킬강화, 범퍼딜\n※ 공속 올려서 머리 위 숫자가 7이상 유지돼야함\n\n[ 추천 조합 : 토키 발라티에 로우(특별희귀전설) ]\n※ 로우 특별 2~3 만들어서 버프 돌려 써도 좋음"
+    },
+    {
+      "rawcode": "KB0H",
+      "guideUnitId": "KB0H",
+      "guideName": "니카 (루초) 🤍 (스플딜러 스턴1.1 깍35 보잡)",
+      "tier": "영원 [물딜]",
+      "abilities": {
+        "공격속도 증가": 25,
+        "공중이동": "true",
+        "바제스": true,
+        "방어력 감소": 35,
+        "스턴": 1.1
+      },
+      "description": "※ 아이템 '태양신의 흔적' 필요\n▶ 스플딜러 스턴 단일스턴 방깍35 보잡\n▶ 매우 쎄서 방깍 다소 낮아도 클리어 가능\n▶ 적의 이동속도가 빠를수록 강해짐\n▶ 지형무시이동(1시가능)"
+    },
+    {
+      "rawcode": "KB0H_",
+      "guideUnitId": "KB0H_",
+      "guideName": "니카 (뱀초) 🤍 (스플딜러 스턴1.1 깍35 보잡)",
+      "tier": "영원 [물딜]",
+      "abilities": {
+        "공격속도 증가": 25,
+        "공중이동": "true",
+        "바제스": true,
+        "방어력 감소": 35,
+        "스턴": 1.1
+      },
+      "description": "※ 아이템 '태양신의 흔적' 필요\n▶ 스플딜러 스턴 단일스턴 방깍35 보잡\n▶ 매우 쎄서 방깍 다소 낮아도 클리어 가능\n▶ 적의 이동속도가 빠를수록 강해짐\n▶ 지형무시이동(1시가능)"
+    },
+    {
+      "rawcode": "A50h",
+      "guideUnitId": "A50h",
+      "guideName": "버기 (소환딜러 깍41 스턴0.5 이감25 공증 공속)",
+      "tier": "영원 [물딜]",
+      "abilities": {
+        "공격력 증가": 33,
+        "공격속도 증가": 65,
+        "바제스": true,
+        "방어력 감소": 41,
+        "스턴": 0.5,
+        "이동속도 감소": 25
+      },
+      "description": "▶ 소환딜러 보조스턴 방깍41\n▶ 이감25 공증33 공속65\n▷ 특강 : 보스/광폭/스토리 대상 소환스킬\n▶ 다른 스플딜러와 잘 어울림\n※ 재료가 너무 비싸 뉴비 비추천(샹크스, 마젤란 없이 가기 힘듦)"
+    },
+    {
+      "rawcode": "B50h",
+      "guideUnitId": "B50h",
+      "guideName": "카벤딧슈 💙 (스플딜러 스턴1 깍35 단일암브)",
+      "tier": "영원 [물딜]",
+      "abilities": {
+        "바제스": "true",
+        "방어력 감소": 35,
+        "보스 잡기": true,
+        "스턴": 1,
+        "아머브레이크": 0.1,
+        "처형": "true"
+      },
+      "description": "▶ 스플딜러 스턴 방깎35 단일암브\n▷ 특강 : 암브 광보잡 처형"
+    },
+    {
+      "rawcode": "950h",
+      "guideUnitId": "950h",
+      "guideName": "에이스 💙 (라인딜 이감45)",
+      "tier": "영원 [마딜]",
+      "abilities": {
+        "바제스": true,
+        "이동속도 감소": 45
+      },
+      "description": "▶ 라인딜 이감45\n▷ 특강 : 딜강화 지속딜→즉발\n▶ 마나스킬이 강력해서 마젠 효율 좋음\n[ 추천조합 : 샹크스초월 에넬제한 시키불멸 코알라]"
+    },
+    {
+      "rawcode": "C50h",
+      "guideUnitId": "C50h",
+      "guideName": "핸콕 💙 (라인딜 스턴1.1 깍45 마깍5)",
+      "tier": "영원 [마딜]",
+      "abilities": {
+        "마법방어력 감소": 5,
+        "바제스": "true",
+        "발동이동속도 감소": 60,
+        "방어력 감소": 45,
+        "범위 전체 체력 퍼센트 데미지": "true",
+        "스턴": 1.1
+      },
+      "description": "※  물마딜겸용(마딜이 더 좋음)\n▷ 특강(필수) : 스킬강화\n스턴0.9→1.1 / 방깍35→40\n=== [마딜] ===\n▶ 라인딜 스턴 마나스킬끝딜 발동이감(못믿음) 마방깍5(1번)\n[추천조합(마딜) : 코알라 키쿠or쿠라핌 방주(에제) 빅맘]\n\n=== [물딜] ===\n▶ 스킬딜러 스턴1.1 방깍45\n▶ 발동이감(못믿음)\n\n※마딜 성능이 더 좋음"
+    },
+    {
+      "rawcode": "R80h",
+      "guideUnitId": "R80h",
+      "guideName": "오뎅 💙 (라인딜 광보잡 마뎀증)",
+      "tier": "영원 [마딜]",
+      "abilities": {
+        "공격력 증가": 50,
+        "광폭화": "true",
+        "마법데미지 증폭": 1,
+        "바제스": "true"
+      },
+      "description": "▶ 라인딜 보잡 광잡(특강) 마뎀증\n▷ 특강(필수) : 킨에몬소환 광잡\n▶ 마나스킬이 핵심 : 아군 추가딜\n[추천조합 : 코알라 방주(에제) 발라티에 나미전설 모건 ]\n※ 코알라는 필수\n▶ 조로희귀2 킨에몬2 필요해서 비싸다"
+    },
+    {
+      "rawcode": "JC0h",
+      "guideUnitId": "JC0h",
+      "guideName": "류마 💙(끝딜 폭뎀 보잡)",
+      "tier": "영원 [마딜]",
+      "abilities": {
+        "끝딜": 1,
+        "단일": 1,
+        "범위 잃은 체력 퍼센트 데미지": "true",
+        "폭발형 데미지": "true"
+      },
+      "description": "※ 성장형 딜러라서 빨리 뽑아야 좋음\n▶ 폭뎀 끝딜 보잡\n▶ 단일 성능도 있지만 단일로 안 씀\n▶ 토키는 필수, 시노부까진 빡셈\n▶ 공증이 있어야 스킬 조건 충족함(오니)\n▶ 오로성 새턴일 때 성능 저하\n▶ 아이템 '슈스이'로 강화 가능"
+    },
+    {
+      "rawcode": "760h",
+      "guideUnitId": "760h",
+      "guideName": "우타 🤍 (라인딜 이감45 단일0.5 끝딜0.5 스턴0.6 공속15 공증30 폭뎀증10 마방깍10)",
+      "tier": "영원 [마딜]",
+      "abilities": {
+        "공격속도 증가": 15,
+        "끝딜": 0.5,
+        "단일": 0.5,
+        "마법방어력 감소": 10,
+        "바제스": "true",
+        "발동공격력 증가": 30,
+        "발동이동속도 감소": 45,
+        "스턴": 0.6,
+        "폭발형 데미지 증폭": 10
+      },
+      "description": "※ 아이템 '우타의 헤드셋'과 레일리 필요\n▶ 라인딜 단일 끝딜 스턴0.6 공속15\n▶ 이감45 공증30 폭뎀증10 마방깍10\n※ 수면 상태일 때 몹 샐 수 있음\n▷ 특강 : 수면 상태 보완\n▶ 단끝컨 안 함"
+    },
+    {
+      "rawcode": "850h",
+      "guideUnitId": "850h",
+      "guideName": "미호크 💙(공비례폭뎀 이감45)",
+      "tier": "영원 [마딜]",
+      "abilities": {
+        "이동속도 감소": 45,
+        "폭발형 데미지": "true",
+        "폭발형 데미지 증폭": 10
+      },
+      "description": "▶ 공비례폭뎀딜러 단일스턴\n▶ 보잡성능부족 보잡유닛필요\n▷ 특강 : 폭뎀스킬추가 폭뎀증비례쿨감\n\n1. 공비례폭뎀 조합\n[추천조합 : 베가펑크 네코마 피셔 토키 핸라핌]\n*공증 공속 버프 좋음\n\n2. 마나리젠 조합\n[추천조합 : 프랑키초월 코알라 에제]"
+    },
+    {
+      "rawcode": "750h",
+      "guideUnitId": "750h",
+      "guideName": "비비 💙(끝딜 스킬강화)",
+      "tier": "영원 [마딜]",
+      "abilities": {
+        "광폭화": true,
+        "끝딜": 0,
+        "바제스": true,
+        "순간이동": "true"
+      },
+      "description": "※ 쓸 줄 알면 S급, 모르면 D급\n▶ 끝딜 스킬강화(7강까지 권장)\n강화 성공마다 고뎀증가\n3강 : 3연사 강화\n5강 : 이동사격 스킬추가\n7강 : 헤드샷 강화\n\n[추천조합 : 우타 상디초월 토키 아카히든]\n※검수초, 보니 빼곤 대부분 잘 어울림"
+    },
+    {
+      "rawcode": "E50h",
+      "guideUnitId": "E50h",
+      "guideName": "에넬 💙(라인딜 마젠1.5 마방깍18 발동이감35)",
+      "tier": "제한됨 [마딜]",
+      "abilities": {
+        "마나 재생": 1.5,
+        "마법방어력 감소": 18,
+        "바제스": true,
+        "발동이동속도 감소": 35,
+        "순간이동": "true"
+      },
+      "description": "▶ 라인딜 마젠 마방깍 발동이감(못믿음) 광보잡약간\n▷ 특강 : 딜추가 발동이감(믿음)\n[추천조합 : 프랑키초월 베가펑크 코알라 키쿠]"
+    },
+    {
+      "rawcode": "G50h",
+      "guideUnitId": "G50h",
+      "guideName": "레드필드 💖 (범위끝딜 범위잃퍼딜 끝딜)",
+      "tier": "제한됨 [마딜]",
+      "abilities": {
+        "끝딜": 1.5,
+        "바제스": true,
+        "범위 전체 체력 퍼센트 데미지": "true",
+        "보스 잡기": true,
+        "순간이동": "true"
+      },
+      "description": "※ 40라운드까지만 조합 가능\n▶ 범위끝딜 끝딜 단일스턴\n▷ 특강 : 범위잃은체력퍼센트데미지"
+    },
+    {
+      "rawcode": "I50h",
+      "guideUnitId": "I50h",
+      "guideName": "레베카 💙 (스플딜러 방깍38)",
+      "tier": "제한됨 [물딜]",
+      "abilities": {
+        "바제스": true,
+        "발동이동속도 감소": 60,
+        "방어력 감소": 38
+      },
+      "description": "▶ 스플딜러 방깍38 단일스턴\n▶ 발동이감(못믿음)\n▷ 특강 : [반복수련] 즉시완료\n [트루에노 센텐시아] 범위+단일적추가딜\n▶ 슈가로 이득보다 49라 조합하고 특강\n※ 특강 안 하면 스킬 레벨업이 느려 빨리 만들어도 끝날쯤에 20레벨\n▶ 만들긴 쉬우나 딜이 약해 조합 난도 높음(뉴비 비추천)"
+    },
+    {
+      "rawcode": "O80h",
+      "guideUnitId": "O80h",
+      "guideName": "마르코 (인간폼) 💖 (폭뎀단일 이감45 체젠3)",
+      "tier": "제한됨 [마딜]",
+      "abilities": {
+        "공중이동": "true",
+        "단일": 1.5,
+        "바제스": "true",
+        "이동속도 감소": 45,
+        "체력 재생": 3
+      },
+      "description": "※ 아이템 '불사조의 깃털' 필요\n▶ 인간폼[마딜] : 폭뎀단일\n▶ 이감45 체젠3 공중이동\n▷ 특강(애매) : 이감60 체젠4\n[추천조합 : 키드초월 빅맘 캐럿변이]"
+    },
+    {
+      "rawcode": "Q80h",
+      "guideUnitId": "Q80h",
+      "guideName": "알비다 💙 (넉백 스킬보조딜러 깍25)",
+      "tier": "제한됨 [물딜]",
+      "abilities": {
+        "공격력 증가": 33,
+        "바제스": true,
+        "방어력 감소": 25,
+        "범위 잃은 체력 퍼센트 데미지": "true",
+        "아머브레이크": 1
+      },
+      "description": "※ 조합에 특성포인트 4개 필요\n▶ 넉백 스킬보조딜러 방깍25\n▶ 풀이감일 때 혼자 스턴 역할 가능\n▶ 공속고정 다른딜러필수\n[추천조합: 도초 징초 킹제 로져]"
+    },
+    {
+      "rawcode": "480h",
+      "guideUnitId": "480h",
+      "guideName": "시노부 💖 (이감30 끝딜 보잡 탐색)",
+      "tier": "제한됨 [마딜]",
+      "abilities": {
+        "끝딜": 1.5,
+        "보스 잡기": true,
+        "순간이동": "true",
+        "이동속도 감소": 30
+      },
+      "description": "▶ 끝딜 보잡 이감 단일스턴\n▷ 특강 : 딜 증가\n[추천조합 : 나미전설(탐색 시너지), 캐럿 ]"
+    },
+    {
+      "rawcode": "040h",
+      "guideUnitId": "040h",
+      "guideName": "아인 (뒤로뒤로열매 광잡 단일스턴 순간이동)",
+      "tier": "제한됨 [마딜]",
+      "abilities": {
+        "광폭화": true,
+        "순간이동": "true",
+        "유닛삭제": "true"
+      },
+      "description": "▶ 광잡 단일스턴 순간이동\n▶ [뒤로뒤로열매] : 라인몹을 이전 라인몹으로 변경, 7중첩 시 유닛 삭제\n▷ 특강 : 150초쿨 사용스킬, 범위내모든적 뒤로뒤로-2중첩\n\n[추천조합 : 특성공학항법 아인(2~3명) 토키 베가펑크 ]\n※ 빠르게 라인몹을 7중첩으로 만들고 유닛 삭제\n※ 운용 방법이 어려워서 뉴비 비추천"
+    },
+    {
+      "rawcode": "I70h",
+      "guideUnitId": "I70h",
+      "guideName": "카타쿠리 💖 (스킬딜러 깍30 체젠 보잡약간)",
+      "tier": "제한됨 [물딜]",
+      "abilities": {
+        "광폭화": true,
+        "바제스": "true",
+        "방어력 감소": 30,
+        "보스 잡기": true,
+        "체력 재생": 2.85
+      },
+      "description": "▶ 스킬딜러 스플딜러(체력스킬) 체젠\n▶ 보잡약간 방깍30 암브6(1번) 단일스턴\n▷ 특강 : 딜증가\n[추천조합 : 로빈초월 모비딕 샤크 마르코전설 흰수염]"
+    },
+    {
+      "rawcode": "F50h",
+      "guideUnitId": "F50h",
+      "guideName": "크로커다일 💖 (스킬딜러 깍25 이감40 스턴0.5)",
+      "tier": "제한됨 [물딜]",
+      "abilities": {
+        "바제스": true,
+        "방어력 감소": 25,
+        "스턴": 0.5,
+        "이동속도 감소": 40
+      },
+      "description": "▶ 약한스킬딜러 이감40 방깍25 보조스턴\n▷ 특강 :  체력스킬(암브)\n▶ 여러 상위와 잘 어울림"
+    },
+    {
+      "rawcode": "IA0h",
+      "guideUnitId": "IA0h",
+      "guideName": "킹 💙 (스플딜러 발동깍30 단일암브)",
+      "tier": "제한됨 [물딜]",
+      "abilities": {
+        "공중이동": "true",
+        "바제스": true,
+        "발동방어력 감소": 30,
+        "아머브레이크": "true"
+      },
+      "description": "▶ 스플딜러 발동방깍30 단일암브\n▷ 특강 : 딜증가 +깍5\n▶ 스킬조건 때문에 다른 암브 유닛 필수\n▶ 조합 맞추기 어려워서 뉴비에게 비추천\n[추천조합: 징베전설(초월) 퀸 스모커전설]"
+    },
+    {
+      "rawcode": "U60h",
+      "guideUnitId": "unit_1761060487951_749",
+      "guideName": "k' (0.4스턴)",
+      "tier": "랜덤유닛",
+      "abilities": {
+        "순간이동": "true",
+        "스턴": 0.4
+      },
+      "description": "2000거리 순간이동"
+    },
+    {
+      "rawcode": "V60h",
+      "guideUnitId": "unit_1761061031358_4977",
+      "guideName": "나루토 (0.7스턴)",
+      "tier": "랜덤유닛",
+      "abilities": {
+        "스턴": 0.7
+      },
+      "description": ""
+    },
+    {
+      "rawcode": "T60h",
+      "guideUnitId": "unit_1761061963043_3268",
+      "guideName": "페이몬 (마뎀증)",
+      "tier": "랜덤유닛",
+      "abilities": {
+        "공중이동": "true",
+        "마법데미지 증폭": 10
+      },
+      "description": "공중이동 마뎀증"
+    },
+    {
+      "rawcode": "W60h",
+      "guideUnitId": "unit_1761061344221_6210",
+      "guideName": "요츠바 (마나젠1.5, 위습생성)",
+      "tier": "랜덤유닛",
+      "abilities": {
+        "마나 재생": 1.5
+      },
+      "description": ""
+    },
+    {
+      "rawcode": "Z60h",
+      "guideUnitId": "unit_1761061480117_7810",
+      "guideName": "전투펭귄 (단일스턴, 이감20)",
+      "tier": "랜덤유닛",
+      "abilities": {
+        "공중이동": "true",
+        "이동속도 감소": 20
+      },
+      "description": ""
+    },
+    {
+      "rawcode": "070h",
+      "guideUnitId": "unit_1761061415196_6861",
+      "guideName": "이사야마 요미 (방깍15)",
+      "tier": "랜덤유닛",
+      "abilities": {
+        "방어력 감소": 15
+      },
+      "description": ""
+    },
+    {
+      "rawcode": "170h",
+      "guideUnitId": "unit_1761061665500_7140",
+      "guideName": "쿠로사키 이치고(끝딜)",
+      "tier": "랜덤유닛",
+      "abilities": {
+        "끝딜": 0.5
+      },
+      "description": "적 1마리 끝딜"
+    },
+    {
+      "rawcode": "270h",
+      "guideUnitId": "unit_1761062152290_509",
+      "guideName": "하네카와 츠바사(공속20, 발이감70)",
+      "tier": "랜덤유닛",
+      "abilities": {
+        "공격속도 증가": 20,
+        "발동이동속도 감소": 70
+      },
+      "description": "공속10 발동이감70(못믿음)"
+    },
+    {
+      "rawcode": "370h",
+      "guideUnitId": "unit_1761061202813_1423",
+      "guideName": "야가미 라이토 (단일0.7)",
+      "tier": "랜덤유닛",
+      "abilities": {
+        "단일": 0.7
+      },
+      "description": ""
+    },
+    {
+      "rawcode": "L90h",
+      "guideUnitId": "unit_1761061454852_6029",
+      "guideName": "이치의 율자",
+      "tier": "랜덤유닛",
+      "abilities": {
+        "공중이동": "true"
+      },
+      "description": "공중이동"
+    },
+    {
+      "rawcode": "M90h",
+      "guideUnitId": "unit_1761062338921_7460",
+      "guideName": "고죠사토루💙 (이감30)",
+      "tier": "신비함 [마딜]",
+      "abilities": {
+        "발동이동속도 감소": 20,
+        "범위 전체 체력 퍼센트 데미지": "true",
+        "스턴": 0.6,
+        "이동속도 감소": 30
+      },
+      "description": "범위전체체력% 이감30\n\n마나스킬이 강력하니 마나젠 올려주면 좋음\n[추천 조합 : 프랑키 초월 ]"
+    },
+    {
+      "rawcode": "CC0h",
+      "guideUnitId": "unit_1761125103588_3868",
+      "guideName": "요우무🤍 (단일깍40/발동이감50)",
+      "tier": "신비함 [물딜]",
+      "abilities": {
+        "단일방어력 감소": 40,
+        "발동이동속도 감소": 50
+      },
+      "description": "단일방어력감소40\n(카르가라, 가반과 중첩 안됨)\n발동이감50\n\n공증 버프 해주면 매우 좋음(혼포인트, 이완코브 히든)"
+    },
+    {
+      "rawcode": "M80h",
+      "guideUnitId": "unit_1761124124692_6834",
+      "guideName": "아냐🤍 (이감40, 체젠2, 마젠1.75, 공속증가30)",
+      "tier": "신비함 [마딜]",
+      "abilities": {
+        "공격속도 증가": 30,
+        "공중이동": "true",
+        "마나 재생": 1.75,
+        "마법데미지 증폭": 1,
+        "이동속도 감소": 40,
+        "체력 재생": 2
+      },
+      "description": "버프 마방깍 마뎀증\n*쿨타임마다 스킬 쓰기\n자원 벌어다주는 친구"
+    },
+    {
+      "rawcode": "W90h",
+      "guideUnitId": "unit_1761062663657_987",
+      "guideName": "미나토💙 (2.1스턴, 끝딜, 마뎀증3)",
+      "tier": "신비함 [마딜]",
+      "abilities": {
+        "끝딜": 1,
+        "마법데미지 증폭": 3,
+        "순간이동": "true",
+        "스턴": 2.2
+      },
+      "description": "순간이동(1시가능)\n마뎀증 강한스턴"
+    },
+    {
+      "rawcode": "2A0h",
+      "guideUnitId": "unit_1761065051171_5253",
+      "guideName": "료우기 시키💙 (깍44)",
+      "tier": "신비함 [물딜]",
+      "abilities": {
+        "방어력 감소": 44,
+        "보스 잡기": "true"
+      },
+      "description": "보스/스토리 최고\n한마리씩 죽이는 스킬딜러\n광폭화도 잘 잡으니 방깎 잘 챙겨주면 됨\n"
+    },
+    {
+      "rawcode": "N90h",
+      "guideUnitId": "unit_1761123072631_5561",
+      "guideName": "부릉냐💙(끝딜, 발동마젠)",
+      "tier": "신비함 [마딜]",
+      "abilities": {
+        "공중이동": "true",
+        "끝딜": 1,
+        "마나 재생": 0
+      },
+      "description": "스킬발동시 마젠5"
+    },
+    {
+      "rawcode": "CA0h",
+      "guideUnitId": "unit_1761126565030_3924",
+      "guideName": "히그마❤️ (이감30, 목재복사)",
+      "tier": "신비함 [마딜]",
+      "abilities": {
+        "이동속도 감소": 30
+      },
+      "description": "골드와 목재를 벌어다 주는 유닛\n체력 재생(체젠)이 높을수록 수급량이 증가하기 때문에 모비딕과 조합이 좋습니다."
+    },
+    {
+      "rawcode": "6A0h",
+      "guideUnitId": "unit_1761124487227_5978",
+      "guideName": "유카리 💙(이감45, 유닛삭제, 폭뎀증, 블링크)",
+      "tier": "신비함 [마딜]",
+      "abilities": {
+        "순간이동": "true",
+        "유닛삭제": "true",
+        "이동속도 감소": 45,
+        "폭발형 데미지 증폭": 10
+      },
+      "description": "순간이동 폭뎀증10 이감45 삭제 라인딜"
+    },
+    {
+      "rawcode": "R90h",
+      "guideUnitId": "unit_1761125536417_8071",
+      "guideName": "죠타로🤍 (깍25, 암브1, 공증20)",
+      "tier": "신비함 [물딜]",
+      "abilities": {
+        "공격력 증가": 20,
+        "방어력 감소": 25,
+        "아머브레이크": 1
+      },
+      "description": "스킬딜러 암브 \n*암브 중첩 비례해서 딜 증가, 다른 암브 유닛과 조합이 좋음"
+    },
+    {
+      "rawcode": "I80h",
+      "guideUnitId": "unit_1761122598665_345",
+      "guideName": "바쿠야💙 (이감20, 라인딜)",
+      "tier": "신비함 [마딜]",
+      "abilities": {
+        "순간이동": "true",
+        "이동속도 감소": 20
+      },
+      "description": "짧은순간이동 이감"
+    },
+    {
+      "rawcode": "FB0h",
+      "guideUnitId": "unit_1761121532012_4070",
+      "guideName": "네즈코💙 (단일/단일 중첩 폭뎀증)",
+      "tier": "신비함 [마딜]",
+      "abilities": {
+        "단일": 1,
+        "폭발형 데미지 증폭": "true"
+      },
+      "description": "폭뎀단일 폭뎀증 마나스킬끝딜(공격했던 유닛만 적용됨)"
+    },
+    {
+      "rawcode": "CB0h",
+      "guideUnitId": "unit_1761126198374_11",
+      "guideName": "타츠마키🤍 (0.9스턴, 이감50, 암브1, 위습생성)",
+      "tier": "신비함 [물딜]",
+      "abilities": {
+        "공중이동": "true",
+        "스턴": 0.9,
+        "아머브레이크": 1,
+        "이동속도 감소": 50
+      },
+      "description": "0.9스턴 이감50 암브1\n위습 2개 생성(최대전설위습)"
+    },
+    {
+      "rawcode": "H00I",
+      "guideUnitId": "H00I",
+      "guideName": "우타의 헤드셋 (공속10)",
+      "tier": "아이템",
+      "abilities": {
+        "공격속도 증가": 10
+      },
+      "description": "우타(영원) 조합 재료"
+    },
+    {
+      "rawcode": "700I",
+      "guideUnitId": "700I",
+      "guideName": "태양신의 흔적 (공증14)",
+      "tier": "아이템",
+      "abilities": {
+        "공격력 증가": 14
+      },
+      "description": "니카(영원) 조합 재료\n\n2.300 패치로 수치 변경\n공증 10% → 14% 변경"
+    },
+    {
+      "rawcode": "Y00I",
+      "guideUnitId": "Y00I",
+      "guideName": "불사조의 깃털 (체젠0.5)",
+      "tier": "아이템",
+      "abilities": {
+        "체력 재생": 0.5
+      },
+      "description": "마르코(제한) 조합 재료"
+    }
+  ]
+}

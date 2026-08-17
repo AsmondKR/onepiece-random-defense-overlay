@@ -1,0 +1,1800 @@
+{
+ "schemaVersion": 1,
+ "mapVersion": "2.314",
+ "source": "ORDR_S2_2.314[R].w3x war3map.j(wS)+w3a+wts · result 유닛 rawcode 기준",
+ "entries": [
+  {
+   "result": "O00h",
+   "ability": "A006",
+   "key": "Z",
+   "resultName": "니코 로빈 - 안흔함",
+   "ingredients": [
+    "나미 - 흔함",
+    "상디 - 흔함"
+   ]
+  },
+  {
+   "result": "C00h",
+   "ability": "A00E",
+   "key": "X",
+   "resultName": "베포 - 안흔함",
+   "ingredients": [
+    "토니토니 쵸파 - 흔함",
+    "몽키.D.루피 - 흔함"
+   ]
+  },
+  {
+   "result": "D00h",
+   "ability": "A00W",
+   "key": "Z",
+   "resultName": "브룩 - 안흔함",
+   "ingredients": [
+    "롤로노아 조로 - 흔함",
+    "토니토니 쵸파 - 흔함"
+   ]
+  },
+  {
+   "result": "M00h",
+   "ability": "A0N5",
+   "key": "Z",
+   "resultName": "블루노 - 안흔함",
+   "ingredients": [
+    "해군 총병 - 흔함",
+    "해군 총병 - 흔함"
+   ]
+  },
+  {
+   "result": "K00h",
+   "ability": "A00D",
+   "key": "Z",
+   "resultName": "포트거스.D.에이스 - 안흔함",
+   "ingredients": [
+    "몽키.D.루피 - 흔함",
+    "해군 총병 - 흔함"
+   ]
+  },
+  {
+   "result": "N00h",
+   "ability": "A00V",
+   "key": "Z",
+   "resultName": "우솝 저격왕 - 안흔함",
+   "ingredients": [
+    "우솝 - 흔함",
+    "우솝 - 흔함"
+   ]
+  },
+  {
+   "result": "I00h",
+   "ability": "A00P",
+   "key": "Z",
+   "resultName": "이나즈마 - 안흔함",
+   "ingredients": [
+    "상디 - 흔함",
+    "롤로노아 조로 - 흔함"
+   ]
+  },
+  {
+   "result": "G00h",
+   "ability": "A02I",
+   "key": "Z",
+   "resultName": "쵸파 럼블볼강화 - 안흔함",
+   "ingredients": [
+    "토니토니 쵸파 - 흔함",
+    "토니토니 쵸파 - 흔함"
+   ]
+  },
+  {
+   "result": "E00h",
+   "ability": "A01R",
+   "key": "X",
+   "resultName": "타시기 - 안흔함",
+   "ingredients": [
+    "해군 칼병 - 흔함",
+    "해군 총병 - 흔함"
+   ]
+  },
+  {
+   "result": "J00h",
+   "ability": "A00L",
+   "key": "Z",
+   "resultName": "페로나 - 안흔함",
+   "ingredients": [
+    "버기 - 흔함",
+    "나미 - 흔함"
+   ]
+  },
+  {
+   "result": "L00h",
+   "ability": "A01H",
+   "key": "X",
+   "resultName": "프랑키 - 안흔함",
+   "ingredients": [
+    "우솝 - 흔함",
+    "몽키.D.루피 - 흔함"
+   ]
+  },
+  {
+   "result": "F00h",
+   "ability": "A01L",
+   "key": "X",
+   "resultName": "하찌 - 안흔함",
+   "ingredients": [
+    "해군 총병 - 흔함",
+    "나미 - 흔함"
+   ]
+  },
+  {
+   "result": "A00h",
+   "ability": "A0N7",
+   "key": "Z",
+   "resultName": "후쿠로 - 안흔함",
+   "ingredients": [
+    "해군 칼병 - 흔함",
+    "해군 칼병 - 흔함"
+   ]
+  },
+  {
+   "result": "D10h",
+   "ability": "A00B",
+   "key": "Z",
+   "resultName": "쵸파 가드포인트 - 특별",
+   "ingredients": [
+    "쵸파 럼블볼강화 - 안흔함",
+    "이나즈마 - 안흔함",
+    "해군 칼병 - 흔함"
+   ]
+  },
+  {
+   "result": "C10h",
+   "ability": "A0NA",
+   "key": "Z",
+   "resultName": "카포네 갱 벳지 - 특별",
+   "ingredients": [
+    "후쿠로 - 안흔함",
+    "해군 총병 - 흔함",
+    "버기 - 흔함"
+   ]
+  },
+  {
+   "result": "P00h",
+   "ability": "A015",
+   "key": "X",
+   "resultName": "나미 크리마텍트 - 특별",
+   "ingredients": [
+    "나미 - 흔함",
+    "나미 - 흔함",
+    "나미 - 흔함"
+   ]
+  },
+  {
+   "result": "G10h",
+   "ability": "A02Y",
+   "key": "Z",
+   "resultName": "파이러츠 도킹5 - 특별",
+   "ingredients": [
+    "프랑키 - 안흔함",
+    "프랑키 - 안흔함",
+    "롤로노아 조로 - 흔함"
+   ]
+  },
+  {
+   "result": "E10h",
+   "ability": "A014",
+   "key": "X",
+   "resultName": "쵸파 두뇌강화 - 특별",
+   "ingredients": [
+    "쵸파 럼블볼강화 - 안흔함",
+    "니코 로빈 - 안흔함",
+    "버기 - 흔함"
+   ]
+  },
+  {
+   "result": "S00h",
+   "ability": "A03E",
+   "key": "Z",
+   "resultName": "로빈 오하라 - 특별",
+   "ingredients": [
+    "니코 로빈 - 안흔함",
+    "니코 로빈 - 안흔함",
+    "토니토니 쵸파 - 흔함"
+   ]
+  },
+  {
+   "result": "H10h",
+   "ability": "A01X",
+   "key": "Z",
+   "resultName": "트라팔가 로우 - 특별",
+   "ingredients": [
+    "베포 - 안흔함",
+    "타시기 - 안흔함",
+    "버기 - 흔함"
+   ]
+  },
+  {
+   "result": "R00h",
+   "ability": "A01O",
+   "key": "X",
+   "resultName": "로브 루치 - 특별",
+   "ingredients": [
+    "후쿠로 - 안흔함",
+    "니코 로빈 - 안흔함",
+    "몽키.D.루피 - 흔함"
+   ]
+  },
+  {
+   "result": "U00h",
+   "ability": "A012",
+   "key": "X",
+   "resultName": "루피 기어세컨드 - 특별",
+   "ingredients": [
+    "몽키.D.루피 - 흔함",
+    "몽키.D.루피 - 흔함",
+    "몽키.D.루피 - 흔함"
+   ]
+  },
+  {
+   "result": "T00h",
+   "ability": "A024",
+   "key": "Z",
+   "resultName": "마르코 - 특별",
+   "ingredients": [
+    "블루노 - 안흔함",
+    "포트거스.D.에이스 - 안흔함",
+    "상디 - 흔함"
+   ]
+  },
+  {
+   "result": "610h",
+   "ability": "A01N",
+   "key": "X",
+   "resultName": "바질 호킨스 - 특별",
+   "ingredients": [
+    "페로나 - 안흔함",
+    "블루노 - 안흔함",
+    "우솝 - 흔함"
+   ]
+  },
+  {
+   "result": "510h",
+   "ability": "A018",
+   "key": "X",
+   "resultName": "버기 마기탄 - 특별",
+   "ingredients": [
+    "버기 - 흔함",
+    "버기 - 흔함",
+    "버기 - 흔함"
+   ]
+  },
+  {
+   "result": "410h",
+   "ability": "A01I",
+   "key": "X",
+   "resultName": "봉쿠레 - 특별",
+   "ingredients": [
+    "이나즈마 - 안흔함",
+    "니코 로빈 - 안흔함",
+    "나미 - 흔함"
+   ]
+  },
+  {
+   "result": "310h",
+   "ability": "A01B",
+   "key": "X",
+   "resultName": "상디 검은다리 - 특별",
+   "ingredients": [
+    "상디 - 흔함",
+    "상디 - 흔함",
+    "상디 - 흔함"
+   ]
+  },
+  {
+   "result": "F10h",
+   "ability": "A19Z",
+   "key": "C",
+   "resultName": "스모커 - 특별",
+   "ingredients": [
+    "해군 총병 - 흔함",
+    "타시기 - 안흔함",
+    "해군 칼병 - 흔함"
+   ]
+  },
+  {
+   "result": "210h",
+   "ability": "A1A1",
+   "key": "C",
+   "resultName": "스쿼드 - 특별",
+   "ingredients": [
+    "쵸파 럼블볼강화 - 안흔함",
+    "프랑키 - 안흔함",
+    "나미 - 흔함"
+   ]
+  },
+  {
+   "result": "110h",
+   "ability": "A01P",
+   "key": "X",
+   "resultName": "아론 - 특별",
+   "ingredients": [
+    "하찌 - 안흔함",
+    "하찌 - 안흔함",
+    "몽키.D.루피 - 흔함"
+   ]
+  },
+  {
+   "result": "010h",
+   "ability": "A029",
+   "key": "Z",
+   "resultName": "압살롬 - 특별",
+   "ingredients": [
+    "좀비 - 안흔함",
+    "좀비 - 안흔함",
+    "좀비 - 안흔함",
+    "나미 - 흔함"
+   ]
+  },
+  {
+   "result": "Q00h",
+   "ability": "A01D",
+   "key": "Z",
+   "resultName": "에넬 - 특별",
+   "ingredients": [
+    "우솝 저격왕 - 안흔함",
+    "베포 - 안흔함",
+    "상디 - 흔함"
+   ]
+  },
+  {
+   "result": "J10h",
+   "ability": "A00S",
+   "key": "Z",
+   "resultName": "포트거스.D.에이스 - 특별",
+   "ingredients": [
+    "포트거스.D.에이스 - 안흔함",
+    "포트거스.D.에이스 - 안흔함",
+    "우솝 - 흔함"
+   ]
+  },
+  {
+   "result": "Z00h",
+   "ability": "A01K",
+   "key": "X",
+   "resultName": "우솝 화염탄 - 특별",
+   "ingredients": [
+    "우솝 저격왕 - 안흔함",
+    "우솝 저격왕 - 안흔함"
+   ]
+  },
+  {
+   "result": "X00h",
+   "ability": "A00Z",
+   "key": "Z",
+   "resultName": "이나즈마 혁명군 - 특별",
+   "ingredients": [
+    "이나즈마 - 안흔함",
+    "이나즈마 - 안흔함"
+   ]
+  },
+  {
+   "result": "W00h",
+   "ability": "A032",
+   "key": "X",
+   "resultName": "조로 귀기 - 특별",
+   "ingredients": [
+    "롤로노아 조로 - 흔함",
+    "롤로노아 조로 - 흔함",
+    "롤로노아 조로 - 흔함"
+   ]
+  },
+  {
+   "result": "810h",
+   "ability": "A01E",
+   "key": "X",
+   "resultName": "징베 - 특별",
+   "ingredients": [
+    "포트거스.D.에이스 - 안흔함",
+    "후쿠로 - 안흔함",
+    "버기 - 흔함"
+   ]
+  },
+  {
+   "result": "910h",
+   "ability": "A01A",
+   "key": "X",
+   "resultName": "챠카 - 특별",
+   "ingredients": [
+    "블루노 - 안흔함",
+    "후쿠로 - 안흔함",
+    "토니토니 쵸파 - 흔함"
+   ]
+  },
+  {
+   "result": "710h",
+   "ability": "A017",
+   "key": "X",
+   "resultName": "바솔로뮤 쿠마 - 특별",
+   "ingredients": [
+    "베포 - 안흔함",
+    "프랑키 - 안흔함",
+    "롤로노아 조로 - 흔함"
+   ]
+  },
+  {
+   "result": "V00h",
+   "ability": "A0N8",
+   "key": "Z",
+   "resultName": "캡틴 크로 - 특별",
+   "ingredients": [
+    "하찌 - 안흔함",
+    "롤로노아 조로 - 흔함",
+    "해군 칼병 - 흔함"
+   ]
+  },
+  {
+   "result": "A10h",
+   "ability": "A01Q",
+   "key": "X",
+   "resultName": "크로커다일 - 특별",
+   "ingredients": [
+    "프랑키 - 안흔함",
+    "우솝 저격왕 - 안흔함",
+    "버기 - 흔함"
+   ]
+  },
+  {
+   "result": "Y00h",
+   "ability": "A030",
+   "key": "Z",
+   "resultName": "유스타스 키드 - 특별",
+   "ingredients": [
+    "페로나 - 안흔함",
+    "베포 - 안흔함",
+    "버기 - 흔함"
+   ]
+  },
+  {
+   "result": "B10h",
+   "ability": "A01C",
+   "key": "X",
+   "resultName": "킬러 - 특별",
+   "ingredients": [
+    "타시기 - 안흔함",
+    "브룩 - 안흔함",
+    "버기 - 흔함"
+   ]
+  },
+  {
+   "result": "I10h",
+   "ability": "A019",
+   "key": "X",
+   "resultName": "헤르메포 - 특별",
+   "ingredients": [
+    "브룩 - 안흔함",
+    "롤로노아 조로 - 흔함",
+    "상디 - 흔함"
+   ]
+  },
+  {
+   "result": "K10h",
+   "ability": "A02B",
+   "key": "Z",
+   "resultName": "X-드레이크 - 특별",
+   "ingredients": [
+    "타시기 - 안흔함",
+    "후쿠로 - 안흔함",
+    "토니토니 쵸파 - 흔함"
+   ]
+  },
+  {
+   "result": "B00h",
+   "ability": "A00K",
+   "key": "Z",
+   "resultName": "겟코 모리아 - 특별",
+   "ingredients": [
+    "브룩 - 안흔함",
+    "브룩 - 안흔함",
+    "상디 - 흔함"
+   ]
+  },
+  {
+   "result": "X90h",
+   "ability": "A0XP",
+   "key": "Z",
+   "resultName": "X-드레이크 - 희귀",
+   "ingredients": [
+    "X-드레이크 - 특별",
+    "바질 호킨스 - 특별",
+    "아론 - 특별"
+   ]
+  },
+  {
+   "result": "Q10h",
+   "ability": "A02W",
+   "key": "Z",
+   "resultName": "몽키.D.거프 - 희귀",
+   "ingredients": [
+    "스모커 - 특별",
+    "루피 기어세컨드 - 특별",
+    "X-드레이크 - 특별"
+   ]
+  },
+  {
+   "result": "520h",
+   "ability": "A016",
+   "key": "X",
+   "resultName": "류마 - 희귀",
+   "ingredients": [
+    "겟코 모리아 - 특별",
+    "조로 귀기 - 특별",
+    "페로나 - 안흔함",
+    "우솝 저격왕 - 안흔함",
+    "해군 칼병 - 흔함"
+   ]
+  },
+  {
+   "result": "L10h",
+   "ability": "A02M",
+   "key": "X",
+   "resultName": "돈키호테 도플라밍고 - 희귀",
+   "ingredients": [
+    "쵸파 가드포인트 - 특별",
+    "버기 마기탄 - 특별",
+    "로브 루치 - 특별"
+   ]
+  },
+  {
+   "result": "F20h",
+   "ability": "A02R",
+   "key": "Z",
+   "resultName": "조로 현상금사냥꾼 - 희귀",
+   "ingredients": [
+    "조로 귀기 - 특별",
+    "겟코 모리아 - 특별",
+    "스모커 - 특별"
+   ]
+  },
+  {
+   "result": "220h",
+   "ability": "A00I",
+   "key": "Z",
+   "resultName": "마르코 불사조 - 희귀",
+   "ingredients": [
+    "마르코 - 특별",
+    "챠카 - 특별",
+    "쵸파 가드포인트 - 특별"
+   ]
+  },
+  {
+   "result": "120h",
+   "ability": "A01F",
+   "key": "X",
+   "resultName": "검은수염 - 희귀",
+   "ingredients": [
+    "포트거스.D.에이스 - 특별",
+    "스쿼드 - 특별",
+    "X-드레이크 - 특별"
+   ]
+  },
+  {
+   "result": "020h",
+   "ability": "A028",
+   "key": "Z",
+   "resultName": "마인 오즈 - 희귀",
+   "ingredients": [
+    "겟코 모리아 - 특별",
+    "겟코 모리아 - 특별",
+    "루피 기어세컨드 - 특별"
+   ]
+  },
+  {
+   "result": "Z10h",
+   "ability": "A01M",
+   "key": "X",
+   "resultName": "마젤란 - 희귀",
+   "ingredients": [
+    "징베 - 특별",
+    "버기 마기탄 - 특별",
+    "포트거스.D.에이스 - 특별"
+   ]
+  },
+  {
+   "result": "Y10h",
+   "ability": "A02K",
+   "key": "Z",
+   "resultName": "모몬가 - 희귀",
+   "ingredients": [
+    "징베 - 특별",
+    "헤르메포 - 특별",
+    "스모커 - 특별"
+   ]
+  },
+  {
+   "result": "X10h",
+   "ability": "A00F",
+   "key": "Z",
+   "resultName": "루피 기어서드 - 희귀",
+   "ingredients": [
+    "루피 기어세컨드 - 특별",
+    "봉쿠레 - 특별",
+    "에넬 - 특별"
+   ]
+  },
+  {
+   "result": "W10h",
+   "ability": "A02F",
+   "key": "Z",
+   "resultName": "바르토로메오 - 희귀",
+   "ingredients": [
+    "캡틴 크로 - 특별",
+    "아론 - 특별",
+    "파이러츠 도킹5 - 특별"
+   ]
+  },
+  {
+   "result": "V10h",
+   "ability": "A013",
+   "key": "X",
+   "resultName": "바제스 - 희귀",
+   "ingredients": [
+    "바질 호킨스 - 특별",
+    "마르코 - 특별",
+    "버기 마기탄 - 특별"
+   ]
+  },
+  {
+   "result": "U10h",
+   "ability": "A0IO",
+   "key": "Z",
+   "resultName": "바질 호킨스 - 희귀",
+   "ingredients": [
+    "바질 호킨스 - 특별",
+    "킬러 - 특별",
+    "트라팔가 로우 - 특별"
+   ]
+  },
+  {
+   "result": "T10h",
+   "ability": "A03G",
+   "key": "Z",
+   "resultName": "반 더 데켄 - 희귀",
+   "ingredients": [
+    "아론 - 특별",
+    "징베 - 특별",
+    "헤르메포 - 특별"
+   ]
+  },
+  {
+   "result": "M20h",
+   "ability": "A00A",
+   "key": "Z",
+   "resultName": "베이비5 - 희귀",
+   "ingredients": [
+    "파이러츠 도킹5 - 특별",
+    "바솔로뮤 쿠마 - 특별",
+    "로브 루치 - 특별"
+   ]
+  },
+  {
+   "result": "S10h",
+   "ability": "A00Q",
+   "key": "X",
+   "resultName": "벤 베크만 - 희귀",
+   "ingredients": [
+    "우솝 화염탄 - 특별",
+    "스모커 - 특별",
+    "에넬 - 특별"
+   ]
+  },
+  {
+   "result": "R10h",
+   "ability": "A0N6",
+   "key": "Z",
+   "resultName": "키자루 - 희귀",
+   "ingredients": [
+    "헤르메포 - 특별",
+    "트라팔가 로우 - 특별",
+    "유스타스 키드 - 특별"
+   ]
+  },
+  {
+   "result": "M10h",
+   "ability": "A0ND",
+   "key": "Z",
+   "resultName": "보아 핸콕 - 희귀",
+   "ingredients": [
+    "나미 크리마텍트 - 특별",
+    "아론 - 특별",
+    "루피 기어세컨드 - 특별"
+   ]
+  },
+  {
+   "result": "N10h",
+   "ability": "A1A0",
+   "key": "C",
+   "resultName": "브룩 음악가 - 희귀",
+   "ingredients": [
+    "브룩 - 안흔함",
+    "겟코 모리아 - 특별",
+    "로브 루치 - 특별"
+   ]
+  },
+  {
+   "result": "O10h",
+   "ability": "A02J",
+   "key": "Z",
+   "resultName": "네펠타리 비비 - 희귀",
+   "ingredients": [
+    "챠카 - 특별",
+    "크로커다일 - 특별",
+    "나미 크리마텍트 - 특별"
+   ]
+  },
+  {
+   "result": "L50h",
+   "ability": "A00X",
+   "key": "Z",
+   "resultName": "사보 - 희귀",
+   "ingredients": [
+    "이나즈마 혁명군 - 특별",
+    "바솔로뮤 쿠마 - 특별",
+    "마르코 - 특별"
+   ]
+  },
+  {
+   "result": "P10h",
+   "ability": "A00R",
+   "key": "Z",
+   "resultName": "아카이누 - 희귀",
+   "ingredients": [
+    "포트거스.D.에이스 - 특별",
+    "크로커다일 - 특별",
+    "이나즈마 혁명군 - 특별"
+   ]
+  },
+  {
+   "result": "I20h",
+   "ability": "A0NF",
+   "key": "Z",
+   "resultName": "상디 디아블잠브 - 희귀",
+   "ingredients": [
+    "상디 검은다리 - 특별",
+    "쵸파 가드포인트 - 특별",
+    "유스타스 키드 - 특별"
+   ]
+  },
+  {
+   "result": "920h",
+   "ability": "A03B",
+   "key": "Z",
+   "resultName": "샹크스 - 희귀",
+   "ingredients": [
+    "버기 마기탄 - 특별",
+    "루피 기어세컨드 - 특별",
+    "우솝 화염탄 - 특별"
+   ]
+  },
+  {
+   "result": "820h",
+   "ability": "A02V",
+   "key": "Z",
+   "resultName": "센토마루 - 희귀",
+   "ingredients": [
+    "바솔로뮤 쿠마 - 특별",
+    "쵸파 두뇌강화 - 특별",
+    "카포네 갱 벳지 - 특별"
+   ]
+  },
+  {
+   "result": "720h",
+   "ability": "A02L",
+   "key": "Z",
+   "resultName": "슈가 - 희귀",
+   "ingredients": [
+    "쵸파 두뇌강화 - 특별",
+    "조로 귀기 - 특별",
+    "페로나 - 안흔함",
+    "우솝 - 흔함"
+   ]
+  },
+  {
+   "result": "620h",
+   "ability": "A039",
+   "key": "Z",
+   "resultName": "시류 - 희귀",
+   "ingredients": [
+    "카포네 갱 벳지 - 특별",
+    "X-드레이크 - 특별",
+    "상디 검은다리 - 특별"
+   ]
+  },
+  {
+   "result": "A20h",
+   "ability": "A01J",
+   "key": "X",
+   "resultName": "엠포리오 이완코브 - 희귀",
+   "ingredients": [
+    "이나즈마 혁명군 - 특별",
+    "로빈 오하라 - 특별",
+    "크로커다일 - 특별"
+   ]
+  },
+  {
+   "result": "420h",
+   "ability": "A0NB",
+   "key": "Z",
+   "resultName": "와이퍼 - 희귀",
+   "ingredients": [
+    "에넬 - 특별",
+    "상디 검은다리 - 특별",
+    "우솝 화염탄 - 특별"
+   ]
+  },
+  {
+   "result": "C20h",
+   "ability": "A01W",
+   "key": "Z",
+   "resultName": "우솝 보잉열도 - 희귀",
+   "ingredients": [
+    "우솝 화염탄 - 특별",
+    "카포네 갱 벳지 - 특별",
+    "나미 크리마텍트 - 특별"
+   ]
+  },
+  {
+   "result": "D20h",
+   "ability": "A00U",
+   "key": "Z",
+   "resultName": "유스타스 키드 - 희귀",
+   "ingredients": [
+    "유스타스 키드 - 특별",
+    "나미 크리마텍트 - 특별",
+    "킬러 - 특별"
+   ]
+  },
+  {
+   "result": "G20h",
+   "ability": "A008",
+   "key": "Z",
+   "resultName": "제프 - 희귀",
+   "ingredients": [
+    "봉쿠레 - 특별",
+    "바질 호킨스 - 특별",
+    "이나즈마 혁명군 - 특별"
+   ]
+  },
+  {
+   "result": "E20h",
+   "ability": "A02A",
+   "key": "Z",
+   "resultName": "다이아몬드 죠즈 - 희귀",
+   "ingredients": [
+    "스쿼드 - 특별",
+    "캡틴 크로 - 특별",
+    "카포네 갱 벳지 - 특별"
+   ]
+  },
+  {
+   "result": "H40h",
+   "ability": "A02T",
+   "key": "X",
+   "resultName": "쥬라클 미호크 - 희귀",
+   "ingredients": [
+    "조로 귀기 - 특별",
+    "캡틴 크로 - 특별",
+    "X-드레이크 - 특별"
+   ]
+  },
+  {
+   "result": "320h",
+   "ability": "A00C",
+   "key": "Z",
+   "resultName": "카쿠 - 희귀",
+   "ingredients": [
+    "로브 루치 - 특별",
+    "챠카 - 특별",
+    "로빈 오하라 - 특별"
+   ]
+  },
+  {
+   "result": "B20h",
+   "ability": "A0NC",
+   "key": "Z",
+   "resultName": "아오키지 - 희귀",
+   "ingredients": [
+    "로빈 오하라 - 특별",
+    "스쿼드 - 특별",
+    "에넬 - 특별"
+   ]
+  },
+  {
+   "result": "H20h",
+   "ability": "A02N",
+   "key": "Z",
+   "resultName": "크로커다일 Mr.0 - 희귀",
+   "ingredients": [
+    "크로커다일 - 특별",
+    "징베 - 특별",
+    "봉쿠레 - 특별"
+   ]
+  },
+  {
+   "result": "J20h",
+   "ability": "A02S",
+   "key": "Z",
+   "resultName": "킨에몬 - 희귀",
+   "ingredients": [
+    "킬러 - 특별",
+    "포트거스.D.에이스 - 특별",
+    "캡틴 크로 - 특별"
+   ]
+  },
+  {
+   "result": "K20h",
+   "ability": "A010",
+   "key": "Z",
+   "resultName": "쵸파 혼포인트 - 희귀",
+   "ingredients": [
+    "쵸파 가드포인트 - 특별",
+    "헤르메포 - 특별",
+    "트라팔가 로우 - 특별"
+   ]
+  },
+  {
+   "result": "L20h",
+   "ability": "A02Z",
+   "key": "Z",
+   "resultName": "트라팔가 로우 - 희귀",
+   "ingredients": [
+    "트라팔가 로우 - 특별",
+    "파이러츠 도킹5 - 특별",
+    "쵸파 두뇌강화 - 특별"
+   ]
+  },
+  {
+   "result": "K50h",
+   "ability": "A01V",
+   "key": "Z",
+   "resultName": "페로나 - 희귀",
+   "ingredients": [
+    "압살롬 - 특별",
+    "페로나 - 안흔함",
+    "상디 검은다리 - 특별",
+    "쵸파 두뇌강화 - 특별"
+   ]
+  },
+  {
+   "result": "K30h",
+   "ability": "A037",
+   "key": "Z",
+   "resultName": "쵸파 유력강화 - 전설",
+   "ingredients": [
+    "쵸파 혼포인트 - 희귀",
+    "반 더 데켄 - 희귀",
+    "바제스 - 희귀",
+    "목재 3"
+   ]
+  },
+  {
+   "result": "N20h",
+   "ability": "A01G",
+   "key": "X",
+   "resultName": "겟코 모리아 - 전설",
+   "ingredients": [
+    "마인 오즈 - 희귀",
+    "류마 - 희귀",
+    "페로나 - 희귀",
+    "목재 3"
+   ]
+  },
+  {
+   "result": "O20h",
+   "ability": "A00N",
+   "key": "X",
+   "resultName": "포트거스.D.에이스 - 전설",
+   "ingredients": [
+    "마르코 불사조 - 희귀",
+    "모몬가 - 희귀",
+    "검은수염 - 희귀",
+    "목재 3"
+   ]
+  },
+  {
+   "result": "P20h",
+   "ability": "A00O",
+   "key": "Z",
+   "resultName": "나미 도둑고양이 - 전설",
+   "ingredients": [
+    "네펠타리 비비 - 희귀",
+    "브룩 음악가 - 희귀",
+    "페로나 - 희귀",
+    "목재 3"
+   ]
+  },
+  {
+   "result": "Z90h",
+   "ability": "A0XS",
+   "key": "Z",
+   "resultName": "네코마무시 - 전설",
+   "ingredients": [
+    "유스타스 키드 - 희귀",
+    "와이퍼 - 희귀",
+    "X-드레이크 - 희귀",
+    "목재 3"
+   ]
+  },
+  {
+   "result": "Q20h",
+   "ability": "A03C",
+   "key": "Z",
+   "resultName": "라분 - 전설",
+   "ingredients": [
+    "브룩 음악가 - 희귀",
+    "바르토로메오 - 희귀",
+    "시류 - 희귀",
+    "목재 3"
+   ]
+  },
+  {
+   "result": "R20h",
+   "ability": "A02P",
+   "key": "Z",
+   "resultName": "로브 루치 - 전설",
+   "ingredients": [
+    "카쿠 - 희귀",
+    "몽키.D.거프 - 희귀",
+    "트라팔가 로우 - 희귀",
+    "목재 3"
+   ]
+  },
+  {
+   "result": "S20h",
+   "ability": "A0NH",
+   "key": "Z",
+   "resultName": "조로 죽음의경지 - 전설",
+   "ingredients": [
+    "조로 현상금사냥꾼 - 희귀",
+    "페로나 - 희귀",
+    "쥬라클 미호크 - 희귀",
+    "목재 3"
+   ]
+  },
+  {
+   "result": "T20h",
+   "ability": "A02D",
+   "key": "Z",
+   "resultName": "마르코 환수종 - 전설",
+   "ingredients": [
+    "마르코 불사조 - 희귀",
+    "보아 핸콕 - 희귀",
+    "베이비5 - 희귀",
+    "목재 3"
+   ]
+  },
+  {
+   "result": "U20h",
+   "ability": "A036",
+   "key": "Z",
+   "resultName": "검은수염 - 전설",
+   "ingredients": [
+    "검은수염 - 희귀",
+    "시류 - 희귀",
+    "바제스 - 희귀",
+    "목재 3"
+   ]
+  },
+  {
+   "result": "Y20h",
+   "ability": "A00T",
+   "key": "Z",
+   "resultName": "루피 나이트메어 - 전설",
+   "ingredients": [
+    "마인 오즈 - 희귀",
+    "류마 - 희귀",
+    "압살롬 - 특별",
+    "루피 기어서드 - 희귀",
+    "목재 3"
+   ]
+  },
+  {
+   "result": "X20h",
+   "ability": "A03D",
+   "key": "Z",
+   "resultName": "블랙마리아 - 전설",
+   "ingredients": [
+    "루피 기어서드 - 희귀",
+    "카쿠 - 희귀",
+    "X-드레이크 - 희귀",
+    "목재 3"
+   ]
+  },
+  {
+   "result": "W20h",
+   "ability": "A00Y",
+   "key": "Z",
+   "resultName": "몽키.D.드래곤 - 전설",
+   "ingredients": [
+    "엠포리오 이완코브 - 희귀",
+    "사보 - 희귀",
+    "네펠타리 비비 - 희귀",
+    "목재 3"
+   ]
+  },
+  {
+   "result": "Z20h",
+   "ability": "A00J",
+   "key": "Z",
+   "resultName": "바르토로메오 - 전설",
+   "ingredients": [
+    "바르토로메오 - 희귀",
+    "루피 기어서드 - 희귀",
+    "우솝 보잉열도 - 희귀",
+    "목재 3"
+   ]
+  },
+  {
+   "result": "030h",
+   "ability": "A027",
+   "key": "Z",
+   "resultName": "바솔로뮤 쿠마 - 전설",
+   "ingredients": [
+    "센토마루 - 희귀",
+    "베이비5 - 희귀",
+    "쵸파 혼포인트 - 희귀",
+    "목재 3"
+   ]
+  },
+  {
+   "result": "230h",
+   "ability": "A0N9",
+   "key": "Z",
+   "resultName": "보아 핸콕 - 전설",
+   "ingredients": [
+    "보아 핸콕 - 희귀",
+    "상디 디아블잠브 - 희귀",
+    "쥬라클 미호크 - 희귀",
+    "목재 3"
+   ]
+  },
+  {
+   "result": "330h",
+   "ability": "A00G",
+   "key": "Z",
+   "resultName": "빈스모크 레이쥬 - 전설",
+   "ingredients": [
+    "마젤란 - 희귀",
+    "베이비5 - 희귀",
+    "크로커다일 Mr.0 - 희귀",
+    "목재 3"
+   ]
+  },
+  {
+   "result": "430h",
+   "ability": "A01U",
+   "key": "Z",
+   "resultName": "상디 슈트코스 - 전설",
+   "ingredients": [
+    "상디 디아블잠브 - 희귀",
+    "엠포리오 이완코브 - 희귀",
+    "바질 호킨스 - 희귀",
+    "목재 3"
+   ]
+  },
+  {
+   "result": "H30h",
+   "ability": "A02C",
+   "key": "Z",
+   "resultName": "샬롯 크래커 - 전설",
+   "ingredients": [
+    "제프 - 희귀",
+    "킨에몬 - 희귀",
+    "슈가 - 희귀",
+    "목재 3"
+   ]
+  },
+  {
+   "result": "530h",
+   "ability": "A025",
+   "key": "Z",
+   "resultName": "샹크스 - 전설",
+   "ingredients": [
+    "샹크스 - 희귀",
+    "벤 베크만 - 희귀",
+    "상디 디아블잠브 - 희귀",
+    "목재 3"
+   ]
+  },
+  {
+   "result": "630h",
+   "ability": "A00M",
+   "key": "Z",
+   "resultName": "센고쿠 - 전설",
+   "ingredients": [
+    "아카이누 - 희귀",
+    "아오키지 - 희귀",
+    "키자루 - 희귀",
+    "목재 3"
+   ]
+  },
+  {
+   "result": "730h",
+   "ability": "A0NI",
+   "key": "Z",
+   "resultName": "슈가 - 전설",
+   "ingredients": [
+    "슈가 - 희귀",
+    "우솝 보잉열도 - 희귀",
+    "바질 호킨스 - 희귀",
+    "목재 3"
+   ]
+  },
+  {
+   "result": "V20h",
+   "ability": "A03H",
+   "key": "Z",
+   "resultName": "스모커 - 전설",
+   "ingredients": [
+    "몽키.D.거프 - 희귀",
+    "마젤란 - 희귀",
+    "모몬가 - 희귀",
+    "목재 3"
+   ]
+  },
+  {
+   "result": "240h",
+   "ability": "A0UG",
+   "key": "Z",
+   "resultName": "시노부 - 전설",
+   "ingredients": [
+    "류마 - 희귀",
+    "검은수염 - 희귀",
+    "킨에몬 - 희귀",
+    "목재 3"
+   ]
+  },
+  {
+   "result": "830h",
+   "ability": "A009",
+   "key": "Z",
+   "resultName": "시저 크라운 - 전설",
+   "ingredients": [
+    "돈키호테 도플라밍고 - 희귀",
+    "키자루 - 희귀",
+    "몽키.D.거프 - 희귀",
+    "목재 3"
+   ]
+  },
+  {
+   "result": "930h",
+   "ability": "A02X",
+   "key": "Z",
+   "resultName": "금사자 시키 - 전설",
+   "ingredients": [
+    "와이퍼 - 희귀",
+    "카쿠 - 희귀",
+    "마젤란 - 희귀",
+    "목재 3"
+   ]
+  },
+  {
+   "result": "A30h",
+   "ability": "A01S",
+   "key": "Z",
+   "resultName": "실버즈 레일리 - 전설",
+   "ingredients": [
+    "실버즈 레일리 - 희귀",
+    "센토마루 - 희귀",
+    "징베 - 특별",
+    "목재 5"
+   ]
+  },
+  {
+   "result": "780h",
+   "ability": "A02Q",
+   "key": "Z",
+   "resultName": "아마츠키 토키 - 전설",
+   "ingredients": [
+    "키자루 - 희귀",
+    "고대의 배 - 희귀",
+    "조로 현상금사냥꾼 - 희귀",
+    "목재 5"
+   ]
+  },
+  {
+   "result": "B30h",
+   "ability": "A02G",
+   "key": "Z",
+   "resultName": "흰수염 - 전설",
+   "ingredients": [
+    "다이아몬드 죠즈 - 희귀",
+    "마르코 불사조 - 희귀",
+    "킨에몬 - 희귀",
+    "목재 3"
+   ]
+  },
+  {
+   "result": "S30h",
+   "ability": "A005",
+   "key": "X",
+   "resultName": "울티 - 전설",
+   "ingredients": [
+    "쵸파 혼포인트 - 희귀",
+    "벤 베크만 - 희귀",
+    "센토마루 - 희귀",
+    "목재 3"
+   ]
+  },
+  {
+   "result": "I30h",
+   "ability": "A0NG",
+   "key": "Z",
+   "resultName": "제파 - 전설",
+   "ingredients": [
+    "바제스 - 희귀",
+    "아오키지 - 희귀",
+    "사보 - 희귀",
+    "목재 3"
+   ]
+  },
+  {
+   "result": "G30h",
+   "ability": "A0NE",
+   "key": "Z",
+   "resultName": "징베 - 전설",
+   "ingredients": [
+    "반 더 데켄 - 희귀",
+    "트라팔가 로우 - 희귀",
+    "아카이누 - 희귀",
+    "목재 3"
+   ]
+  },
+  {
+   "result": "F30h",
+   "ability": "A026",
+   "key": "Z",
+   "resultName": "카르가라 - 전설",
+   "ingredients": [
+    "우솝 보잉열도 - 희귀",
+    "브룩 음악가 - 희귀",
+    "와이퍼 - 희귀",
+    "목재 3"
+   ]
+  },
+  {
+   "result": "E30h",
+   "ability": "A01T",
+   "key": "Z",
+   "resultName": "코비 - 전설",
+   "ingredients": [
+    "시류 - 희귀",
+    "샹크스 - 희귀",
+    "제프 - 희귀",
+    "목재 3"
+   ]
+  },
+  {
+   "result": "HA0h",
+   "ability": "A108",
+   "key": "Z",
+   "resultName": "킹 - 전설",
+   "ingredients": [
+    "X-드레이크 - 희귀",
+    "바질 호킨스 - 희귀",
+    "돈키호테 도플라밍고 - 희귀",
+    "목재 3"
+   ]
+  },
+  {
+   "result": "C30h",
+   "ability": "A02H",
+   "key": "Z",
+   "resultName": "트라팔가 로우 - 전설",
+   "ingredients": [
+    "트라팔가 로우 - 희귀",
+    "유스타스 키드 - 희귀",
+    "센토마루 - 희귀",
+    "목재 3"
+   ]
+  },
+  {
+   "result": "130h",
+   "ability": "A00H",
+   "key": "Z",
+   "resultName": "후지토라 잇쇼우 - 전설",
+   "ingredients": [
+    "킨에몬 - 희귀",
+    "돈키호테 도플라밍고 - 희귀",
+    "크로커다일 Mr.0 - 희귀",
+    "목재 3"
+   ]
+  },
+  {
+   "result": "MC0h",
+   "ability": "A1CC",
+   "key": "Z",
+   "resultName": "히바리 - 전설",
+   "ingredients": [
+    "베이비5 - 희귀",
+    "아카이누 - 희귀",
+    "브룩 음악가 - 희귀",
+    "목재 3"
+   ]
+  },
+  {
+   "result": "S80h",
+   "ability": "A113",
+   "key": "X",
+   "resultName": "샬롯 브륄레 - 전설",
+   "ingredients": [
+    "우솝 보잉열도 - 희귀",
+    "네펠타리 비비 - 희귀",
+    "실버즈 레일리 - 희귀",
+    "압살롬 - 특별",
+    "목재 3"
+   ]
+  },
+  {
+   "result": "S50h",
+   "ability": "A0K2",
+   "key": "B",
+   "resultName": null,
+   "ingredients": []
+  },
+  {
+   "result": "N70h",
+   "ability": "A0K3",
+   "key": "B",
+   "resultName": null,
+   "ingredients": []
+  },
+  {
+   "result": "W50h",
+   "ability": "A0K4",
+   "key": "B",
+   "resultName": null,
+   "ingredients": []
+  },
+  {
+   "result": "KC0h",
+   "ability": "A0K6",
+   "key": "B",
+   "resultName": null,
+   "ingredients": []
+  },
+  {
+   "result": "J70h",
+   "ability": "A0K7",
+   "key": "B",
+   "resultName": null,
+   "ingredients": []
+  },
+  {
+   "result": "I50h",
+   "ability": "A007",
+   "key": "Z",
+   "resultName": "레베카 - 제한",
+   "ingredients": [
+    "레베카 - 히든",
+    "슈가 - 전설",
+    "돈키호테 도플라밍고 - 변화",
+    "5000 골드",
+    "목재 5"
+   ]
+  },
+  {
+   "result": "O80h",
+   "ability": "A011",
+   "key": "Z",
+   "resultName": "마르코 - 제한",
+   "ingredients": [
+    "마르코 환수종 - 전설",
+    "쵸파 유력강화 - 전설",
+    "아이템 : 불사조의 깃털",
+    "5000 골드",
+    "목재 5"
+   ]
+  },
+  {
+   "result": "I70h",
+   "ability": "A0S0",
+   "key": "Z",
+   "resultName": "샬롯 카타쿠리 - 제한",
+   "ingredients": [
+    "샬롯 크래커 - 전설",
+    "상디 디아블잠브 - 희귀",
+    "루피 기어서드 - 희귀",
+    "카포네 갱 벳지 - 특별",
+    "30000 골드",
+    "목재 5"
+   ]
+  },
+  {
+   "result": "480h",
+   "ability": "A0UH",
+   "key": "Z",
+   "resultName": "시노부 - 제한",
+   "ingredients": [
+    "시노부 - 전설",
+    "보아 핸콕 - 전설",
+    "해적선",
+    "5000 골드",
+    "목재 5"
+   ]
+  },
+  {
+   "result": "040h",
+   "ability": "A0RP",
+   "key": "Z",
+   "resultName": "아인 - 제한",
+   "ingredients": [
+    "아오키지 - 희귀",
+    "벤 베크만 - 희귀",
+    "베르고 - 히든",
+    "압살롬 - 특별 (x3)",
+    "5000 골드",
+    "목재 5"
+   ]
+  },
+  {
+   "result": "Q80h",
+   "ability": "A18P",
+   "key": "Z",
+   "resultName": "알비다 - 제한",
+   "ingredients": [
+    "블랙마리아 - 전설",
+    "크로커다일 Mr.0 - 희귀",
+    "쥬라클 미호크 - 희귀",
+    "버기 마기탄 - 특별",
+    "5000 골드",
+    "목재 5",
+    "특성포인트 4"
+   ]
+  },
+  {
+   "result": "E50h",
+   "ability": "A1A5",
+   "key": "Z",
+   "resultName": "갓 에넬 - 제한",
+   "ingredients": [
+    "방주맥심 - 히든",
+    "시저 크라운 - 전설",
+    "나미 크리마텍트 - 특별",
+    "해적선",
+    "5000 골드",
+    "목재 5"
+   ]
+  },
+  {
+   "result": "F50h",
+   "ability": "A02O",
+   "key": "Z",
+   "resultName": "크로커다일 - 제한",
+   "ingredients": [
+    "크로커다일 Mr.0 - 희귀",
+    "네펠타리 비비 - 변화",
+    "아카이누 - 히든",
+    "5000 골드",
+    "목재 5"
+   ]
+  },
+  {
+   "result": "IA0h",
+   "ability": "A10A",
+   "key": "Z",
+   "resultName": "킹 - 제한",
+   "ingredients": [
+    "킹 - 전설",
+    "검은수염 - 전설",
+    "고대의 배 - 희귀",
+    "5000 골드",
+    "목재 5"
+   ]
+  },
+  {
+   "result": "G50h",
+   "ability": "A1A6",
+   "key": "Z",
+   "resultName": "패트릭 레드필드 - 제한",
+   "ingredients": [
+    "쵸파 유력강화 - 전설",
+    "바르토로메오 - 전설",
+    "봉쿠레 - 히든",
+    "5000 골드",
+    "목재 5",
+    "(40라운드 까지만 조합가능)"
+   ]
+  },
+  {
+   "result": "M90h",
+   "ability": "A19W",
+   "key": "Z",
+   "resultName": "고죠 사토루 - 신비",
+   "ingredients": [
+    "랜덤전용유닛 1기 (다른 랜덤전용 유닛에 Z 사용)",
+    "K - 랜덤전용",
+    "코알라 - 왜곡",
+    "아카이누 - 히든",
+    "슈가 - 희귀",
+    "해적선",
+    "행운의 토큰 1개",
+    "10000 골드",
+    "목재 7"
+   ]
+  },
+  {
+   "result": "W90h",
+   "ability": "A0Y3",
+   "key": "Z",
+   "resultName": "나미카제 미나토 - 신비",
+   "ingredients": [
+    "우즈마키 나루토 - 랜덤전용",
+    "시노부 - 전설",
+    "캐럿 스론 - 변화",
+    "행운의 토큰 1개",
+    "10000 골드",
+    "목재 7"
+   ]
+  },
+  {
+   "result": "2A0h",
+   "ability": "A0Y9",
+   "key": "Z",
+   "resultName": "료우기 시키 - 신비",
+   "ingredients": [
+    "이사야마 요미 - 랜덤전용",
+    "비의 시류 - 히든",
+    "류마 - 히든",
+    "나미 도둑고양이 - 전설",
+    "행운의 토큰 1개",
+    "10000 골드",
+    "목재 7"
+   ]
+  },
+  {
+   "result": "CA0h",
+   "ability": "A19U",
+   "key": "Z",
+   "resultName": "히그마 - 신비",
+   "ingredients": [
+    "랜덤전용유닛 1기 (다른 랜덤전용 유닛에 Z 사용)",
+    "센토 이스즈 - 랜덤전용",
+    "네코마무시 - 전설",
+    "샹크스 - 희귀",
+    "행운의 토큰 1개",
+    "10000 골드",
+    "목재 7"
+   ]
+  },
+  {
+   "result": "N90h",
+   "ability": "A0XT",
+   "key": "Z",
+   "resultName": "부릉냐 - 신비",
+   "ingredients": [
+    "이치의 율자 - 랜덤전용",
+    "빈스모크 레이쥬 - 전설",
+    "베이비5 - 변화",
+    "사우전드 써니호 - 히든",
+    "행운의 토큰 1개",
+    "10000 골드",
+    "목재 7"
+   ]
+  },
+  {
+   "result": "6A0h",
+   "ability": "A19S",
+   "key": "Z",
+   "resultName": "야쿠모 유카리 - 신비",
+   "ingredients": [
+    "랜덤전용유닛 1기 (다른 랜덤전용 유닛에 Z 사용)",
+    "야가미 라이토 - 랜덤전용",
+    "페로나 - 왜곡",
+    "바솔로뮤 쿠마 - 특별",
+    "행운의 토큰 1개",
+    "10000 골드",
+    "목재 7"
+   ]
+  },
+  {
+   "result": "CC0h",
+   "ability": "A19V",
+   "key": "Z",
+   "resultName": "콘파쿠 요우무 - 신비",
+   "ingredients": [
+    "랜덤전용유닛 1기 (다른 랜덤전용 유닛에 Z 사용)",
+    "옌 - 랜덤전용",
+    "제파 - 전설",
+    "네펠타리 비비 - 변화",
+    "행운의 토큰 1개",
+    "10000 골드",
+    "목재 7"
+   ]
+  },
+  {
+   "result": "M80h",
+   "ability": "A1AD",
+   "key": "Z",
+   "resultName": "아냐 포저 - 신비",
+   "ingredients": [
+    "엘리자베스 - 랜덤전용",
+    "슈가 - 전설",
+    "스튜시 - 히든",
+    "행운의 토큰 1개",
+    "10000 골드",
+    "목재 7"
+   ]
+  },
+  {
+   "result": "R90h",
+   "ability": "A0Y6",
+   "key": "Z",
+   "resultName": "쿠죠 죠타로 - 신비",
+   "ingredients": [
+    "카미조 토우마 - 랜덤전용",
+    "아마츠키 토키 - 전설",
+    "센고쿠 - 전설",
+    "루피 기어세컨드 - 특별",
+    "행운의 토큰 1개",
+    "10000 골드",
+    "목재 7"
+   ]
+  },
+  {
+   "result": "I80h",
+   "ability": "A19T",
+   "key": "Z",
+   "resultName": "쿠치키 뱌쿠야 - 신비",
+   "ingredients": [
+    "랜덤전용유닛 1기 (다른 랜덤전용 유닛에 Z 사용)",
+    "쿠로사키 이치고 - 랜덤전용",
+    "에이스 - 왜곡",
+    "쥬라클 미호크 - 희귀",
+    "행운의 토큰 1개",
+    "10000 골드",
+    "목재 7"
+   ]
+  },
+  {
+   "result": "FB0h",
+   "ability": "A0YK",
+   "key": "Z",
+   "resultName": "카마도 네즈코 - 신비",
+   "ingredients": [
+    "하네카와 츠바사 - 랜덤전용",
+    "로브 루치 - 전설",
+    "레베카 - 히든",
+    "브룩 음악가 - 희귀",
+    "행운의 토큰 1개",
+    "10000 골드",
+    "목재 7"
+   ]
+  },
+  {
+   "result": "CB0h",
+   "ability": "A12C",
+   "key": "Z",
+   "resultName": "타츠마키 - 신비",
+   "ingredients": [
+    "요츠바! - 랜덤전용",
+    "킹 - 전설",
+    "바솔로뮤 쿠마 - 전설",
+    "행운의 토큰 1개",
+    "10000 골드",
+    "목재 7"
+   ]
+  },
+  {
+   "result": "380h",
+   "ability": "A10V",
+   "key": "Z",
+   "resultName": "샌즈 - 신비",
+   "ingredients": [
+    "메구밍 - 랜덤전용",
+    "베르고 - 히든",
+    "아오키지 - 히든",
+    "카쿠 - 변화",
+    "행운의 토큰 1개",
+    "10000 골드",
+    "목재 7"
+   ]
+  }
+ ]
+}

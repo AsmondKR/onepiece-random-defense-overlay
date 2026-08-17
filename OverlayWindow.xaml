@@ -1,0 +1,61 @@
+<Window x:Class="OrandOverlay.OverlayWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Width="720" Height="700" Top="48" Left="1460"
+        FontFamily="Malgun Gothic"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        Topmost="True" ShowInTaskbar="False" ResizeMode="NoResize">
+  <!-- 게임 화면 위 가독성: 배경 투과를 줄이고 본문 대비를 확보한다. -->
+  <Border Background="#F5121623" BorderBrush="#668B5CF6" BorderThickness="1"
+          CornerRadius="14" Padding="14">
+    <Grid>
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="200"/>
+      </Grid.ColumnDefinitions>
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="*"/>
+        <RowDefinition Height="Auto"/>
+      </Grid.RowDefinitions>
+      <Grid Grid.ColumnSpan="2" Background="Transparent" Cursor="SizeAll" MouseLeftButtonDown="DragArea_OnMouseLeftButtonDown">
+        <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+        <TextBlock x:Name="GoalText" Text="야마토 초월" Foreground="White" FontSize="22" FontWeight="SemiBold"/>
+        <Border Grid.Column="1" x:Name="ClickThroughBadge" Visibility="Collapsed"
+                Background="#33334155" CornerRadius="9" Padding="8,3" VerticalAlignment="Center">
+          <TextBlock Text="클릭 통과" Foreground="#FF9CA3AF" FontSize="10"/>
+        </Border>
+      </Grid>
+      <ScrollViewer Grid.Row="1" x:Name="RecommendationScroll" VerticalScrollBarVisibility="Auto" Margin="0,12,0,0">
+        <StackPanel x:Name="RecommendationPanel"/>
+      </ScrollViewer>
+      <Border Grid.Row="1" Grid.Column="1" Margin="12,12,0,0"
+              Background="#E61A2130" BorderBrush="#445E6A82" BorderThickness="1"
+              CornerRadius="10" Padding="10">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+          <StackPanel>
+            <!-- 색은 3계열만: 액션=하늘, 정리·판단=호박, 상태=보라 (+달성=초록). -->
+            <TextBlock x:Name="CombineHeader" Text="지금 조합 가능" Foreground="#FF7DD3FC"
+                       FontSize="13" FontWeight="SemiBold" Margin="0,0,0,7" Visibility="Collapsed"/>
+            <StackPanel x:Name="CombinePanel" Visibility="Collapsed" Margin="0,0,0,8"/>
+            <TextBlock x:Name="EmergencyHeader" Text="긴급소집 와일드카드" Foreground="#FF7DD3FC"
+                       FontSize="13" FontWeight="SemiBold" Margin="0,0,0,7" Visibility="Collapsed"/>
+            <StackPanel x:Name="EmergencyPanel" Visibility="Collapsed" Margin="0,0,0,8"/>
+            <TextBlock Text="현재 패 수치" Foreground="#FFC4B5FD" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,7"/>
+            <StackPanel x:Name="CurrentStatsPanel"/>
+            <TextBlock Text="희귀패 정리" Foreground="#FFFBBF24" FontSize="13"
+                       FontWeight="SemiBold" Margin="0,15,0,7"/>
+            <StackPanel x:Name="RareRerollPanel"/>
+            <TextBlock x:Name="SpecialHeader" Text="특수함 정리" Foreground="#FFFBBF24" FontSize="13"
+                       FontWeight="SemiBold" Margin="0,15,0,7" Visibility="Collapsed"/>
+            <StackPanel x:Name="SpecialPanel" Visibility="Collapsed"/>
+            <TextBlock x:Name="GreenBloodHeader" Text="그린블러드 사용처" Foreground="#FF4ADE80"
+                       FontSize="13" FontWeight="SemiBold" Margin="0,15,0,7" Visibility="Collapsed"/>
+            <StackPanel x:Name="GreenBloodPanel" Visibility="Collapsed"/>
+          </StackPanel>
+        </ScrollViewer>
+      </Border>
+      <TextBlock Grid.Row="2" Grid.ColumnSpan="2" x:Name="StatusText" Foreground="#FFB3BAC8" FontSize="12" Margin="2,10,2,0"/>
+    </Grid>
+  </Border>
+</Window>

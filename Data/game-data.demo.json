@@ -1,0 +1,359 @@
+{
+ "schemaVersion": 1,
+ "dataVersion": "2.314 실시간 집계 3",
+ "disclaimer": "추천 순위는 현재 패 제작 완성도 기반 · 유닛 능력과 전략 수치는 티모지지 조합도우미 43747 기준",
+ "units": [
+  {
+   "id": "luffy_common",
+   "name": "루피",
+   "tier": "흔함",
+   "rawcodes": [
+    "300h"
+   ],
+   "roles": [],
+   "recipe": {},
+   "tags": [
+    "base"
+   ]
+  },
+  {
+   "id": "yamato_transcendent",
+   "name": "야마토 초월",
+   "tier": "초월",
+   "rawcodes": [
+    "DB0H"
+   ],
+   "roles": [
+    {
+     "role": "Damage",
+     "value": 85
+    },
+    {
+     "role": "AttackBoost",
+     "value": 18
+    }
+   ],
+   "recipe": {},
+   "tags": [
+    "goal"
+   ]
+  },
+  {
+   "id": "ivankov_hidden",
+   "name": "이완코브 히든",
+   "tier": "히든",
+   "rawcodes": [
+    "Y30h"
+   ],
+   "roles": [
+    {
+     "role": "Holding",
+     "value": 58
+    },
+    {
+     "role": "AreaControl",
+     "value": 34
+    }
+   ],
+   "recipe": {},
+   "tags": [
+    "health-skill"
+   ]
+  },
+  {
+   "id": "mobydick",
+   "name": "모비딕호",
+   "tier": "해적선",
+   "rawcodes": [
+    "Q30h"
+   ],
+   "roles": [
+    {
+     "role": "Support",
+     "value": 35
+    }
+   ],
+   "recipe": {},
+   "tags": [
+    "health-recovery"
+   ]
+  },
+  {
+   "id": "item_greenblood",
+   "name": "그린블러드",
+   "tier": "특수",
+   "roles": [
+    {
+     "role": "Support",
+     "value": 25
+    }
+   ],
+   "recipe": {},
+   "tags": [
+    "greenblood"
+   ],
+   "description": "보유 여부를 자동 인식하는 특수 아이템입니다. 적용 수치는 대상 유닛에서 확인합니다."
+  },
+  {
+   "id": "dragon_legend",
+   "name": "드래곤 전설",
+   "tier": "전설",
+   "rawcodes": [
+    "W20h"
+   ],
+   "roles": [
+    {
+     "role": "Holding",
+     "value": 92
+    },
+    {
+     "role": "Slow",
+     "value": 36
+    },
+    {
+     "role": "Support",
+     "value": 18
+    }
+   ],
+   "recipe": {},
+   "tags": [
+    "main-holder"
+   ]
+  },
+  {
+   "id": "bartolomeo_legend",
+   "name": "바톨로메오 전설",
+   "tier": "전설",
+   "rawcodes": [
+    "Z20h"
+   ],
+   "roles": [
+    {
+     "role": "Holding",
+     "value": 78
+    },
+    {
+     "role": "BossControl",
+     "value": 22
+    }
+   ],
+   "recipe": {},
+   "tags": [
+    "main-holder"
+   ]
+  },
+  {
+   "id": "mihawk_hidden",
+   "name": "미호크 히든",
+   "tier": "히든",
+   "rawcodes": [
+    "340h"
+   ],
+   "roles": [
+    {
+     "role": "ArmorReduction",
+     "value": 62
+    },
+    {
+     "role": "Damage",
+     "value": 42
+    }
+   ],
+   "recipe": {},
+   "tags": [
+    "greenblood-priority"
+   ]
+  },
+  {
+   "id": "kalgara",
+   "name": "카르가라",
+   "tier": "전설",
+   "rawcodes": [
+    "F30h"
+   ],
+   "roles": [
+    {
+     "role": "Damage",
+     "value": 55
+    },
+    {
+     "role": "BossControl",
+     "value": 35
+    }
+   ],
+   "recipe": {},
+   "tags": [
+    "late-game"
+   ]
+  },
+  {
+   "id": "slow_support",
+   "name": "이감 보조 패 (샘플)",
+   "tier": "샘플",
+   "roles": [
+    {
+     "role": "Slow",
+     "value": 48
+    }
+   ],
+   "recipe": {},
+   "tags": [
+    "demo"
+   ]
+  },
+  {
+   "id": "armor_support",
+   "name": "방깎 보조 패 (샘플)",
+   "tier": "샘플",
+   "roles": [
+    {
+     "role": "ArmorReduction",
+     "value": 52
+    }
+   ],
+   "recipe": {},
+   "tags": [
+    "demo"
+   ]
+  },
+  {
+   "id": "attack_support",
+   "name": "공증 보조 패 (샘플)",
+   "tier": "샘플",
+   "roles": [
+    {
+     "role": "AttackBoost",
+     "value": 44
+    }
+   ],
+   "recipe": {},
+   "tags": [
+    "demo"
+   ]
+  },
+  {
+   "id": "area_support",
+   "name": "광잡 보조 패 (샘플)",
+   "tier": "샘플",
+   "roles": [
+    {
+     "role": "AreaControl",
+     "value": 46
+    }
+   ],
+   "recipe": {},
+   "tags": [
+    "demo"
+   ]
+  },
+  {
+   "id": "greenblood_buff",
+   "name": "그린블러드 부여 효과",
+   "tier": "아이템",
+   "roles": [],
+   "recipe": {},
+   "tags": [
+    "greenblood-buff"
+   ],
+   "officialAbilities": [
+    {
+     "name": "스턴",
+     "displayValue": "0.3"
+    },
+    {
+     "name": "공격속도 증가",
+     "displayValue": "30"
+    }
+   ],
+   "description": "그린블러드를 부여한 유닛의 진력해방(맵 실측): 3초마다 825범위 1.2초 스턴 + 고정데미지, 공격속도 30퍼센트 증가. 커뮤니티 셈법으로 스턴 0.3 환산(유저 검증)."
+  }
+ ],
+ "routes": [
+  {
+   "id": "yamato_greenblood_ivankov",
+   "goalUnitId": "yamato_transcendent",
+   "name": "모비딕 + 그블 이완히",
+   "requiredUnits": [
+    "mobydick",
+    "item_greenblood",
+    "ivankov_hidden"
+   ],
+   "optionalUnits": [
+    "mihawk_hidden",
+    "kalgara"
+   ],
+   "desiredRoles": {
+    "Holding": 85,
+    "Slow": 70,
+    "ArmorReduction": 100,
+    "AttackBoost": 45,
+    "AreaControl": 70,
+    "BossControl": 45
+   },
+   "requiredTags": [
+    "greenblood",
+    "health-recovery"
+   ],
+   "forbiddenTogether": [
+    "dragon_legend+bartolomeo_legend",
+    "ivankov_hidden+dragon_legend"
+   ],
+   "note": "모비딕과 그린블러드가 모두 있을 때 이완히를 메인 홀딩으로 사용합니다.",
+   "baseScore": 34
+  },
+  {
+   "id": "yamato_dragon",
+   "goalUnitId": "yamato_transcendent",
+   "name": "드래곤 전설 원스턴",
+   "requiredUnits": [
+    "dragon_legend"
+   ],
+   "optionalUnits": [
+    "mihawk_hidden",
+    "kalgara"
+   ],
+   "desiredRoles": {
+    "Holding": 90,
+    "Slow": 80,
+    "ArmorReduction": 100,
+    "AttackBoost": 45,
+    "AreaControl": 70,
+    "BossControl": 45
+   },
+   "requiredTags": [],
+   "forbiddenTogether": [
+    "dragon_legend+bartolomeo_legend",
+    "dragon_legend+ivankov_hidden"
+   ],
+   "note": "그블/모비딕 조건이 없을 때의 범용 루트. 홀딩 추가보다 이감과 방깎을 우선합니다.",
+   "baseScore": 42
+  },
+  {
+   "id": "yamato_bartolomeo",
+   "goalUnitId": "yamato_transcendent",
+   "name": "바톨로메오 전설 대체",
+   "requiredUnits": [
+    "bartolomeo_legend"
+   ],
+   "optionalUnits": [
+    "mihawk_hidden",
+    "kalgara"
+   ],
+   "desiredRoles": {
+    "Holding": 85,
+    "Slow": 80,
+    "ArmorReduction": 100,
+    "AttackBoost": 45,
+    "AreaControl": 70,
+    "BossControl": 45
+   },
+   "requiredTags": [],
+   "forbiddenTogether": [
+    "bartolomeo_legend+dragon_legend",
+    "bartolomeo_legend+ivankov_hidden"
+   ],
+   "note": "드래곤 전설 각이 나오지 않을 때 선택하는 대안입니다.",
+   "baseScore": 36
+  }
+ ]
+}

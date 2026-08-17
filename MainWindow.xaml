@@ -1,0 +1,128 @@
+<Window x:Class="OrandOverlay.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="원랜디 상위 유닛 도우미 설정" Width="1080" Height="720" MinWidth="920" MinHeight="620"
+        FontFamily="Malgun Gothic"
+        Background="#FF0F1118" Foreground="White" WindowStartupLocation="CenterScreen">
+  <Grid Margin="22">
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="330"/>
+      <ColumnDefinition Width="18"/>
+      <ColumnDefinition Width="*"/>
+    </Grid.ColumnDefinitions>
+
+    <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+    <StackPanel>
+      <TextBlock Text="원랜디 실시간 상위 유닛 추천" FontSize="20" FontWeight="SemiBold"
+                 Margin="0,0,10,16" TextWrapping="Wrap"/>
+
+      <Border Background="{StaticResource PanelBrush}" CornerRadius="12" Padding="14" Margin="0,0,0,12">
+        <StackPanel>
+          <TextBlock Text="이번 판 설정" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,10"/>
+          <TextBlock Text="목표 상위 유닛 · 학습된 유닛만" Style="{StaticResource FieldLabel}"/>
+          <ComboBox x:Name="GoalCombo" DisplayMemberPath="Name" SelectionChanged="GoalCombo_OnSelectionChanged" Margin="0,6,0,0"/>
+          <TextBlock x:Name="BuildVariantLabel" Text="빌드 방향" Style="{StaticResource FieldLabel}"
+                     Margin="0,12,0,0" Visibility="Collapsed"/>
+          <ComboBox x:Name="BuildVariantCombo" DisplayMemberPath="Name"
+                    SelectionChanged="BuildVariantCombo_OnSelectionChanged" Margin="0,6,0,0"
+                    Visibility="Collapsed"/>
+          <TextBlock x:Name="BuildVariantSummaryText" Style="{StaticResource FieldHint}"
+                     Margin="3,5,3,0" Visibility="Collapsed"/>
+          <TextBlock Text="항법" Style="{StaticResource FieldLabel}" Margin="0,12,0,0"/>
+          <Grid Margin="0,6,0,0">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <ComboBox Grid.Column="0" x:Name="NavigationCategoryCombo" DisplayMemberPath="Name"
+                      SelectionChanged="NavigationCategoryCombo_OnSelectionChanged" Margin="0,0,3,0"/>
+            <ComboBox Grid.Column="1" x:Name="NavigationCombo" DisplayMemberPath="Name"
+                      SelectionChanged="NavigationCombo_OnSelectionChanged" Margin="3,0,0,0"/>
+          </Grid>
+          <TextBlock x:Name="NavigationSummaryText" Style="{StaticResource FieldHint}" Margin="3,5,3,0"/>
+          <TextBlock Text="오로성 (신 이상 판별 효과)" Style="{StaticResource FieldLabel}" Margin="0,12,0,0"/>
+          <ComboBox x:Name="GoroseiCombo" DisplayMemberPath="Name"
+                    SelectionChanged="GoroseiCombo_OnSelectionChanged" Margin="0,6,0,0"/>
+          <TextBlock x:Name="GoroseiSummaryText" Style="{StaticResource FieldHint}" Margin="3,5,3,0"/>
+        </StackPanel>
+      </Border>
+
+      <Border Background="{StaticResource PanelBrush}" CornerRadius="12" Padding="14" Margin="0,0,0,12">
+        <StackPanel>
+          <Grid>
+            <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <TextBlock Text="현재 보유 패" FontSize="14" FontWeight="SemiBold"/>
+            <TextBlock Grid.Column="1" x:Name="RecognitionStatus" Text="수동 모드" Foreground="#FF4ADE80" FontSize="11"/>
+          </Grid>
+          <ListBox x:Name="InventoryList" Height="180" Margin="0,10,0,8" Background="#FF10131B"
+                   BorderThickness="0" Foreground="White" FontSize="13"/>
+          <Grid>
+            <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <ComboBox Grid.Column="0" x:Name="ManualUnitCombo" DisplayMemberPath="Name"/>
+            <Button Grid.Column="1" Content="+ 추가" Click="AddUnit_OnClick"/>
+            <Button Grid.Column="2" Content="− 제거" Click="RemoveUnit_OnClick"/>
+          </Grid>
+          <!-- 인식이 못 보는 게임 상태(필드로 나간 상위, 사용한 그린블러드)의 수동 보정. -->
+          <WrapPanel Margin="0,7,0,0">
+            <Button x:Name="GoalCompletedButton" Content="목표 조합 완료로 표시" Click="GoalCompleted_OnClick"
+                    Style="{StaticResource SubtleButton}"
+                    ToolTip="조합한 상위가 필드로 나가 패 인식에 안 잡힐 때 수동으로 완료 처리합니다. 게임이 끝나면 자동 해제됩니다."/>
+            <Button x:Name="GreenBloodUsedButton" Content="그린블러드 사용 완료로 표시" Click="GreenBloodUsed_OnClick"
+                    Style="{StaticResource SubtleButton}"
+                    ToolTip="그린블러드를 이미 유닛에 사용해 안내가 불필요할 때 누르세요. 인식이 사용 순간을 본 경우엔 자동으로 숨겨지며, 게임이 끝나면 초기화됩니다."/>
+          </WrapPanel>
+        </StackPanel>
+      </Border>
+
+      <Border Background="{StaticResource PanelBrush}" CornerRadius="12" Padding="14">
+        <StackPanel>
+          <TextBlock Text="설정" FontSize="14" FontWeight="SemiBold"/>
+          <CheckBox x:Name="AutoScanCheck" Content="실시간 패 인식 (티모지지 실행 필요)" Margin="3,10,0,5" IsChecked="True" Checked="AutoScan_OnChanged" Unchecked="AutoScan_OnChanged"/>
+          <CheckBox x:Name="ClickThroughCheck" Content="오버레이 클릭 통과" Margin="3,5" IsChecked="False" Checked="ClickThrough_OnChanged" Unchecked="ClickThrough_OnChanged"/>
+          <CheckBox x:Name="ClearDataRefreshCheck" Content="신+ 클리어 데이터 자동 갱신" Margin="3,5" IsChecked="True" Checked="ClearDataRefresh_OnChanged" Unchecked="ClearDataRefresh_OnChanged"/>
+          <Button Content="오버레이 이동" Click="EnableOverlayMove_OnClick" HorizontalAlignment="Left" Margin="0,4,0,0"
+                  ToolTip="누른 뒤 오버레이 상단을 끌어 옮깁니다"/>
+          <!-- 화면 인식은 티모지지 없이 쓰는 대체 수단이라 평소엔 접어 둔다. -->
+          <Expander Header="고급 · 인식 소스와 화면 인식" IsExpanded="False" Margin="0,10,0,0">
+            <StackPanel Margin="0,8,0,0">
+              <ComboBox x:Name="RecognitionSourceCombo" Margin="0,0,0,3" SelectionChanged="RecognitionSource_OnSelectionChanged">
+                <ComboBoxItem Content="티모지지 + 워크 메모리 (권장)" Tag="Memory"/>
+                <ComboBoxItem Content="화면 아이콘 (대체)" Tag="Screen"/>
+              </ComboBox>
+              <TextBlock Text="인벤토리 영역 (가로, 세로, 너비, 높이 · 0~1)" Style="{StaticResource FieldHint}" Margin="3,7,0,3"/>
+              <TextBox x:Name="RegionText" Text="0.64, 0.58, 0.34, 0.36" Padding="8" Background="#FF10131B" Foreground="White" BorderBrush="#FF303647"/>
+              <WrapPanel Margin="0,7,0,0">
+                <Button Content="영역 적용" Click="ApplyRegion_OnClick" Style="{StaticResource SubtleButton}"/>
+                <Button Content="템플릿 경로 복사" Click="CopyTemplatePath_OnClick" Style="{StaticResource SubtleButton}"/>
+              </WrapPanel>
+            </StackPanel>
+          </Expander>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+    </ScrollViewer>
+
+    <Grid Grid.Column="2">
+      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+      <Grid>
+        <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+        <StackPanel>
+          <TextBlock Text="상위 유닛 추천" FontSize="20" FontWeight="SemiBold"/>
+          <TextBlock x:Name="DataVersionText" Foreground="#FF7F8796" FontSize="11" Margin="0,4,0,0"/>
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal">
+          <Button x:Name="OverlayButton" Content="오버레이 숨기기" Click="ToggleOverlay_OnClick"/>
+          <Button Content="수동 보정 초기화" Click="ClearManual_OnClick" Background="#FF6D4CE0"/>
+        </StackPanel>
+      </Grid>
+
+      <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Margin="0,16,0,0">
+        <StackPanel x:Name="RecommendationCards"/>
+      </ScrollViewer>
+
+      <Border Grid.Row="3" Background="#FF171B26" CornerRadius="8" Padding="10" Margin="0,10,0,0">
+        <TextBlock x:Name="FooterStatus" Text="준비됨" Foreground="#FFB3BAC8" FontSize="12" TextWrapping="Wrap"/>
+      </Border>
+    </Grid>
+  </Grid>
+</Window>
