@@ -1138,8 +1138,10 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
             MissingUnits = progress.MissingLeaves.Select(leaf => leaf.Name).ToList(),
             // 완성률은 최하위 재료 기준이라, 100%여도 중간 단계(희귀·전설 등)를
             // 아직 조합하지 않았을 수 있다 — "바로 조합"은 남은 단계가 없을 때만.
+            // 부족 재료는 하나만 아니라 전부 나열한다(부족 많은 순, 유저 요청).
             NextAction = missing is not null
-                ? $"가장 부족한 패: {missing.Name} ×{missing.MissingCount}"
+                ? "부족한 패: " + string.Join(" · ", progress.MissingLeaves
+                    .Select(leaf => $"{leaf.Name} ×{leaf.MissingCount}"))
                 : remainingSteps.Count > 0
                     ? $"최하위 재료 확보 — 아래 {remainingSteps.Count}단계를 차례로 조합하면 완성"
                     : "지금 바로 조합할 수 있습니다.",
