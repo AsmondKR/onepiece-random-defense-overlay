@@ -1074,14 +1074,8 @@ public partial class OverlayWindow : Window
         {
             Text = $"부족 ×{leaf.MissingCount}",
             Foreground = new SolidColorBrush(Color.FromRgb(251, 191, 36)),
-            FontSize = 11,
-            TextAlignment = TextAlignment.Center
-        });
-        stack.Children.Add(new TextBlock
-        {
-            Text = $"{leaf.OwnedCount}/{leaf.RequiredCount}",
-            Foreground = new SolidColorBrush(Color.FromRgb(166, 177, 196)),
-            FontSize = 11,
+            FontSize = 12,
+            FontWeight = FontWeights.SemiBold,
             TextAlignment = TextAlignment.Center
         });
         return new Border

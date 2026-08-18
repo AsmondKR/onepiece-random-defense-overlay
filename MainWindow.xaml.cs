@@ -1054,16 +1054,10 @@ public partial class MainWindow : Window
         {
             Text = $"부족 ×{leaf.MissingCount}",
             Foreground = new SolidColorBrush(Color.FromRgb(251, 191, 36)),
-            FontSize = 10,
+            FontSize = 11,
+            FontWeight = FontWeights.SemiBold,
             TextAlignment = TextAlignment.Center,
             Margin = new Thickness(0, 2, 0, 0)
-        });
-        stack.Children.Add(new TextBlock
-        {
-            Text = $"보유 {leaf.OwnedCount}/{leaf.RequiredCount}",
-            Foreground = new SolidColorBrush(Color.FromRgb(148, 163, 184)),
-            FontSize = 9,
-            TextAlignment = TextAlignment.Center
         });
         return new Border
         {
