@@ -789,6 +789,16 @@ public partial class MainWindow : Window
         stack.Children.Add(BuildDetailSectionTitle("남은 조합 · 전설 먼저"));
         stack.Children.Add(BuildRemainingRecipe(item));
 
+        // 드릴다운은 구조 탐색용이고, 실제 손은 안흔함부터 차례로 간다(유저 요청) —
+        // 조합 순서를 낮은 티어부터 번호로 나열한다.
+        if (item.RemainingCraftSteps.Count > 0)
+        {
+            stack.Children.Add(BuildDetailSectionTitle("조합 순서 · 안흔함부터",
+                new Thickness(0, 12, 0, 4)));
+            for (var i = 0; i < item.RemainingCraftSteps.Count; i++)
+                stack.Children.Add(BuildRemainingRecipeCard(item.RemainingCraftSteps[i], i + 1));
+        }
+
         stack.Children.Add(BuildDetailSectionTitle("부족한 최하위 재료", new Thickness(0, 12, 0, 4)));
         if (item.RecipeProgress.MissingLeaves.Count == 0)
             stack.Children.Add(new TextBlock
@@ -852,11 +862,10 @@ public partial class MainWindow : Window
             });
             return stack;
         }
-        var number = 1;
         foreach (var group in legends)
-            stack.Children.Add(BuildDrillNode(item.Route.Id, group, number++));
+            stack.Children.Add(BuildDrillNode(item.Route.Id, group, null));
         foreach (var step in others)
-            stack.Children.Add(BuildRemainingRecipeCard(step, number++));
+            stack.Children.Add(BuildRemainingRecipeCard(step, null));
         return stack;
     }
 

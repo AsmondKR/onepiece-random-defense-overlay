@@ -776,6 +776,14 @@ public partial class OverlayWindow : Window
         var stack = new StackPanel { Margin = new Thickness(0, 8, 0, 0) };
         stack.Children.Add(DetailSectionTitle("남은 조합 · 전설 먼저"));
         stack.Children.Add(RemainingRecipePanel(item));
+        // 드릴다운은 구조 탐색용, 실제 조합 순서는 안흔함부터 번호로 나열(유저 요청).
+        if (item.RemainingCraftSteps.Count > 0)
+        {
+            stack.Children.Add(DetailSectionTitle("조합 순서 · 안흔함부터",
+                new Thickness(0, 10, 0, 4)));
+            for (var i = 0; i < item.RemainingCraftSteps.Count; i++)
+                stack.Children.Add(RemainingRecipeCard(item.RemainingCraftSteps[i], i + 1));
+        }
         stack.Children.Add(MissingLeavesPanel(item.RecipeProgress));
         stack.Children.Add(DetailSectionTitle("유닛 능력", new Thickness(0, 10, 0, 0)));
         if (item.CompositionUnits.Count > 0)
@@ -798,11 +806,10 @@ public partial class OverlayWindow : Window
             });
             return stack;
         }
-        var number = 1;
         foreach (var group in legends)
-            stack.Children.Add(DrillNodeElement(item.Route.Id, group, number++));
+            stack.Children.Add(DrillNodeElement(item.Route.Id, group, null));
         foreach (var step in others)
-            stack.Children.Add(RemainingRecipeCard(step, number++));
+            stack.Children.Add(RemainingRecipeCard(step, null));
         return stack;
     }
 
