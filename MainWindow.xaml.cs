@@ -720,14 +720,6 @@ public partial class MainWindow : Window
             }
         });
         headerBody.Children.Add(BuildCountBar(item.RecipeProgress, 7, new Thickness(0, 10, 0, 0)));
-        headerBody.Children.Add(new TextBlock
-        {
-            Text = item.NextAction,
-            Foreground = new SolidColorBrush(Color.FromRgb(167, 139, 250)),
-            FontSize = 13,
-            Margin = new Thickness(0, 8, 0, 4),
-            TextWrapping = TextWrapping.Wrap
-        });
 
         var expander = new Expander
         {
@@ -786,6 +778,15 @@ public partial class MainWindow : Window
     private UIElement BuildRecommendationDetails(Recommendation item)
     {
         var stack = new StackPanel { Margin = new Thickness(0, 12, 0, 0) };
+        // 부족한 패 나열은 길어질 수 있어 카드를 펼쳤을 때만 보여준다(유저 요청).
+        stack.Children.Add(new TextBlock
+        {
+            Text = item.NextAction,
+            Foreground = new SolidColorBrush(Color.FromRgb(167, 139, 250)),
+            FontSize = 13,
+            Margin = new Thickness(0, 0, 0, 8),
+            TextWrapping = TextWrapping.Wrap
+        });
         stack.Children.Add(BuildDetailSectionTitle("남은 조합 · 전설 먼저"));
         stack.Children.Add(BuildRemainingRecipe(item));
 

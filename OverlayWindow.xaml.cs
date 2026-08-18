@@ -704,14 +704,6 @@ public partial class OverlayWindow : Window
                 Margin = new Thickness(0, 5, 0, 0)
             });
         headerStack.Children.Add(CountBar(item.RecipeProgress));
-        headerStack.Children.Add(new TextBlock
-        {
-            Text = item.NextAction,
-            Foreground = Brushes.LightGray,
-            FontSize = 12,
-            Margin = new Thickness(0, 7, 0, 2),
-            TextWrapping = TextWrapping.Wrap
-        });
 
         if (item.Warnings.Count > 0)
             headerStack.Children.Add(new TextBlock
@@ -774,6 +766,15 @@ public partial class OverlayWindow : Window
     private UIElement RecommendationDetailsPanel(Recommendation item)
     {
         var stack = new StackPanel { Margin = new Thickness(0, 8, 0, 0) };
+        // 부족한 패 나열은 길어질 수 있어 카드를 펼쳤을 때만 보여준다(유저 요청).
+        stack.Children.Add(new TextBlock
+        {
+            Text = item.NextAction,
+            Foreground = Brushes.LightGray,
+            FontSize = 12,
+            Margin = new Thickness(0, 0, 0, 7),
+            TextWrapping = TextWrapping.Wrap
+        });
         stack.Children.Add(DetailSectionTitle("남은 조합 · 전설 먼저"));
         stack.Children.Add(RemainingRecipePanel(item));
         // 드릴다운은 구조 탐색용, 실제 조합 순서는 안흔함부터 번호로 나열(유저 요청).
