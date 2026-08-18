@@ -1066,8 +1066,11 @@ var jinbeWithBlood = seraphimEngine.RecommendNearestCrafts("rawcode:A90H",
     navigationMode: "AlliedForces.EmergencyCall");
 Assert(jinbeWithBlood.Any(rec =>
         rec.Route.GoalUnitId.Equals("rawcode:3A0h", StringComparison.OrdinalIgnoreCase) &&
-        rec.RecipeProgress.CompletionRatio >= 0.999),
-    "징베는 S-호크 세라핌을 추천하고 그린블러드 보유 시 100퍼센트");
+        rec.RecipeProgress.CompletionRatio < 1),
+    "징베는 S-호크 세라핌을 추천하되 그린블러드만으로 100퍼센트가 되지 않음");
+var hawkRecipe = catalog.Unit("rawcode:3A0h").Recipe;
+Assert(hawkRecipe.ContainsKey("item_greenblood") && hawkRecipe.ContainsKey("mihawk_hidden"),
+    "S-호크 재료는 미호크 히든 + 그린블러드");
 Assert(seraphimEngine.RecommendNearestCrafts("rawcode:H90H",
         [new InventoryEntry { UnitId = "item_greenblood", Count = 1, Confidence = 1 }], 8,
         navigationMode: "AlliedForces.EmergencyCall")
@@ -1491,7 +1494,7 @@ Assert(Math.Abs(UiScale.FromScreen(2160, 1.5) - 1.0) < 0.001,
 Assert(Math.Abs(UiScale.FromScreen(4320, 1.0) - 3.0) < 0.001,
     "8K 100%는 배율 3.0");
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 255/255");
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 256/256");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,

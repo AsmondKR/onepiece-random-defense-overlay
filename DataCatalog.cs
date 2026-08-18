@@ -76,7 +76,7 @@ public sealed class DataCatalog
                     Id = id,
                     Name = KoreanLabels.ContainsLatin(entry.Name) ? KoreanLabels.RemoveLatin(entry.Name) : entry.Name,
                     Tier = entry.Tier,
-                    Recipe = RecipeFor(entry),
+                    Recipe = RecipeFor(rawcode, entry),
                     Rawcodes = RawcodeAliases.WithSharedStats(rawcode).ToList(),
                     Tags = ["rawcode-catalog"],
                     Image = entry.Image,
@@ -99,7 +99,9 @@ public sealed class DataCatalog
             Name = unit.Name,
             Tier = unit.Tier,
             Roles = unit.Roles,
-            Recipe = unit.Recipe.Count > 0 || catalogEntry is null ? unit.Recipe : RecipeFor(catalogEntry),
+            Recipe = unit.Recipe.Count > 0 || catalogEntry is null
+                ? unit.Recipe
+                : RecipeFor(unit.Rawcodes.FirstOrDefault() ?? "", catalogEntry),
             Tags = unit.Tags,
             Rawcodes = unit.Rawcodes,
             Image = string.IsNullOrWhiteSpace(unit.Image) ? catalogEntry?.Image ?? "" : unit.Image,
@@ -113,7 +115,18 @@ public sealed class DataCatalog
         return KoreanUnit(enriched);
     }
 
-    private Dictionary<string, int> RecipeFor(RawcodeCatalogEntry entry)
+    // 세라핌 = 해당 캐릭터의 전설·히든 유닛 + 그린블러드(맵 그린블러드 툴팁:
+    // "특정 유닛은 세라핌으로 변경됩니다"). 재료 유닛의 트리까지 완성률에 반영된다.
+    private static readonly Dictionary<string, string> SeraphimMaterialRawcodes =
+        new(StringComparer.Ordinal)
+        {
+            ["3A0h"] = "340h", // S-호크 ← 미호크 히든
+            ["0A0h"] = "G30h", // S-샤크 ← 징베 전설
+            ["Y90h"] = "230h", // S-스네이크 ← 핸콕 전설
+            ["1A0h"] = "030h", // S-베어 ← 쿠마 전설
+        };
+
+    private Dictionary<string, int> RecipeFor(string rawcode, RawcodeCatalogEntry entry)
     {
         var recipe = entry.Recipe
             .Where(item => item.Count > 0 && !string.IsNullOrWhiteSpace(item.Id))
@@ -121,10 +134,12 @@ public sealed class DataCatalog
             .GroupBy(item => item.UnitId, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.Sum(item => item.Count),
                 StringComparer.OrdinalIgnoreCase);
-        // 세라핌은 재료 조합이 아니라 그린블러드 소모로 제작된다. 조합 추천·완성률
-        // 계산에 태우기 위해 합성 레시피(그린블러드 1)를 부여한다(유저 요청).
         if (recipe.Count == 0 && entry.Tier.Split('[', 2)[0].Trim() == "세라핌")
+        {
+            if (SeraphimMaterialRawcodes.TryGetValue(rawcode, out var material))
+                recipe[_unitIdsByRawcode.GetValueOrDefault(material, "rawcode:" + material)] = 1;
             recipe["item_greenblood"] = 1;
+        }
         return recipe;
     }
 
