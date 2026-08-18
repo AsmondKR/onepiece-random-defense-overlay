@@ -330,9 +330,6 @@ public partial class MainWindow : Window
                          NavigationProfiles.Find(_settings.NavigationMode);
         _settings.GoalUnitId = goal.Id;
         _settings.NavigationMode = navigation.Id;
-        GoalCompletedButton.Content = _completedTopUnits.Contains(goal.Id)
-            ? "완료 표시 해제"
-            : "목표 조합 완료로 표시";
         var inventory = CombinedInventory();
         var recommendationInventoryBase = _automaticDisconnected
             ? CombinedInventory(includeAutomatic: false)
@@ -362,9 +359,6 @@ public partial class MainWindow : Window
             ? Array.Empty<GreenBloodAdvice>()
             : _greenBloodAdvisor.Evaluate(goal, recommendationInventory,
                 recommendations, _clearStats.HasData ? _clearStats : null);
-        GreenBloodUsedButton.Content = _greenBloodUsage.Used
-            ? "그린블러드 사용 표시 해제"
-            : "그린블러드 사용 완료로 표시";
 
         InventoryList.Items.Clear();
         foreach (var item in inventory)
@@ -589,8 +583,9 @@ public partial class MainWindow : Window
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         row.ColumnDefinitions.Add(new ColumnDefinition());
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var icon = UnitImageFactory.Create(node.Image, node.Name, 42, node.UnitId);
-        icon.Margin = new Thickness(0, 0, 9, 0);
+        var icon = UnitImageFactory.Create(node.Image, node.Name, 44, node.UnitId);
+        icon.Margin = new Thickness(0, 0, 10, 0);
+        icon.VerticalAlignment = VerticalAlignment.Center;
         row.Children.Add(icon);
 
         var text = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
@@ -598,47 +593,115 @@ public partial class MainWindow : Window
         {
             Text = $"{stepNumber}. {RecommendationPresentation.CraftUnitName(node.Name, node.Tier)}",
             Foreground = Brushes.White,
-            FontSize = 12,
+            FontSize = 13,
             FontWeight = FontWeights.SemiBold,
             TextWrapping = TextWrapping.Wrap
         });
-        text.Children.Add(new TextBlock
-        {
-            Text = $"남은 제작 ×{node.MissingCount}",
-            Foreground = new SolidColorBrush(Color.FromRgb(148, 163, 184)),
-            FontSize = 10,
-            Margin = new Thickness(0, 2, 0, 0)
-        });
-        text.Children.Add(new TextBlock
-        {
-            Text = RecommendationPresentation.CraftIngredientLine(node),
-            Foreground = new SolidColorBrush(Color.FromRgb(196, 181, 253)),
-            FontSize = 10,
-            TextWrapping = TextWrapping.Wrap,
-            Margin = new Thickness(0, 2, 0, 0)
-        });
+        text.Children.Add(BuildCraftActionLine(node));
         Grid.SetColumn(text, 1);
         row.Children.Add(text);
 
-        var owned = new TextBlock
+        // 남은 제작 수량은 우측 진행도 열로 모아 좌측 텍스트 밀집을 푼다.
+        var progress = new StackPanel
         {
-            Text = $"보유 {node.OwnedCount}/{node.RequiredCount}",
-            Foreground = new SolidColorBrush(Color.FromRgb(251, 191, 36)),
-            FontSize = 10,
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(10, 0, 0, 0)
         };
-        Grid.SetColumn(owned, 2);
-        row.Children.Add(owned);
+        progress.Children.Add(new TextBlock
+        {
+            Text = $"보유 {node.OwnedCount}/{node.RequiredCount}",
+            Foreground = new SolidColorBrush(Color.FromRgb(251, 191, 36)),
+            FontSize = 14,
+            FontWeight = FontWeights.SemiBold,
+            TextAlignment = TextAlignment.Right
+        });
+        progress.Children.Add(new TextBlock
+        {
+            Text = $"남은 ×{node.MissingCount}",
+            Foreground = new SolidColorBrush(Color.FromRgb(148, 163, 184)),
+            FontSize = 10,
+            TextAlignment = TextAlignment.Right,
+            Margin = new Thickness(0, 1, 0, 0)
+        });
+        Grid.SetColumn(progress, 2);
+        row.Children.Add(progress);
         return new Border
         {
             Background = new SolidColorBrush(Color.FromRgb(19, 24, 35)),
             CornerRadius = new CornerRadius(8),
-            Padding = new Thickness(8),
+            Padding = new Thickness(9),
             Margin = new Thickness(0, 3, 0, 3),
             Child = row
         };
     }
+
+    // "선택할 유닛 나미 · 조합 키 [Z]"를 한 줄로 펼친다. 라벨은 죽이고
+    // 실제 행동 대상(유닛 이름, 키)만 크게 보이게 한다.
+    private static UIElement BuildCraftActionLine(RecipeCraftStep node)
+    {
+        var panel = new WrapPanel { Margin = new Thickness(0, 3, 0, 0) };
+        var select = RecommendationPresentation.CraftSelectUnitName(node);
+        if (select is null)
+        {
+            panel.Children.Add(BuildCraftHintLabel("조합할 하위 유닛 없음"));
+            return panel;
+        }
+        panel.Children.Add(BuildCraftHintLabel("선택할 유닛"));
+        panel.Children.Add(new TextBlock
+        {
+            Text = select,
+            Foreground = new SolidColorBrush(Color.FromRgb(196, 181, 253)),
+            FontSize = 13,
+            FontWeight = FontWeights.SemiBold,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(5, 0, 0, 0)
+        });
+        if (node.CombineKey is { Length: > 0 } key)
+        {
+            panel.Children.Add(BuildCraftHintLabel("조합 키", left: 12));
+            panel.Children.Add(new Border
+            {
+                Background = new SolidColorBrush(Color.FromRgb(42, 49, 71)),
+                BorderBrush = new SolidColorBrush(Color.FromRgb(97, 106, 140)),
+                BorderThickness = new Thickness(1, 1, 1, 2),
+                CornerRadius = new CornerRadius(4),
+                Padding = new Thickness(7, 0, 7, 1),
+                Margin = new Thickness(5, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                Child = new TextBlock
+                {
+                    Text = key,
+                    Foreground = Brushes.White,
+                    FontSize = 12,
+                    FontWeight = FontWeights.Bold
+                }
+            });
+        }
+        else if (RecommendationPresentation.CraftCompanionNames(node) is { } companions)
+        {
+            panel.Children.Add(BuildCraftHintLabel("함께 조합", left: 12));
+            panel.Children.Add(new TextBlock
+            {
+                Text = companions,
+                Foreground = new SolidColorBrush(Color.FromRgb(196, 181, 253)),
+                FontSize = 13,
+                FontWeight = FontWeights.SemiBold,
+                TextWrapping = TextWrapping.Wrap,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(5, 0, 0, 0)
+            });
+        }
+        return panel;
+    }
+
+    private static TextBlock BuildCraftHintLabel(string text, double left = 0) => new()
+    {
+        Text = text,
+        Foreground = new SolidColorBrush(Color.FromRgb(148, 163, 184)),
+        FontSize = 11,
+        VerticalAlignment = VerticalAlignment.Center,
+        Margin = new Thickness(left, 0, 0, 0)
+    };
 
     private static UIElement BuildMissingLeafGrid(IReadOnlyList<RecipeLeafProgress> leaves)
     {
@@ -849,12 +912,6 @@ public partial class MainWindow : Window
         RefreshAll($"{unit.Name} 패를 제거했습니다.");
     }
 
-    private void ClearManual_OnClick(object sender, RoutedEventArgs e)
-    {
-        _manual.Clear();
-        RefreshAll("수동 보정 패를 모두 초기화했습니다.");
-    }
-
     private void GoalCombo_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_updatingSelections) return;
@@ -1024,26 +1081,6 @@ public partial class MainWindow : Window
 
     private void ToggleOverlay_OnClick(object sender, RoutedEventArgs e) =>
         ToggleOverlayVisibility();
-
-    // 그린블러드 사용 순간을 스캔이 못 봤을 때의 수동 토글(게임 종료 시 자동 초기화).
-    private void GreenBloodUsed_OnClick(object sender, RoutedEventArgs e)
-    {
-        _greenBloodUsage.Toggle();
-        RefreshAll(_greenBloodUsage.Used
-            ? "그린블러드를 사용한 것으로 표시했습니다. 사용처 안내를 숨깁니다."
-            : "그린블러드 사용 표시를 해제했습니다.");
-    }
-
-    // 조합한 상위가 카드존을 안 거치고 필드로 나가면 메모리 인식이 못 본다.
-    // 스캔이 놓친 완성 상위를 수동으로 표시/해제한다(게임 종료 시 자동 초기화).
-    private void GoalCompleted_OnClick(object sender, RoutedEventArgs e)
-    {
-        if (GoalCombo.SelectedItem is not UnitDefinition goal) return;
-        if (!_completedTopUnits.ToggleCompleted(goal.Id)) return;
-        RefreshAll(_completedTopUnits.Contains(goal.Id)
-            ? $"{goal.Name} 조합 완료로 표시했습니다. 추천이 다음 상위·지원으로 넘어갑니다."
-            : $"{goal.Name} 완료 표시를 해제했습니다.");
-    }
 
     private void ToggleOverlayVisibility()
     {

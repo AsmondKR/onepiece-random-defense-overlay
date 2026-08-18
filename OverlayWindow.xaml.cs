@@ -788,8 +788,9 @@ public partial class OverlayWindow : Window
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         row.ColumnDefinitions.Add(new ColumnDefinition());
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var icon = UnitImageFactory.Create(node.Image, node.Name, 40, node.UnitId);
-        icon.Margin = new Thickness(0, 0, 9, 0);
+        var icon = UnitImageFactory.Create(node.Image, node.Name, 44, node.UnitId);
+        icon.Margin = new Thickness(0, 0, 10, 0);
+        icon.VerticalAlignment = VerticalAlignment.Center;
         row.Children.Add(icon);
 
         var text = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
@@ -797,47 +798,115 @@ public partial class OverlayWindow : Window
         {
             Text = $"{stepNumber}. {RecommendationPresentation.CraftUnitName(node.Name, node.Tier)}",
             Foreground = Brushes.White,
-            FontSize = 12,
+            FontSize = 13,
             FontWeight = FontWeights.SemiBold,
             TextWrapping = TextWrapping.Wrap
         });
-        text.Children.Add(new TextBlock
-        {
-            Text = $"남은 제작 ×{node.MissingCount}",
-            Foreground = new SolidColorBrush(Color.FromRgb(166, 177, 196)),
-            FontSize = 11,
-            Margin = new Thickness(0, 2, 0, 0)
-        });
-        text.Children.Add(new TextBlock
-        {
-            Text = RecommendationPresentation.CraftIngredientLine(node),
-            Foreground = new SolidColorBrush(Color.FromRgb(196, 181, 253)),
-            FontSize = 11,
-            TextWrapping = TextWrapping.Wrap,
-            Margin = new Thickness(0, 2, 0, 0)
-        });
+        text.Children.Add(CraftActionLine(node));
         Grid.SetColumn(text, 1);
         row.Children.Add(text);
 
-        var owned = new TextBlock
+        // 남은 제작 수량은 우측 진행도 열로 모아 좌측 텍스트 밀집을 푼다.
+        var progress = new StackPanel
+        {
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(10, 0, 0, 0)
+        };
+        progress.Children.Add(new TextBlock
         {
             Text = $"{node.OwnedCount}/{node.RequiredCount}",
             Foreground = new SolidColorBrush(Color.FromRgb(251, 191, 36)),
-            FontSize = 11,
-            VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(5, 0, 0, 0)
-        };
-        Grid.SetColumn(owned, 2);
-        row.Children.Add(owned);
+            FontSize = 15,
+            FontWeight = FontWeights.SemiBold,
+            TextAlignment = TextAlignment.Right
+        });
+        progress.Children.Add(new TextBlock
+        {
+            Text = $"남은 ×{node.MissingCount}",
+            Foreground = new SolidColorBrush(Color.FromRgb(148, 163, 184)),
+            FontSize = 10,
+            TextAlignment = TextAlignment.Right,
+            Margin = new Thickness(0, 1, 0, 0)
+        });
+        Grid.SetColumn(progress, 2);
+        row.Children.Add(progress);
         return new Border
         {
             Background = new SolidColorBrush(Color.FromArgb(100, 14, 18, 28)),
             CornerRadius = new CornerRadius(6),
-            Padding = new Thickness(8),
+            Padding = new Thickness(9),
             Margin = new Thickness(0, 5, 0, 0),
             Child = row
         };
     }
+
+    // "선택할 유닛 나미 · 조합 키 [Z]"를 한 줄로 펼친다. 라벨은 죽이고
+    // 실제 행동 대상(유닛 이름, 키)만 크게 보이게 한다.
+    private static UIElement CraftActionLine(RecipeCraftStep node)
+    {
+        var panel = new WrapPanel { Margin = new Thickness(0, 3, 0, 0) };
+        var select = RecommendationPresentation.CraftSelectUnitName(node);
+        if (select is null)
+        {
+            panel.Children.Add(CraftHintLabel("조합할 하위 유닛 없음"));
+            return panel;
+        }
+        panel.Children.Add(CraftHintLabel("선택할 유닛"));
+        panel.Children.Add(new TextBlock
+        {
+            Text = select,
+            Foreground = new SolidColorBrush(Color.FromRgb(196, 181, 253)),
+            FontSize = 13,
+            FontWeight = FontWeights.SemiBold,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(5, 0, 0, 0)
+        });
+        if (node.CombineKey is { Length: > 0 } key)
+        {
+            panel.Children.Add(CraftHintLabel("조합 키", left: 12));
+            panel.Children.Add(new Border
+            {
+                Background = new SolidColorBrush(Color.FromRgb(42, 49, 71)),
+                BorderBrush = new SolidColorBrush(Color.FromRgb(97, 106, 140)),
+                BorderThickness = new Thickness(1, 1, 1, 2),
+                CornerRadius = new CornerRadius(4),
+                Padding = new Thickness(7, 0, 7, 1),
+                Margin = new Thickness(5, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                Child = new TextBlock
+                {
+                    Text = key,
+                    Foreground = Brushes.White,
+                    FontSize = 12,
+                    FontWeight = FontWeights.Bold
+                }
+            });
+        }
+        else if (RecommendationPresentation.CraftCompanionNames(node) is { } companions)
+        {
+            panel.Children.Add(CraftHintLabel("함께 조합", left: 12));
+            panel.Children.Add(new TextBlock
+            {
+                Text = companions,
+                Foreground = new SolidColorBrush(Color.FromRgb(196, 181, 253)),
+                FontSize = 13,
+                FontWeight = FontWeights.SemiBold,
+                TextWrapping = TextWrapping.Wrap,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(5, 0, 0, 0)
+            });
+        }
+        return panel;
+    }
+
+    private static TextBlock CraftHintLabel(string text, double left = 0) => new()
+    {
+        Text = text,
+        Foreground = new SolidColorBrush(Color.FromRgb(148, 163, 184)),
+        FontSize = 11,
+        VerticalAlignment = VerticalAlignment.Center,
+        Margin = new Thickness(left, 0, 0, 0)
+    };
 
     private static TextBlock DetailSectionTitle(string text, Thickness? margin = null) => new()
     {

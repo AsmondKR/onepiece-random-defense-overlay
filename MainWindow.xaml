@@ -62,15 +62,6 @@
             <Button Grid.Column="1" Content="+ 추가" Click="AddUnit_OnClick"/>
             <Button Grid.Column="2" Content="− 제거" Click="RemoveUnit_OnClick"/>
           </Grid>
-          <!-- 인식이 못 보는 게임 상태(필드로 나간 상위, 사용한 그린블러드)의 수동 보정. -->
-          <WrapPanel Margin="0,7,0,0">
-            <Button x:Name="GoalCompletedButton" Content="목표 조합 완료로 표시" Click="GoalCompleted_OnClick"
-                    Style="{StaticResource SubtleButton}"
-                    ToolTip="조합한 상위가 필드로 나가 패 인식에 안 잡힐 때 수동으로 완료 처리합니다. 게임이 끝나면 자동 해제됩니다."/>
-            <Button x:Name="GreenBloodUsedButton" Content="그린블러드 사용 완료로 표시" Click="GreenBloodUsed_OnClick"
-                    Style="{StaticResource SubtleButton}"
-                    ToolTip="그린블러드를 이미 유닛에 사용해 안내가 불필요할 때 누르세요. 인식이 사용 순간을 본 경우엔 자동으로 숨겨지며, 게임이 끝나면 초기화됩니다."/>
-          </WrapPanel>
         </StackPanel>
       </Border>
 
@@ -112,7 +103,6 @@
         </StackPanel>
         <StackPanel Grid.Column="1" Orientation="Horizontal">
           <Button x:Name="OverlayButton" Content="오버레이 숨기기" Click="ToggleOverlay_OnClick"/>
-          <Button Content="수동 보정 초기화" Click="ClearManual_OnClick" Background="#FF6D4CE0"/>
         </StackPanel>
       </Grid>
 

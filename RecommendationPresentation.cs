@@ -42,24 +42,37 @@ public static class RecommendationPresentation
 
     public static string CraftIngredientLine(RecipeCraftStep step)
     {
-        if (step.Ingredients.Count == 0) return "조합할 하위 유닛 없음";
-        var ordered = step.Ingredients.OrderBy(ingredient => ingredient.SelectionOrder).ToList();
-        var line = $"선택할 유닛: {IngredientName(ordered[0])}";
+        var select = CraftSelectUnitName(step);
+        if (select is null) return "조합할 하위 유닛 없음";
+        var line = $"선택할 유닛: {select}";
         // 맵에서 추출한 조합 키가 있으면 실제 조작(선택 → 키)을 그대로 안내한다.
         if (step.CombineKey is { Length: > 0 } key)
             return line + $"\n유닛 조합 키: {key}";
-        if (ordered.Count == 1) return line;
-        return line + "\n함께 조합: " +
-               string.Join(" / ", ordered.Skip(1).Select(IngredientName));
+        var companions = CraftCompanionNames(step);
+        return companions is null ? line : line + "\n함께 조합: " + companions;
+    }
 
-        static string IngredientName(RecipeCraftIngredient ingredient)
-        {
-            var tier = SafeText(ingredient.Tier).Split('[', 2)[0].Trim();
-            var name = RemoveTierSuffix(SafeText(ingredient.Name).Trim(), tier);
-            // 단계별 총 부족 수량은 '남은 제작'에만 표시한다. 여기서는 실제로
-            // 어떤 유닛을 선택하고 함께 조합하는지만 간결하게 안내한다.
-            return name;
-        }
+    /// <summary>조합 시작 시 클릭해야 하는 유닛 이름. 재료가 없으면 null.</summary>
+    public static string? CraftSelectUnitName(RecipeCraftStep step)
+    {
+        if (step.Ingredients.Count == 0) return null;
+        return IngredientName(step.Ingredients.OrderBy(i => i.SelectionOrder).First());
+    }
+
+    /// <summary>조합 키가 없을 때 함께 조합할 나머지 재료 목록("A / B"). 없으면 null.</summary>
+    public static string? CraftCompanionNames(RecipeCraftStep step)
+    {
+        if (step.CombineKey is { Length: > 0 } || step.Ingredients.Count <= 1) return null;
+        var ordered = step.Ingredients.OrderBy(i => i.SelectionOrder).Skip(1).ToList();
+        return ordered.Count == 0 ? null : string.Join(" / ", ordered.Select(IngredientName));
+    }
+
+    private static string IngredientName(RecipeCraftIngredient ingredient)
+    {
+        var tier = SafeText(ingredient.Tier).Split('[', 2)[0].Trim();
+        // 단계별 총 부족 수량은 '남은 제작'에만 표시한다. 여기서는 실제로
+        // 어떤 유닛을 선택하고 함께 조합하는지만 간결하게 안내한다.
+        return RemoveTierSuffix(SafeText(ingredient.Name).Trim(), tier);
     }
 
     public static string LeafStatus(RecipeLeafProgress leaf) =>
