@@ -598,7 +598,8 @@ public partial class MainWindow : Window
         var buildVariant = (BuildVariantCombo.SelectedItem as BuildVariant)?.Id
                            ?? BuildVariants.AutoId;
         var recommendations = _engine.RecommendNearestCrafts(goal.Id, recommendationInventory,
-            navigationMode: navigation.Id, gorosei: gorosei, buildVariant: buildVariant);
+            navigationMode: navigation.Id, gorosei: gorosei, buildVariant: buildVariant,
+            suppressSeraphim: _greenBloodUsage.Used);
         var inventoryStats = _statsCalculator.Calculate(recommendationInventory);
         var rareRerolls = _rareRerollAdvisor.Evaluate(recommendationInventory, recommendations,
             goal, _clearStats.HasData ? _clearStats : null);

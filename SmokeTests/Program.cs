@@ -1076,6 +1076,15 @@ Assert(seraphimEngine.RecommendNearestCrafts("rawcode:H90H",
         navigationMode: "AlliedForces.EmergencyCall")
     .Any(rec => rec.Route.GoalUnitId.Equals("rawcode:1A0h", StringComparison.OrdinalIgnoreCase)),
     "상디는 S-베어 세라핌을 추천");
+// 그린블러드는 판당 1회용: 세라핌을 이미 만들었거나 그블을 썼으면 세라핌 추천 중단.
+Assert(!seraphimEngine.RecommendNearestCrafts("rawcode:A90H", Inventory("rawcode:0A0h"), 8,
+        navigationMode: "AlliedForces.EmergencyCall")
+    .Any(rec => catalog.Unit(rec.Route.GoalUnitId).Tier.Split('[', 2)[0].Trim() == "세라핌"),
+    "세라핌을 이미 보유하면 다른 세라핌을 추천하지 않음");
+Assert(!seraphimEngine.RecommendNearestCrafts("rawcode:A90H", [], 8,
+        navigationMode: "AlliedForces.EmergencyCall", suppressSeraphim: true)
+    .Any(rec => catalog.Unit(rec.Route.GoalUnitId).Tier.Split('[', 2)[0].Trim() == "세라핌"),
+    "그린블러드를 이미 썼으면 세라핌을 추천하지 않음");
 
 // 자동 시작 단계의 희귀함 순위: 빈 패에서는 재료 적은 순, 재료가 모이면 완성률 순.
 var fastRaresEmpty = engine.RecommendFastRares([], 5);
@@ -1494,7 +1503,7 @@ Assert(Math.Abs(UiScale.FromScreen(2160, 1.5) - 1.0) < 0.001,
 Assert(Math.Abs(UiScale.FromScreen(4320, 1.0) - 3.0) < 0.001,
     "8K 100%는 배율 3.0");
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 256/256");
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 258/258");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,
