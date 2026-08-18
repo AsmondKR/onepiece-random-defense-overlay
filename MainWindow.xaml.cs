@@ -359,6 +359,9 @@ public partial class MainWindow : Window
     {
         if (!_initialized) return;
         _settings.AutoStartGoal = AutoStartCheck.IsChecked == true;
+        RefreshAll(_settings.AutoStartGoal
+            ? "유닛 자동 추천을 켰습니다. 첫 희귀함이 잡히면 상위를 자동으로 정합니다."
+            : "유닛 자동 추천을 껐습니다. 목표 상위를 직접 선택하세요.");
     }
 
     // 자동 시작: 상위를 정하지 않고 출발한 판에서 첫 희귀함이 잡히면, 그 희귀함이
@@ -504,6 +507,10 @@ public partial class MainWindow : Window
         // 희귀함 순위를 보여준다(패스트 유니크). 첫 희귀함이 잡히면 상위 추천으로 전환.
         // 그 외에는, 패가 하나도 없으면 지원(2순위 이하) 근거가 없어 목표 카드만 남긴다.
         var rarePhase = _settings.AutoStartGoal && !_autoStartApplied;
+        // 자동 추천 단계에서는 목표가 아직 없으므로 상위 선택 칸 자체를 숨긴다(유저 요청).
+        // 첫 희귀함으로 목표가 정해지면 다시 나타나 선택된 상위를 보여준다.
+        GoalSelectLabel.Visibility = GoalSelectRow.Visibility =
+            rarePhase ? Visibility.Collapsed : Visibility.Visible;
         IReadOnlyList<Recommendation> visibleRecommendations = rarePhase
             ? _engine.RecommendFastRares(recommendationInventory)
             : recommendationInventory.Count == 0 && recommendations.Count > 1
