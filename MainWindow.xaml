@@ -30,7 +30,7 @@
             <ComboBox Grid.Column="1" x:Name="GoalCombo" DisplayMemberPath="Name"
                       SelectionChanged="GoalCombo_OnSelectionChanged" Margin="3,0,0,0"/>
           </Grid>
-          <CheckBox x:Name="AutoStartCheck" Content="첫 희귀함 보고 상위 자동 추천" Margin="3,8,0,0"
+          <CheckBox x:Name="AutoStartCheck" Content="유닛 자동 추천" Margin="3,8,0,0"
                     Checked="AutoStart_OnChanged" Unchecked="AutoStart_OnChanged"
                     ToolTip="상위를 정하지 않고 시작해도, 첫 희귀함이 잡히면 그 희귀함이 들어가는 학습된 상위 중 표본이 가장 많은 것으로 목표를 자동 전환합니다. 판이 끝나면 다시 대기합니다."/>
           <TextBlock x:Name="BuildVariantLabel" Text="빌드 방향" Style="{StaticResource FieldLabel}"
