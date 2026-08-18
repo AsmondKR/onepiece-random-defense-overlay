@@ -149,13 +149,31 @@ public sealed class UpdateService(Func<string, Task<string>>? fetcher = null,
             }
         }
 
+        // 교체 스크립트는 앱이 죽은 뒤에 돌아 실패해도 흔적이 없다 — 단계별로
+        // update.log에 남겨, 재시작 실패 환경을 원격으로 진단할 수 있게 한다.
+        var logPath = Path.Combine(AppPaths.UserDataDirectory, "update.log");
         var script = $$"""
+            function Log($m) {
+              try { Add-Content -LiteralPath '{{logPath}}' -Value ((Get-Date).ToString('HH:mm:ss') + ' ' + $m) } catch {}
+            }
+            Log 'begin {{update.Tag}}'
+            $removed = $false
             for ($i = 0; $i -lt 120; $i++) {
-              try { Remove-Item -LiteralPath '{{exePath}}' -ErrorAction Stop; break }
+              try { Remove-Item -LiteralPath '{{exePath}}' -ErrorAction Stop; $removed = $true; break }
               catch { Start-Sleep -Milliseconds 500 }
             }
-            Move-Item -LiteralPath '{{newPath}}' -Destination '{{exePath}}' -Force
-            Start-Process -FilePath '{{exePath}}'
+            Log ('removed=' + $removed)
+            try {
+              Move-Item -LiteralPath '{{newPath}}' -Destination '{{exePath}}' -Force -ErrorAction Stop
+              Log 'moved'
+            }
+            catch { Log ('move failed: ' + $_.Exception.Message) }
+            $started = $false
+            for ($i = 0; $i -lt 10; $i++) {
+              try { Start-Process -FilePath '{{exePath}}' -ErrorAction Stop; $started = $true; break }
+              catch { Start-Sleep -Seconds 1 }
+            }
+            Log ('started=' + $started)
             """;
         var encoded = Convert.ToBase64String(Encoding.Unicode.GetBytes(script));
         Process.Start(new ProcessStartInfo
