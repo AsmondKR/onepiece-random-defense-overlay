@@ -215,9 +215,8 @@ var dragonPlanForReroll = engine.RecommendNearestCrafts("dragon_legend", rareSto
 var rareRerolls = new RareRerollAdvisor(catalog).Evaluate(rareStoryInventory, dragonPlanForReroll);
 Assert(rareRerolls.Any(item => item.UnitId == "rawcode:A20h" && item.NeededCount == 1 &&
                                item.RerollCount == 1) &&
-       rareRerolls.Any(item => item.UnitId == "rawcode:X90h" && item.NeededCount == 0 &&
-                               item.RerollCount == 1),
-    "추천 조합에 필요한 희귀패는 보존하고 필요량 초과·미사용 희귀패만 리롤 후보로 계산");
+       rareRerolls.All(item => item.UnitId != "rawcode:X90h"),
+    "필요 희귀패의 초과분만 리롤 후보, 지원 스탯(이감·방깎) 있는 미사용 희귀패는 보존");
 var exactRareInventory = Inventory("rawcode:A20h");
 var exactRarePlan = engine.RecommendNearestCrafts("dragon_legend", exactRareInventory, 1);
 Assert(new RareRerollAdvisor(catalog).Evaluate(exactRareInventory, exactRarePlan)
@@ -1011,6 +1010,19 @@ Assert(reRecommended is null ||
        !reRecommended.Goal.Id.Equals(autoStartAdvice.Goal.Id, StringComparison.OrdinalIgnoreCase),
     "다시 추천은 제외한 상위를 다시 주지 않음");
 
+// 희귀패 정리: 재료 수요가 없어도 방깎·이감·스턴 등 지원 스탯이 있으면 남긴다.
+var utilityRare = catalog.AllUnits.FirstOrDefault(unit =>
+    unit.Tier.Split('[', 2)[0].Trim() == "희귀함" && RareRerollAdvisor.HasUtilityAbility(unit));
+var plainRare = catalog.AllUnits.FirstOrDefault(unit =>
+    unit.Tier.Split('[', 2)[0].Trim() == "희귀함" && !RareRerollAdvisor.HasUtilityAbility(unit));
+Assert(utilityRare is not null && plainRare is not null, "유틸/비유틸 희귀함 표본 존재");
+var rareKeepAdvice = new RareRerollAdvisor(catalog).Evaluate(
+    Inventory(utilityRare!.Id, plainRare!.Id),
+    [new Recommendation { Route = new RouteDefinition { Id = "noop", GoalUnitId = "luffy_common", Name = "루피" } }]);
+Assert(rareKeepAdvice.All(item => item.UnitId != utilityRare.Id) &&
+       rareKeepAdvice.Any(item => item.UnitId == plainRare.Id),
+    "지원 스탯 있는 희귀패는 정리 제외, 없는 것만 정리 권고");
+
 // 자동 시작 단계의 희귀함 순위: 빈 패에서는 재료 적은 순, 재료가 모이면 완성률 순.
 var fastRaresEmpty = engine.RecommendFastRares([], 5);
 Assert(fastRaresEmpty.Count == 5 && fastRaresEmpty.All(rec =>
@@ -1428,7 +1440,7 @@ Assert(Math.Abs(UiScale.FromScreen(2160, 1.5) - 1.0) < 0.001,
 Assert(Math.Abs(UiScale.FromScreen(4320, 1.0) - 3.0) < 0.001,
     "8K 100%는 배율 3.0");
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 246/246");
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 248/248");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,

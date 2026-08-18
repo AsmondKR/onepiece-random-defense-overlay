@@ -48,6 +48,10 @@ public sealed class RareRerollAdvisor(DataCatalog catalog)
         return owned
             .Select(pair => (pair.Key, Count: pair.Value, Unit: catalog.Unit(pair.Key)))
             .Where(item => BaseTier(item.Unit.Tier) == "희귀함")
+            // 재료로는 안 쓰여도 방깎·이감·스턴 같은 지원 스탯을 주는 희귀패는 패에
+            // 남길 가치가 있다(예: 마르코 희귀 = 방깎 소스) — 정리 대상에서 제외(유저 피드백).
+            .Where(item => rareDemand.GetValueOrDefault(item.Key) > 0 ||
+                           !HasUtilityAbility(item.Unit))
             .Select(item =>
             {
                 var needed = rareDemand.GetValueOrDefault(item.Key);
@@ -98,6 +102,18 @@ public sealed class RareRerollAdvisor(DataCatalog catalog)
         }
         visiting.Remove(unit.Id);
     }
+
+    // 패에 있는 것만으로 역할 목표(스턴·이감·방깎·마방깎)에 기여하는 능력들.
+    private static readonly string[] UtilityAbilityNames =
+    [
+        "스턴", "이동속도 감소", "발동이동속도 감소",
+        "방어력 감소", "발동방어력 감소", "중첩방어력 감소", "단일방어력 감소",
+        "마법 방어력 감소"
+    ];
+
+    public static bool HasUtilityAbility(UnitDefinition unit) => unit.OfficialAbilities
+        .Any(ability => UtilityAbilityNames.Contains(
+            RecommendationPresentation.SafeText(ability.Name), StringComparer.Ordinal));
 
     private static string BaseTier(string tier) => tier.Split('[', 2)[0].Trim();
 
