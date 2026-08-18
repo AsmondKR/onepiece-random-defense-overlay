@@ -1501,6 +1501,24 @@ Assert(UpdateService.ParseLatest("""{"tag_name":"v9.9.9","assets":[]}""",
         new Version(0, 2, 0)) is null,
     "exe 자산이 없으면 업데이트를 시도하지 않음");
 
+// 릴리스 페이지 302 리다이렉트 기반 확인: API 호출 제한 없이 짧은 주기로 확인한다.
+Assert(UpdateService.ParseRedirectLocation(
+        "https://github.com/AsmondKR/onepiece-random-defense-overlay/releases/tag/v9.9.9",
+        new Version(0, 2, 0)) is { Tag: "v9.9.9" } redirectInfo &&
+    redirectInfo.DownloadUrl.EndsWith("/releases/download/v9.9.9/OrandOverlay.exe",
+        StringComparison.Ordinal),
+    "리다이렉트 태그에서 새 버전과 내려받기 URL을 해석");
+Assert(UpdateService.ParseRedirectLocation(
+        "https://github.com/AsmondKR/onepiece-random-defense-overlay/releases/tag/v0.2.0",
+        new Version(0, 2, 0)) is null,
+    "리다이렉트 태그가 같은 버전이면 업데이트 아님");
+Assert(UpdateService.ParseRedirectLocation(
+        "https://github.com/AsmondKR/onepiece-random-defense-overlay/releases",
+        new Version(0, 2, 0)) is null,
+    "태그 리다이렉트가 아니면 무시");
+Assert(UpdateService.ParseRedirectLocation(null, new Version(0, 2, 0)) is null,
+    "리다이렉트 응답이 없으면 무시");
+
 // 해상도별 UI 자동 배율: 2K(논리 1440) 기준 1.0, 더 큰 화면만 비례 확대.
 Assert(Math.Abs(UiScale.FromScreen(1440, 1.0) - 1.0) < 0.001,
     "2K 100%는 배율 1.0 (기준 크기 유지)");
@@ -1513,7 +1531,7 @@ Assert(Math.Abs(UiScale.FromScreen(2160, 1.5) - 1.0) < 0.001,
 Assert(Math.Abs(UiScale.FromScreen(4320, 1.0) - 3.0) < 0.001,
     "8K 100%는 배율 3.0");
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 260/260");
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 264/264");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,

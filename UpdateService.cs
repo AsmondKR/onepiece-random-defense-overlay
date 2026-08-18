@@ -13,12 +13,15 @@ public sealed record UpdateInfo(Version Latest, string Tag, string DownloadUrl);
 /// 실행 중일 때만 새 exe를 내려받아 교체·재시작한다. 다중 파일 배포(publish 폴더)로
 /// 실행 중이면 릴리스 페이지만 연다. 확인 실패는 조용히 무시한다(오프라인 등).
 /// </summary>
-public sealed class UpdateService(Func<string, Task<string>>? fetcher = null)
+public sealed class UpdateService(Func<string, Task<string>>? fetcher = null,
+    Func<string, Task<string?>>? redirectLocator = null)
 {
     public const string LatestApiUrl =
         "https://api.github.com/repos/AsmondKR/onepiece-random-defense-overlay/releases/latest";
     public const string ReleasesPageUrl =
         "https://github.com/AsmondKR/onepiece-random-defense-overlay/releases/latest";
+    public const string DownloadUrlPrefix =
+        "https://github.com/AsmondKR/onepiece-random-defense-overlay/releases/download/";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -26,6 +29,7 @@ public sealed class UpdateService(Func<string, Task<string>>? fetcher = null)
     };
 
     private readonly Func<string, Task<string>> _fetch = fetcher ?? FetchViaHttp;
+    private readonly Func<string, Task<string?>> _locateRedirect = redirectLocator ?? LocateRedirectViaHttp;
 
     public static Version CurrentVersion =>
         Assembly.GetExecutingAssembly().GetName().Version ?? new Version(0, 0, 0);
@@ -36,6 +40,22 @@ public sealed class UpdateService(Func<string, Task<string>>? fetcher = null)
     /// <summary>수동 확인용: "업데이트 없음"과 "확인 실패(네트워크 등)"를 구분해 준다.</summary>
     public async Task<(UpdateInfo? Update, bool Failed)> CheckDetailedAsync()
     {
+        // 1차: 릴리스 페이지의 302 리다이렉트에서 최신 태그를 읽는다. API(비인증 시간당
+        // 60회/IP)와 달리 제한 부담이 없어 확인 주기를 짧게 잡아도 안전하다 — PC방처럼
+        // 여러 유저가 한 IP를 공유하는 환경 포함. exe 주소는 태그로 규칙적으로 만든다.
+        try
+        {
+            var location = await _locateRedirect(ReleasesPageUrl).ConfigureAwait(false);
+            if (ParseRedirectLocation(location, CurrentVersion) is { } fromRedirect)
+                return (fromRedirect, false);
+            if (location is { Length: > 0 } &&
+                location.Contains("/releases/tag/", StringComparison.OrdinalIgnoreCase))
+                return (null, false); // 태그를 정상적으로 읽었고, 새 버전이 아니다.
+        }
+        catch
+        {
+            // 아래 API 폴백으로 넘어간다.
+        }
         try
         {
             var json = await _fetch(LatestApiUrl).ConfigureAwait(false);
@@ -45,6 +65,32 @@ public sealed class UpdateService(Func<string, Task<string>>? fetcher = null)
         {
             return (null, true);
         }
+    }
+
+    /// <summary>릴리스 페이지 리다이렉트의 Location URL에서 태그를 읽어 업데이트 정보를 만든다.</summary>
+    public static UpdateInfo? ParseRedirectLocation(string? location, Version current)
+    {
+        const string marker = "/releases/tag/";
+        if (location is not { Length: > 0 }) return null;
+        var index = location.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+        if (index < 0) return null;
+        var tag = Uri.UnescapeDataString(location[(index + marker.Length)..].Trim('/'));
+        if (tag.Length == 0 || tag.Contains('/')) return null;
+        if (!Version.TryParse(tag.TrimStart('v', 'V'), out var latest)) return null;
+        var normalizedLatest = Normalize(latest);
+        if (normalizedLatest <= Normalize(current)) return null;
+        return new UpdateInfo(normalizedLatest, tag,
+            DownloadUrlPrefix + Uri.EscapeDataString(tag) + "/OrandOverlay.exe");
+    }
+
+    private static async Task<string?> LocateRedirectViaHttp(string url)
+    {
+        using var handler = new HttpClientHandler { AllowAutoRedirect = false };
+        using var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(15) };
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("OrandOverlay-Updater");
+        using var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead)
+            .ConfigureAwait(false);
+        return response.Headers.Location?.ToString();
     }
 
     /// <summary>최신 릴리스 JSON을 해석해 현재 버전보다 높을 때만 업데이트 정보를 준다.</summary>

@@ -18,7 +18,9 @@ public partial class MainWindow : Window
     private readonly Dictionary<string, InventoryEntry> _automatic = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, InventoryEntry> _manual = new(StringComparer.OrdinalIgnoreCase);
     private readonly DispatcherTimer _timer = new();
-    private readonly DispatcherTimer _updateTimer = new() { Interval = TimeSpan.FromMinutes(10) };
+    // 릴리스 확인은 API가 아니라 리다이렉트 태그 조사라 호출 제한 부담이 없다 — 2분이면
+    // 새 릴리스가 몇 분 안에 전 유저에게 퍼진다.
+    private readonly DispatcherTimer _updateTimer = new() { Interval = TimeSpan.FromMinutes(2) };
     private bool _updateBusy;
     private string? _updateNoticeTag;
     private RecommendationEngine _engine = null!;
@@ -218,7 +220,7 @@ public partial class MainWindow : Window
         await InstallUpdateAsync(service, update);
     }
 
-    // 10분 주기 확인이 같은 안내를 footer에 반복해서 쓰지 않게 태그당 1회만 알린다.
+    // 주기 확인이 같은 안내를 footer에 반복해서 쓰지 않게 태그당 1회만 알린다.
     private async Task NotifyUpdateOnceAsync(string tag, string message)
     {
         if (tag.Equals(_updateNoticeTag, StringComparison.OrdinalIgnoreCase)) return;
