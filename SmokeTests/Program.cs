@@ -1091,10 +1091,10 @@ var settlement = SettlementReport.Build(catalog,
     Inventory("rawcode:I70h", "rawcode:3A0h", "rawcode:340h", "luffy_common"));
 Assert(settlement.Contains("제한됨 1기") && settlement.Contains("세라핌 1기") &&
        settlement.Contains("히든 1기") && settlement.Contains("합계 3기") &&
-       settlement.Contains("전설 환산") && !settlement.Contains("루피"),
-    "정산은 상위·전설급만 티어별로 집계하고 전설 환산을 표시");
-Assert(SettlementReport.LegendEquivalent(catalog, catalog.Unit("rawcode:3A0h")) == (0, 1),
-    "S-호크의 전설 환산은 미호크 히든 1히");
+       settlement.Contains("전 짰습니다") && !settlement.Contains("루피"),
+    "정산은 상위·전설급만 티어별로 집계하고 총 전설 환산 한 줄로 요약");
+Assert(SettlementReport.LegendEquivalent(catalog, catalog.Unit("rawcode:3A0h")) == 1,
+    "S-호크의 전설 환산은 1전(미호크 히든)");
 
 // 자동 시작 단계의 희귀함 순위: 빈 패에서는 재료 적은 순, 재료가 모이면 완성률 순.
 var fastRaresEmpty = engine.RecommendFastRares([], 5);
