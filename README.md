@@ -52,23 +52,6 @@
 클리어 기록이 충분히 쌓인 상위 유닛만 목표로 고를 수 있게 되어 있습니다(현재 78종).
 데이터가 없는 유닛을 억지로 추천하지 않기 위해서입니다.
 
-## 개발자용
-
-.NET 8 WPF 프로젝트입니다.
-
-```bash
-dotnet build -c Release
-dotnet run --project SmokeTests -c Release   # 테스트 226종
-
-# 배포용 단일 exe
-dotnet publish -c Release -r win-x64 --self-contained true \
-  -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true \
-  -p:IncludeAllContentForSelfExtract=true -p:EnableCompressionInSingleFile=true \
-  -o publish-single
-```
-
-앱 실행 중이라 bin 폴더가 잠겼다면 `-p:BaseOutputPath=bin-verify/`를 붙이면 됩니다.
-
 ## 고지
 
 비공식 팬 도구입니다. 원피스 랜덤 디펜스 제작진, 티모지지(TMO.GG)와 아무 관련이

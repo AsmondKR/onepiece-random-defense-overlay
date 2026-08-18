@@ -601,28 +601,15 @@ public partial class MainWindow : Window
         Grid.SetColumn(text, 1);
         row.Children.Add(text);
 
-        // 남은 제작 수량은 우측 진행도 열로 모아 좌측 텍스트 밀집을 푼다.
-        var progress = new StackPanel
-        {
-            VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(10, 0, 0, 0)
-        };
-        progress.Children.Add(new TextBlock
+        var progress = new TextBlock
         {
             Text = $"보유 {node.OwnedCount}/{node.RequiredCount}",
             Foreground = new SolidColorBrush(Color.FromRgb(251, 191, 36)),
             FontSize = 14,
             FontWeight = FontWeights.SemiBold,
-            TextAlignment = TextAlignment.Right
-        });
-        progress.Children.Add(new TextBlock
-        {
-            Text = $"남은 ×{node.MissingCount}",
-            Foreground = new SolidColorBrush(Color.FromRgb(148, 163, 184)),
-            FontSize = 10,
-            TextAlignment = TextAlignment.Right,
-            Margin = new Thickness(0, 1, 0, 0)
-        });
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(10, 0, 0, 0)
+        };
         Grid.SetColumn(progress, 2);
         row.Children.Add(progress);
         return new Border
