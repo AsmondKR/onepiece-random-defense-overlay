@@ -30,18 +30,9 @@
             <ComboBox Grid.Column="1" x:Name="GoalCombo" DisplayMemberPath="Name"
                       SelectionChanged="GoalCombo_OnSelectionChanged" Margin="3,0,0,0"/>
           </Grid>
-          <Grid Margin="0,8,0,0">
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="*"/>
-              <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-            <CheckBox x:Name="AutoStartCheck" Content="유닛 자동 추천" Margin="3,0,0,0" VerticalAlignment="Center"
-                      Checked="AutoStart_OnChanged" Unchecked="AutoStart_OnChanged"
-                      ToolTip="상위를 정하지 않고 시작해도, 첫 희귀함이 잡히면 그 희귀함이 들어가는 학습된 상위 중 표본이 가장 많은 것으로 목표를 자동 전환합니다. 판이 끝나면 다시 대기합니다."/>
-            <Button Grid.Column="1" Content="다시 추천" Click="ReRecommend_OnClick"
-                    Style="{StaticResource SubtleButton}"
-                    ToolTip="추천받은 상위가 마음에 안 들면 누르세요. 지금 패 기준으로 현재 목표를 제외한 다음 후보를 추천하며, 누를 때마다 다음 후보로 넘어갑니다. 판이 끝나면 초기화됩니다."/>
-          </Grid>
+          <CheckBox x:Name="AutoStartCheck" Content="유닛 자동 추천" Margin="3,8,0,0"
+                    Checked="AutoStart_OnChanged" Unchecked="AutoStart_OnChanged"
+                    ToolTip="상위를 정하지 않고 시작해도, 첫 희귀함이 잡히면 그 희귀함이 들어가는 학습된 상위 중 표본이 가장 많은 것으로 목표를 자동 전환합니다. 판이 끝나면 다시 대기합니다."/>
           <TextBlock x:Name="BuildVariantLabel" Text="빌드 방향" Style="{StaticResource FieldLabel}"
                      Margin="0,12,0,0" Visibility="Collapsed"/>
           <ComboBox x:Name="BuildVariantCombo" DisplayMemberPath="Name"
@@ -123,6 +114,8 @@
           <TextBlock x:Name="DataVersionText" Foreground="#FF7F8796" FontSize="11" Margin="0,4,0,0"/>
         </StackPanel>
         <StackPanel Grid.Column="1" Orientation="Horizontal">
+          <Button Content="다시 추천" Click="ReRecommend_OnClick" Background="#FF6D4CE0"
+                  ToolTip="추천받은 상위가 마음에 안 들면 누르세요. 지금 패 기준으로 현재 목표를 제외한 다음 후보를 추천하며, 누를 때마다 다음 후보로 넘어갑니다. 판이 끝나면 초기화됩니다."/>
           <Button x:Name="OverlayButton" Content="오버레이 숨기기" Click="ToggleOverlay_OnClick"/>
         </StackPanel>
       </Grid>
