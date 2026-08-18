@@ -100,6 +100,8 @@ public sealed class RecipeCraftStep
     public List<RecipeCraftIngredient> Ingredients { get; init; } = [];
     // 맵에서 추출한 이 유닛의 조합 스킬 단축키(미상이면 null).
     public string? CombineKey { get; init; }
+    // 현재 패 기준 이 단계(남은 수량)의 재료 완성률(0~1). 드릴다운 % 표시용.
+    public double CompletionRatio { get; init; }
 
     [JsonIgnore]
     public int MissingCount => Math.Max(0, RequiredCount - OwnedCount);

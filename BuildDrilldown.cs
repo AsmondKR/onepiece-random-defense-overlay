@@ -16,6 +16,11 @@ public static class BuildDrilldown
         var steps = item.RemainingCraftSteps;
         if (item.RecipeTree is null || steps.Count == 0)
             return ([], steps);
+        // 목표 티어에 따라 묶는 단계가 다르다: 상위 목표는 전설·히든 → 희귀함,
+        // 희귀함 목표(자동 시작 단계)는 특별함 단계를 묶는다(유저 요청).
+        var rareGoal = BaseTier(item.RecipeTree.Tier) == "희귀함";
+        string[] groupTiers = rareGoal ? ["특별함"] : ["전설", "히든"];
+        string[] childTiers = rareGoal ? [] : ["희귀함"];
         var stepsByUnit = steps
             .GroupBy(step => step.UnitId, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.First(),
@@ -23,49 +28,51 @@ public static class BuildDrilldown
 
         var legends = new List<LegendGroup>();
         var nested = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        CollectLegends(item.RecipeTree, stepsByUnit, legends, nested,
+        CollectGroups(item.RecipeTree, stepsByUnit, groupTiers, childTiers, legends, nested,
             new HashSet<string>(StringComparer.OrdinalIgnoreCase));
         var others = steps.Where(step => !nested.Contains(step.UnitId)).ToList();
         return (legends, others);
     }
 
-    private static void CollectLegends(RecipeTreeNode node,
+    private static void CollectGroups(RecipeTreeNode node,
         IReadOnlyDictionary<string, RecipeCraftStep> stepsByUnit,
-        List<LegendGroup> legends, ISet<string> nested, ISet<string> visitedLegends)
+        string[] groupTiers, string[] childTiers,
+        List<LegendGroup> legends, ISet<string> nested, ISet<string> visitedGroups)
     {
         foreach (var child in node.Children)
         {
-            if (IsLegendTier(child.Tier) &&
-                stepsByUnit.TryGetValue(child.UnitId, out var legendStep))
+            if (groupTiers.Contains(BaseTier(child.Tier), StringComparer.Ordinal) &&
+                stepsByUnit.TryGetValue(child.UnitId, out var groupStep))
             {
-                if (visitedLegends.Add(child.UnitId))
+                if (visitedGroups.Add(child.UnitId))
                 {
-                    var rares = new List<RecipeCraftStep>();
-                    CollectRares(child, stepsByUnit, rares,
-                        new HashSet<string>(StringComparer.OrdinalIgnoreCase));
-                    legends.Add(new LegendGroup(legendStep, rares));
+                    var children = new List<RecipeCraftStep>();
+                    if (childTiers.Length > 0)
+                        CollectChildren(child, stepsByUnit, childTiers, children,
+                            new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+                    legends.Add(new LegendGroup(groupStep, children));
                     nested.Add(child.UnitId);
-                    foreach (var rare in rares) nested.Add(rare.UnitId);
+                    foreach (var nestedChild in children) nested.Add(nestedChild.UnitId);
                 }
                 continue;
             }
-            CollectLegends(child, stepsByUnit, legends, nested, visitedLegends);
+            CollectGroups(child, stepsByUnit, groupTiers, childTiers, legends, nested, visitedGroups);
         }
     }
 
-    private static void CollectRares(RecipeTreeNode node,
+    private static void CollectChildren(RecipeTreeNode node,
         IReadOnlyDictionary<string, RecipeCraftStep> stepsByUnit,
-        List<RecipeCraftStep> rares, ISet<string> seen)
+        string[] childTiers, List<RecipeCraftStep> children, ISet<string> seen)
     {
         foreach (var child in node.Children)
         {
-            if (IsRareTier(child.Tier) &&
-                stepsByUnit.TryGetValue(child.UnitId, out var rareStep))
+            if (childTiers.Contains(BaseTier(child.Tier), StringComparer.Ordinal) &&
+                stepsByUnit.TryGetValue(child.UnitId, out var childStep))
             {
-                if (seen.Add(child.UnitId)) rares.Add(rareStep);
+                if (seen.Add(child.UnitId)) children.Add(childStep);
                 continue;
             }
-            CollectRares(child, stepsByUnit, rares, seen);
+            CollectChildren(child, stepsByUnit, childTiers, children, seen);
         }
     }
 

@@ -39,7 +39,6 @@ public partial class MainWindow : Window
     private bool _automaticDisconnected;
     private bool _liveSessionActive;
     private bool _autoStartApplied;
-    private readonly HashSet<string> _rejectedGoals = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _expandedBuildNodes = new(StringComparer.OrdinalIgnoreCase);
     private bool _relockAfterMove;
     private bool _updatingSelections;
@@ -366,19 +365,19 @@ public partial class MainWindow : Window
         _autoStartApplied = true;
         if (advice.Goal.Id.Equals(SelectedGoal?.Id, StringComparison.OrdinalIgnoreCase))
             return null;
-        return ApplyGoalAdvice(advice,
+        return ApplyGoalAdvice(advice.Goal,
             $"첫 희귀함 {advice.Rare.Name} 감지 — 신+ {advice.Samples:#,0}판 학습된 " +
             $"{advice.Goal.Name}(으)로 목표를 자동 전환했습니다.");
     }
 
-    private string ApplyGoalAdvice(AutoStartAdvisor.Advice advice, string prefix)
+    private string ApplyGoalAdvice(UnitDefinition goal, string prefix)
     {
         _autoStartApplied = true;
-        RepopulateGoalChoices(advice.Goal.Id);
+        RepopulateGoalChoices(goal.Id);
         RepopulateNavigationChoices();
         RepopulateBuildVariants();
         var navigationNote = "";
-        if (RecommendNavigationForGoal(advice.Goal) is { } navigationPick &&
+        if (RecommendNavigationForGoal(goal) is { } navigationPick &&
             (NavigationCombo.SelectedItem as NavigationOption)?.Id != navigationPick.Option.Id)
         {
             SelectNavigation(navigationPick.Option);
@@ -387,33 +386,39 @@ public partial class MainWindow : Window
         return prefix + navigationNote;
     }
 
-    // 추천받은 상위가 마음에 안 들 때: 지금 패 기준으로 현재 목표를 제외한 다음
-    // 후보를 추천한다. 누를 때마다 제외 목록이 쌓여 후보를 순환하고, 다 돌면
-    // 처음부터 다시 돈다. 판이 끝나면 초기화된다.
+    // 다시 추천: 지금 패 기준으로 조합이 가장 가까운(완성률 최고) 학습 상위를
+    // 다시 계산해 추천한다. 동률이면 신+ 표본이 많은 쪽을 고른다(유저 요청).
     private void ReRecommend_OnClick(object sender, RoutedEventArgs e)
     {
-        if (!_initialized || !_clearStats.HasData) return;
-        if (SelectedGoal is { } currentGoal) _rejectedGoals.Add(currentGoal.Id);
-        var ownedIds = CombinedInventory()
+        if (!_initialized) return;
+        var counts = CombinedInventory()
             .Where(entry => entry.Count > 0)
-            .Select(entry => entry.UnitId)
-            .ToList();
-        var advice = AutoStartAdvisor.RecommendGoal(_catalog, _clearStats, ownedIds, _rejectedGoals);
-        if (advice is null && _rejectedGoals.Count > 1)
+            .GroupBy(entry => entry.UnitId, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.Sum(entry => entry.Count),
+                StringComparer.OrdinalIgnoreCase);
+        var calculator = new RecipeCompletionCalculator(_catalog.Unit);
+        var best = GoalUnits()
+            .Select(unit => (Unit: unit,
+                Ratio: calculator.Calculate([unit.Id], counts).CompletionRatio,
+                Samples: LearnedSelection.GoalSampleCount(_clearStats, unit)))
+            .OrderByDescending(pair => pair.Ratio)
+            .ThenByDescending(pair => pair.Samples)
+            .FirstOrDefault();
+        if (best.Unit is null)
         {
-            var keep = SelectedGoal?.Id;
-            _rejectedGoals.Clear();
-            if (keep is not null) _rejectedGoals.Add(keep);
-            advice = AutoStartAdvisor.RecommendGoal(_catalog, _clearStats, ownedIds, _rejectedGoals);
-        }
-        if (advice is null)
-        {
-            RefreshAll("현재 패의 희귀함으로 갈 수 있는 다른 학습 상위가 없습니다. 희귀함이 더 잡히면 다시 눌러보세요.");
+            RefreshAll("학습된 상위가 없어 추천할 수 없습니다.");
             return;
         }
-        var message = ApplyGoalAdvice(advice,
-            $"다시 추천: {advice.Rare.Name} 기준 신+ {advice.Samples:#,0}판 학습된 {advice.Goal.Name}.");
-        RefreshAll(message);
+        _autoStartApplied = true;
+        var percent = Math.Round(best.Ratio * 100, MidpointRounding.AwayFromZero);
+        if (best.Unit.Id.Equals(SelectedGoal?.Id, StringComparison.OrdinalIgnoreCase))
+        {
+            RefreshAll($"지금 패 기준 최적 상위도 {best.Unit.Name}입니다 (완성률 {percent:0}퍼센트).");
+            return;
+        }
+        RefreshAll(ApplyGoalAdvice(best.Unit,
+            $"다시 추천: 지금 패로 가장 가까운 상위 {best.Unit.Name} " +
+            $"(완성률 {percent:0}퍼센트 · 신+ {best.Samples:#,0}판 학습)."));
     }
 
     // 항법 추천: 클리어 API에 항법 필드가 없어 직접 학습은 불가 — 상위 기수 스코프
@@ -837,15 +842,23 @@ public partial class MainWindow : Window
     private UIElement BuildLegendDrill(string routeId, BuildDrilldown.LegendGroup group, int number)
     {
         var card = BuildRemainingRecipeCard(group.Step, number);
-        if (group.Rares.Count == 0) return card;
         var key = routeId + "|" + group.Step.UnitId;
-        var children = new StackPanel { Margin = new Thickness(16, 0, 0, 4) };
-        foreach (var rare in group.Rares)
-            children.Children.Add(BuildRareDrill(key, rare));
+        UIElement content;
+        if (group.Rares.Count > 0)
+        {
+            var children = new StackPanel { Margin = new Thickness(16, 0, 0, 4) };
+            foreach (var rare in group.Rares)
+                children.Children.Add(BuildRareDrill(key, rare));
+            content = children;
+        }
+        else
+        {
+            content = BuildIngredientDetail(group.Step);
+        }
         var expander = new Expander
         {
             Header = card,
-            Content = children,
+            Content = content,
             IsExpanded = _expandedBuildNodes.Contains(key),
             HorizontalContentAlignment = HorizontalAlignment.Stretch
         };
@@ -907,15 +920,28 @@ public partial class MainWindow : Window
         Grid.SetColumn(text, 1);
         row.Children.Add(text);
 
-        var progress = new TextBlock
+        var progress = new StackPanel
         {
-            Text = $"보유 {node.OwnedCount}/{node.RequiredCount}",
-            Foreground = new SolidColorBrush(Color.FromRgb(251, 191, 36)),
-            FontSize = 14,
-            FontWeight = FontWeights.SemiBold,
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(10, 0, 0, 0)
         };
+        progress.Children.Add(new TextBlock
+        {
+            Text = $"{Math.Round(node.CompletionRatio * 100, MidpointRounding.AwayFromZero):0}%",
+            Foreground = new SolidColorBrush(Color.FromRgb(196, 181, 253)),
+            FontSize = 14,
+            FontWeight = FontWeights.SemiBold,
+            TextAlignment = TextAlignment.Right
+        });
+        progress.Children.Add(new TextBlock
+        {
+            Text = $"보유 {node.OwnedCount}/{node.RequiredCount}",
+            Foreground = new SolidColorBrush(Color.FromRgb(251, 191, 36)),
+            FontSize = 11,
+            FontWeight = FontWeights.SemiBold,
+            TextAlignment = TextAlignment.Right,
+            Margin = new Thickness(0, 1, 0, 0)
+        });
         Grid.SetColumn(progress, 2);
         row.Children.Add(progress);
         return new Border
@@ -1141,7 +1167,6 @@ public partial class MainWindow : Window
                 {
                     _liveSessionActive = false;
                     _autoStartApplied = false;
-                    _rejectedGoals.Clear();
                     _completedTopUnits.Reset();
                     _greenBloodUsage.Reset();
                 }

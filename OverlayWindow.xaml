@@ -28,7 +28,7 @@
         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
           <Button Content="다시 추천" Click="ReRecommendButton_OnClick"
                   Style="{StaticResource SubtleButton}" Margin="0,0,6,0"
-                  ToolTip="지금 패 기준으로 현재 목표를 제외한 다음 후보 상위를 추천합니다."/>
+                  ToolTip="지금 패 기준으로 조합이 가장 가까운 학습 상위를 다시 계산해 추천합니다."/>
           <Border x:Name="ClickThroughBadge" Visibility="Collapsed"
                   Background="#33334155" CornerRadius="9" Padding="8,3" VerticalAlignment="Center">
             <TextBlock Text="클릭 통과" Foreground="#FF9CA3AF" FontSize="10"/>

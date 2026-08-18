@@ -1003,11 +1003,6 @@ Assert(AutoStartAdvisor.RequiresUnit(catalog, autoStartAdvice.Goal, autoStartRar
     "자동 시작 추천 상위는 그 희귀함을 재료로 쓰고 학습 표본을 충족");
 Assert(AutoStartAdvisor.RecommendGoal(catalog, bundledStats, ["luffy_common"]) is null,
     "희귀함이 없으면 자동 시작 추천 없음");
-var reRecommended = AutoStartAdvisor.RecommendGoal(catalog, bundledStats, [autoStartRare.Id],
-    [autoStartAdvice.Goal.Id]);
-Assert(reRecommended is null ||
-       !reRecommended.Goal.Id.Equals(autoStartAdvice.Goal.Id, StringComparison.OrdinalIgnoreCase),
-    "다시 추천은 제외한 상위를 다시 주지 않음");
 
 // 희귀패 정리: 재료 수요가 없어도 ① 지원 스탯이 있거나 ② 지원 스탯 전설·히든의
 // 재료면 남긴다(마르코 → 에이스 전설 방깎33 사례).
@@ -1050,6 +1045,28 @@ Assert(drillLegends.Any(group => group.Rares.Count > 0) &&
        drillLegends.SelectMany(group => group.Rares)
            .All(step => BuildDrilldown.IsRareTier(step.Tier)),
     "전설을 펼치면 그 트리의 희귀함 단계가 나온다");
+var rareDrill = engine.RecommendFastRares([], 50)
+    .Select(BuildDrilldown.Build)
+    .FirstOrDefault(result => result.Legends.Count > 0);
+Assert(rareDrill.Legends is { Count: > 0 } specialGroups &&
+       specialGroups.All(group => group.Step.Tier.Split('[', 2)[0].Trim() == "특별함"),
+    "희귀함 카드 드릴다운은 특별함 단계를 묶어 보여줌");
+
+// 세라핌 기물 추천: 그린블러드 1개 레시피로 편입, 목표별 채용률 최고 세라핌 포함.
+// 세라핌 포함은 클리어 프로필이 있어야 작동하므로 학습 엔진으로 검증한다.
+var seraphimEngine = new RecommendationEngine(catalog, bundledStats);
+var jinbeWithBlood = seraphimEngine.RecommendNearestCrafts("rawcode:A90H",
+    [new InventoryEntry { UnitId = "item_greenblood", Count = 1, Confidence = 1 }], 8,
+    navigationMode: "AlliedForces.EmergencyCall");
+Assert(jinbeWithBlood.Any(rec =>
+        rec.Route.GoalUnitId.Equals("rawcode:3A0h", StringComparison.OrdinalIgnoreCase) &&
+        rec.RecipeProgress.CompletionRatio >= 0.999),
+    "징베는 S-호크 세라핌을 추천하고 그린블러드 보유 시 100퍼센트");
+Assert(seraphimEngine.RecommendNearestCrafts("rawcode:H90H",
+        [new InventoryEntry { UnitId = "item_greenblood", Count = 1, Confidence = 1 }], 8,
+        navigationMode: "AlliedForces.EmergencyCall")
+    .Any(rec => rec.Route.GoalUnitId.Equals("rawcode:1A0h", StringComparison.OrdinalIgnoreCase)),
+    "상디는 S-베어 세라핌을 추천");
 
 // 자동 시작 단계의 희귀함 순위: 빈 패에서는 재료 적은 순, 재료가 모이면 완성률 순.
 var fastRaresEmpty = engine.RecommendFastRares([], 5);
@@ -1468,7 +1485,7 @@ Assert(Math.Abs(UiScale.FromScreen(2160, 1.5) - 1.0) < 0.001,
 Assert(Math.Abs(UiScale.FromScreen(4320, 1.0) - 3.0) < 0.001,
     "8K 100%는 배율 3.0");
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 252/252");
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 254/254");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,

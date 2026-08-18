@@ -10,7 +10,7 @@ public static class AutoStartAdvisor
     public sealed record Advice(UnitDefinition Goal, UnitDefinition Rare, long Samples);
 
     public static Advice? RecommendGoal(DataCatalog catalog, ClearBuildStats? stats,
-        IEnumerable<string> ownedUnitIds, IReadOnlyCollection<string>? excludeGoalIds = null)
+        IEnumerable<string> ownedUnitIds)
     {
         if (stats is null || !stats.HasData) return null;
         var rares = ownedUnitIds
@@ -27,7 +27,6 @@ public static class AutoStartAdvisor
         foreach (var rare in rares)
         foreach (var top in tops)
         {
-            if (excludeGoalIds?.Contains(top.Id) == true) continue;
             if (!RequiresUnit(catalog, top, rare.Id)) continue;
             var samples = LearnedSelection.GoalSampleCount(stats, top);
             if (samples < ClearBuildStats.MinimumGoalSamples) continue;

@@ -809,15 +809,23 @@ public partial class OverlayWindow : Window
     private UIElement LegendDrill(string routeId, BuildDrilldown.LegendGroup group, int number)
     {
         var card = RemainingRecipeCard(group.Step, number);
-        if (group.Rares.Count == 0) return card;
         var key = routeId + "|" + group.Step.UnitId;
-        var children = new StackPanel { Margin = new Thickness(14, 0, 0, 4) };
-        foreach (var rare in group.Rares)
-            children.Children.Add(RareDrill(key, rare));
+        UIElement content;
+        if (group.Rares.Count > 0)
+        {
+            var children = new StackPanel { Margin = new Thickness(14, 0, 0, 4) };
+            foreach (var rare in group.Rares)
+                children.Children.Add(RareDrill(key, rare));
+            content = children;
+        }
+        else
+        {
+            content = IngredientDetail(group.Step);
+        }
         var expander = new Expander
         {
             Header = card,
-            Content = children,
+            Content = content,
             IsExpanded = _expandedBuildNodes.Contains(key),
             HorizontalContentAlignment = HorizontalAlignment.Stretch
         };
@@ -879,15 +887,28 @@ public partial class OverlayWindow : Window
         Grid.SetColumn(text, 1);
         row.Children.Add(text);
 
-        var progress = new TextBlock
+        var progress = new StackPanel
         {
-            Text = $"{node.OwnedCount}/{node.RequiredCount}",
-            Foreground = new SolidColorBrush(Color.FromRgb(251, 191, 36)),
-            FontSize = 15,
-            FontWeight = FontWeights.SemiBold,
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(10, 0, 0, 0)
         };
+        progress.Children.Add(new TextBlock
+        {
+            Text = $"{Math.Round(node.CompletionRatio * 100, MidpointRounding.AwayFromZero):0}%",
+            Foreground = new SolidColorBrush(Color.FromRgb(196, 181, 253)),
+            FontSize = 14,
+            FontWeight = FontWeights.SemiBold,
+            TextAlignment = TextAlignment.Right
+        });
+        progress.Children.Add(new TextBlock
+        {
+            Text = $"{node.OwnedCount}/{node.RequiredCount}",
+            Foreground = new SolidColorBrush(Color.FromRgb(251, 191, 36)),
+            FontSize = 11,
+            FontWeight = FontWeights.SemiBold,
+            TextAlignment = TextAlignment.Right,
+            Margin = new Thickness(0, 1, 0, 0)
+        });
         Grid.SetColumn(progress, 2);
         row.Children.Add(progress);
         return new Border

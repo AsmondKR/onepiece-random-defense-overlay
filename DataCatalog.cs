@@ -113,12 +113,20 @@ public sealed class DataCatalog
         return KoreanUnit(enriched);
     }
 
-    private Dictionary<string, int> RecipeFor(RawcodeCatalogEntry entry) => entry.Recipe
-        .Where(item => item.Count > 0 && !string.IsNullOrWhiteSpace(item.Id))
-        .Select(item => (UnitId: _unitIdsByRawcode.GetValueOrDefault(item.Id, "rawcode:" + item.Id), item.Count))
-        .GroupBy(item => item.UnitId, StringComparer.OrdinalIgnoreCase)
-        .ToDictionary(group => group.Key, group => group.Sum(item => item.Count),
-            StringComparer.OrdinalIgnoreCase);
+    private Dictionary<string, int> RecipeFor(RawcodeCatalogEntry entry)
+    {
+        var recipe = entry.Recipe
+            .Where(item => item.Count > 0 && !string.IsNullOrWhiteSpace(item.Id))
+            .Select(item => (UnitId: _unitIdsByRawcode.GetValueOrDefault(item.Id, "rawcode:" + item.Id), item.Count))
+            .GroupBy(item => item.UnitId, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.Sum(item => item.Count),
+                StringComparer.OrdinalIgnoreCase);
+        // 세라핌은 재료 조합이 아니라 그린블러드 소모로 제작된다. 조합 추천·완성률
+        // 계산에 태우기 위해 합성 레시피(그린블러드 1)를 부여한다(유저 요청).
+        if (recipe.Count == 0 && entry.Tier.Split('[', 2)[0].Trim() == "세라핌")
+            recipe["item_greenblood"] = 1;
+        return recipe;
+    }
 
     private static List<UnitAbilityDisplay> AbilitiesFor(RawcodeCatalogEntry entry) => entry.Abilities
         .Select(pair => new UnitAbilityDisplay

@@ -228,6 +228,40 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
         var visibleGoal = showGoal ? [goalSuggestion] : Enumerable.Empty<Recommendation>();
         var results = visibleGoal.Concat(nearest).Take(Math.Max(1, take)).ToList();
 
+        // 세라핌은 역할 지표(스턴·이감·방깎)가 없어 파이프라인이 집지 못한다.
+        // 현재 목표 채용률이 충분한(10%+) 최고 세라핌 1기를, 역할 구성(스턴 페어 등)을
+        // 밀어내지 않도록 목록에 '추가'로 끼워 넣는다(실측: 징베 S-호크 48%,
+        // 상디 S-베어 34% — 목표별로 만드는 세라핌이 갈린다).
+        if (_activeClearProfile is { } seraphimProfile)
+        {
+            var bestSeraphim = catalog.AllUnits
+                .Where(unit => unit.Tier.Split('[', 2)[0].Trim() == "세라핌")
+                .DistinctBy(unit => unit.Id)
+                .Where(unit => counts.GetValueOrDefault(unit.Id) <= 0)
+                .Select(unit => (Unit: unit, Share: unit.Rawcodes
+                    .Select(code => seraphimProfile.SupportShare.GetValueOrDefault(code))
+                    .DefaultIfEmpty()
+                    .Max()))
+                .Where(pair => pair.Share >= 0.10)
+                .OrderByDescending(pair => pair.Share)
+                .FirstOrDefault();
+            if (bestSeraphim.Unit is not null && !results.Any(recommendation =>
+                    recommendation.Route.GoalUnitId.Equals(bestSeraphim.Unit.Id,
+                        StringComparison.OrdinalIgnoreCase)))
+            {
+                var seraphimScore = CommunityPriorityScore(goal, bestSeraphim.Unit);
+                var insertAt = results.Count;
+                for (var i = showGoal ? 1 : 0; i < results.Count; i++)
+                {
+                    if (CommunityPriorityScore(goal,
+                            catalog.Unit(results[i].Route.GoalUnitId)) >= seraphimScore) continue;
+                    insertAt = i;
+                    break;
+                }
+                results.Insert(insertAt, EvaluateCraft(bestSeraphim.Unit, counts, calculator));
+            }
+        }
+
         // 유저는 1번부터 순서대로 조합한다 — 위 순위 빌드가 소비할 패를 차감한 잔여
         // 패로 아래 순위의 완료율·남은 조합을 다시 계산해, 같은 카드가 여러 순위에
         // 이중 집계되지 않게 한다(1번 완료 시 2번 %가 부풀어 보이던 문제).
@@ -1123,7 +1157,7 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
                 }
             ],
             RecipeTree = recipeTree,
-            RemainingCraftSteps = BuildRemainingCraftSteps(recipeTree)
+            RemainingCraftSteps = BuildRemainingCraftSteps(recipeTree, inventory, calculator)
         };
     }
 
@@ -1162,7 +1196,8 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
         };
     }
 
-    private List<RecipeCraftStep> BuildRemainingCraftSteps(RecipeTreeNode root)
+    private List<RecipeCraftStep> BuildRemainingCraftSteps(RecipeTreeNode root,
+        IReadOnlyDictionary<string, int> inventory, RecipeCompletionCalculator calculator)
     {
         var totals = new Dictionary<string, (RecipeTreeNode Node, long Required, long Owned)>(
             StringComparer.OrdinalIgnoreCase);
@@ -1181,6 +1216,11 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
                 OwnedCount = (int)Math.Min(int.MaxValue, value.Owned),
                 CombineKey = combineHotkeys
                     ?.FindByResult(catalog.Unit(value.Node.UnitId).Rawcodes)?.Key,
+                // 남은 수량 기준 재료 완성률 — 드릴다운에서 하위 단계 %로 보여준다.
+                CompletionRatio = calculator.Calculate(
+                    Enumerable.Repeat(value.Node.UnitId,
+                        (int)Math.Clamp(value.Required - value.Owned, 1, 50)),
+                    inventory).CompletionRatio,
                 Ingredients = ingredientTotals.GetValueOrDefault(value.Node.UnitId)?.Values
                     .Select(ingredient => new RecipeCraftIngredient
                     {
@@ -1258,7 +1298,10 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
     private static bool IsRecommendedCraftTier(string tier, bool allowsMultipleTopUnits)
     {
         var baseTier = tier.Split('[', 2)[0].Trim();
-        if (baseTier is "전설" or "히든" or "변화된" or "왜곡됨" or "함선" or "해적선") return true;
+        // 세라핌은 그린블러드로 제작하는 지원 유닛 — 어떤 세라핌을 만드는지가
+        // 목표별로 갈리므로(상디=S-베어, 징베=S-호크 실측) 조합 후보에 포함한다.
+        if (baseTier is "전설" or "히든" or "변화된" or "왜곡됨" or "함선" or "해적선" or "세라핌")
+            return true;
         return allowsMultipleTopUnits &&
                baseTier is "신비함" or "초월" or "불멸" or "영원" or "제한됨";
     }

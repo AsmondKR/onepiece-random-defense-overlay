@@ -115,7 +115,7 @@
         </StackPanel>
         <StackPanel Grid.Column="1" Orientation="Horizontal">
           <Button Content="다시 추천" Click="ReRecommend_OnClick" Background="#FF6D4CE0"
-                  ToolTip="추천받은 상위가 마음에 안 들면 누르세요. 지금 패 기준으로 현재 목표를 제외한 다음 후보를 추천하며, 누를 때마다 다음 후보로 넘어갑니다. 판이 끝나면 초기화됩니다."/>
+                  ToolTip="지금 패 기준으로 조합이 가장 가까운(완성률 최고) 학습 상위를 다시 계산해 추천합니다."/>
           <Button x:Name="OverlayButton" Content="오버레이 숨기기" Click="ToggleOverlay_OnClick"/>
         </StackPanel>
       </Grid>
