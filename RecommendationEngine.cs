@@ -178,9 +178,17 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
         var avoidTraitHungryTops =
             goal.Rawcodes.Contains("5B0H", StringComparer.Ordinal) &&
             navigation.Id.Equals("AlliedForces.TraitEngineering", StringComparison.OrdinalIgnoreCase);
+        // 그린블러드는 판당 1회용 — 이미 세라핌을 만들었거나(보유 세라핌 존재),
+        // 유닛에 부여했으면(사용됨 신호·가상 buff 항목) 세라핌은 더 만들 수 없다.
+        var seraphimBlocked = suppressSeraphim ||
+                              counts.GetValueOrDefault("greenblood_buff") > 0 ||
+                              catalog.AllUnits
+                                  .Where(unit => unit.Tier.Split('[', 2)[0].Trim() == "세라핌")
+                                  .Any(unit => counts.GetValueOrDefault(unit.Id) > 0);
         var candidates = catalog.AllUnits
             .Where(unit => !unit.Id.Equals(goalUnitId, StringComparison.OrdinalIgnoreCase))
             .Where(unit => counts.GetValueOrDefault(unit.Id) <= 0)
+            .Where(unit => !seraphimBlocked || unit.Tier.Split('[', 2)[0].Trim() != "세라핌")
             .Where(unit => MeetsOwnedPrerequisites(unit, counts))
             .Where(unit => IsRecommendedCraftTier(unit.Tier, navigation.AllowsMultipleTopUnits))
             .Where(unit => !avoidTraitHungryTops ||
@@ -233,14 +241,7 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
         // 현재 목표 채용률이 충분한(10%+) 최고 세라핌 1기를, 역할 구성(스턴 페어 등)을
         // 밀어내지 않도록 목록에 '추가'로 끼워 넣는다(실측: 징베 S-호크 48%,
         // 상디 S-베어 34% — 목표별로 만드는 세라핌이 갈린다).
-        // 그린블러드는 판당 1회용 — 이미 세라핌을 만들었거나(보유 세라핌 존재),
-        // 유닛에 부여했으면(그블 사용됨) 세라핌 추천을 더 띄우지 않는다(유저 피드백).
-        var seraphimAlreadyMade = catalog.AllUnits
-            .Where(unit => unit.Tier.Split('[', 2)[0].Trim() == "세라핌")
-            .Any(unit => counts.GetValueOrDefault(unit.Id) > 0);
-        if (_activeClearProfile is { } seraphimProfile &&
-            !suppressSeraphim && !seraphimAlreadyMade &&
-            counts.GetValueOrDefault("greenblood_buff") <= 0)
+        if (_activeClearProfile is { } seraphimProfile && !seraphimBlocked)
         {
             var bestSeraphim = catalog.AllUnits
                 .Where(unit => unit.Tier.Split('[', 2)[0].Trim() == "세라핌")
