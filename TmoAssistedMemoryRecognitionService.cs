@@ -196,7 +196,12 @@ public sealed class TmoAssistedMemoryRecognitionService : IInventoryRecognizer
         catch (OperationCanceledException) { throw; }
         catch (BindingNotReadyException exception)
         {
-            return Failure(RecognitionState.Waiting, "메모리 연동 초기화 대기 · 패 초기화", exception.Message);
+            // 티모지지 리더 래퍼는 원랜디 판에 입장해야 생성된다 — 로비·메뉴에서는
+            // 이 대기 상태가 정상이라, 오류처럼 읽히지 않게 행동 안내를 담는다.
+            return Failure(RecognitionState.Waiting,
+                "티모지지-워크 연동 대기 · 원랜디 입장 시 자동 연결",
+                exception.Message +
+                " | 원랜디 판에 입장해도 계속 뜨면: 티모지지에서 워크 연동을 확인하고, 워크를 관리자 권한으로 실행했다면 이 앱도 관리자 권한으로 실행해 보세요.");
         }
         catch (ExecutableIdentityException exception)
         {
