@@ -1005,6 +1005,11 @@ Assert(AutoStartAdvisor.RequiresUnit(catalog, autoStartAdvice.Goal, autoStartRar
     "자동 시작 추천 상위는 그 희귀함을 재료로 쓰고 학습 표본을 충족");
 Assert(AutoStartAdvisor.RecommendGoal(catalog, bundledStats, ["luffy_common"]) is null,
     "희귀함이 없으면 자동 시작 추천 없음");
+var reRecommended = AutoStartAdvisor.RecommendGoal(catalog, bundledStats, [autoStartRare.Id],
+    [autoStartAdvice.Goal.Id]);
+Assert(reRecommended is null ||
+       !reRecommended.Goal.Id.Equals(autoStartAdvice.Goal.Id, StringComparison.OrdinalIgnoreCase),
+    "다시 추천은 제외한 상위를 다시 주지 않음");
 
 // 자동 시작 단계의 희귀함 순위: 빈 패에서는 재료 적은 순, 재료가 모이면 완성률 순.
 var fastRaresEmpty = engine.RecommendFastRares([], 5);
@@ -1423,7 +1428,7 @@ Assert(Math.Abs(UiScale.FromScreen(2160, 1.5) - 1.0) < 0.001,
 Assert(Math.Abs(UiScale.FromScreen(4320, 1.0) - 3.0) < 0.001,
     "8K 100%는 배율 3.0");
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 245/245");
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 246/246");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,

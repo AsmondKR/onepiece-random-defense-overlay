@@ -40,6 +40,7 @@ public partial class MainWindow : Window
     private bool _automaticDisconnected;
     private bool _liveSessionActive;
     private bool _autoStartApplied;
+    private readonly HashSet<string> _rejectedGoals = new(StringComparer.OrdinalIgnoreCase);
     private bool _relockAfterMove;
     private bool _updatingSelections;
     private readonly HashSet<string> _expandedRouteIds = new(StringComparer.OrdinalIgnoreCase);
@@ -375,6 +376,14 @@ public partial class MainWindow : Window
         _autoStartApplied = true;
         if (advice.Goal.Id.Equals(SelectedGoal?.Id, StringComparison.OrdinalIgnoreCase))
             return null;
+        return ApplyGoalAdvice(advice,
+            $"첫 희귀함 {advice.Rare.Name} 감지 — 신+ {advice.Samples:#,0}판 학습된 " +
+            $"{advice.Goal.Name}(으)로 목표를 자동 전환했습니다.");
+    }
+
+    private string ApplyGoalAdvice(AutoStartAdvisor.Advice advice, string prefix)
+    {
+        _autoStartApplied = true;
         RepopulateGoalChoices(advice.Goal.Id);
         RepopulateNavigationChoices();
         RepopulateBuildVariants();
@@ -385,8 +394,36 @@ public partial class MainWindow : Window
             SelectNavigation(navigationPick.Option);
             navigationNote = $" 항법 추천: {navigationPick.Option.Name}({navigationPick.Reason}).";
         }
-        return $"첫 희귀함 {advice.Rare.Name} 감지 — 신+ {advice.Samples:#,0}판 학습된 " +
-               $"{advice.Goal.Name}(으)로 목표를 자동 전환했습니다.{navigationNote}";
+        return prefix + navigationNote;
+    }
+
+    // 추천받은 상위가 마음에 안 들 때: 지금 패 기준으로 현재 목표를 제외한 다음
+    // 후보를 추천한다. 누를 때마다 제외 목록이 쌓여 후보를 순환하고, 다 돌면
+    // 처음부터 다시 돈다. 판이 끝나면 초기화된다.
+    private void ReRecommend_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (!_initialized || !_clearStats.HasData) return;
+        if (SelectedGoal is { } currentGoal) _rejectedGoals.Add(currentGoal.Id);
+        var ownedIds = CombinedInventory()
+            .Where(entry => entry.Count > 0)
+            .Select(entry => entry.UnitId)
+            .ToList();
+        var advice = AutoStartAdvisor.RecommendGoal(_catalog, _clearStats, ownedIds, _rejectedGoals);
+        if (advice is null && _rejectedGoals.Count > 1)
+        {
+            var keep = SelectedGoal?.Id;
+            _rejectedGoals.Clear();
+            if (keep is not null) _rejectedGoals.Add(keep);
+            advice = AutoStartAdvisor.RecommendGoal(_catalog, _clearStats, ownedIds, _rejectedGoals);
+        }
+        if (advice is null)
+        {
+            RefreshAll("현재 패의 희귀함으로 갈 수 있는 다른 학습 상위가 없습니다. 희귀함이 더 잡히면 다시 눌러보세요.");
+            return;
+        }
+        var message = ApplyGoalAdvice(advice,
+            $"다시 추천: {advice.Rare.Name} 기준 신+ {advice.Samples:#,0}판 학습된 {advice.Goal.Name}.");
+        RefreshAll(message);
     }
 
     // 항법 추천: 클리어 API에 항법 필드가 없어 직접 학습은 불가 — 상위 기수 스코프
@@ -1058,6 +1095,7 @@ public partial class MainWindow : Window
                 {
                     _liveSessionActive = false;
                     _autoStartApplied = false;
+                    _rejectedGoals.Clear();
                     _completedTopUnits.Reset();
                     _greenBloodUsage.Reset();
                     // 게임 중 발견해 미뤄 둔 업데이트를 판이 끝난 지금 설치한다.
