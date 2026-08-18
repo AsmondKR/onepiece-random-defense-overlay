@@ -854,47 +854,32 @@ public partial class MainWindow : Window
         }
         var number = 1;
         foreach (var group in legends)
-            stack.Children.Add(BuildLegendDrill(item.Route.Id, group, number++));
+            stack.Children.Add(BuildDrillNode(item.Route.Id, group, number++));
         foreach (var step in others)
             stack.Children.Add(BuildRemainingRecipeCard(step, number++));
         return stack;
     }
 
-    private UIElement BuildLegendDrill(string routeId, BuildDrilldown.LegendGroup group, int number)
+    // 드릴다운 노드: 하위 단계가 있으면 펼쳐서 다음 단계를, 마지막 단계면 재료를 보여준다.
+    private UIElement BuildDrillNode(string parentKey, BuildDrilldown.DrillNode node, int? number)
     {
-        var card = BuildRemainingRecipeCard(group.Step, number);
-        var key = routeId + "|" + group.Step.UnitId;
+        var key = parentKey + "|" + node.Step.UnitId;
         UIElement content;
-        if (group.Rares.Count > 0)
+        if (node.Children.Count > 0)
         {
             var children = new StackPanel { Margin = new Thickness(16, 0, 0, 4) };
-            foreach (var rare in group.Rares)
-                children.Children.Add(BuildRareDrill(key, rare));
+            foreach (var child in node.Children)
+                children.Children.Add(BuildDrillNode(key, child, null));
             content = children;
         }
         else
         {
-            content = BuildIngredientDetail(group.Step);
+            content = BuildIngredientDetail(node.Step);
         }
         var expander = new Expander
         {
-            Header = card,
+            Header = BuildRemainingRecipeCard(node.Step, number),
             Content = content,
-            IsExpanded = _expandedBuildNodes.Contains(key),
-            HorizontalContentAlignment = HorizontalAlignment.Stretch
-        };
-        expander.Expanded += (_, _) => _expandedBuildNodes.Add(key);
-        expander.Collapsed += (_, _) => _expandedBuildNodes.Remove(key);
-        return expander;
-    }
-
-    private UIElement BuildRareDrill(string parentKey, RecipeCraftStep rare)
-    {
-        var key = parentKey + "|" + rare.UnitId;
-        var expander = new Expander
-        {
-            Header = BuildRemainingRecipeCard(rare, null),
-            Content = BuildIngredientDetail(rare),
             IsExpanded = _expandedBuildNodes.Contains(key),
             HorizontalContentAlignment = HorizontalAlignment.Stretch
         };

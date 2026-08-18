@@ -1039,12 +1039,19 @@ Assert(rareKeepAdvisor.Evaluate(Inventory("rawcode:220h"), [noopPlan])
 var drillGoal = engine.RecommendNearestCrafts("rawcode:B50h", [], 1)[0];
 var (drillLegends, _) = BuildDrilldown.Build(drillGoal);
 Assert(drillLegends.Count > 0 &&
-       drillLegends.All(group => BuildDrilldown.IsLegendTier(group.Step.Tier)),
-    "카벤딧슈 남은 조합은 전설·히든 단계를 먼저 리스트업");
-Assert(drillLegends.Any(group => group.Rares.Count > 0) &&
-       drillLegends.SelectMany(group => group.Rares)
-           .All(step => BuildDrilldown.IsRareTier(step.Tier)),
+       drillLegends.All(group => group.Step.Tier.Split('[', 2)[0].Trim()
+           is "전설" or "히든" or "변화된" or "왜곡됨"),
+    "카벤딧슈 남은 조합은 전설급 단계를 먼저 리스트업");
+Assert(drillLegends.Any(group => group.Children.Count > 0) &&
+       drillLegends.SelectMany(group => group.Children)
+           .All(child => BuildDrilldown.IsRareTier(child.Step.Tier)),
     "전설을 펼치면 그 트리의 희귀함 단계가 나온다");
+var aceEternal = engine.RecommendNearestCrafts("rawcode:950h", [], 1)[0];
+var (aceGroups, _) = BuildDrilldown.Build(aceEternal);
+Assert(aceGroups.Any(group => group.Step.Tier.Split('[', 2)[0].Trim() is "변화된" or "왜곡됨" &&
+                              group.Children.Any(child => child.Step.Tier.Split('[', 2)[0].Trim()
+                                  is "전설" or "히든")),
+    "변화된·왜곡됨 단계도 드릴다운으로 묶고 그 안에 전설 단계가 나온다");
 var rareDrill = engine.RecommendFastRares([], 50)
     .Select(BuildDrilldown.Build)
     .FirstOrDefault(result => result.Legends.Count > 0);
@@ -1485,7 +1492,7 @@ Assert(Math.Abs(UiScale.FromScreen(2160, 1.5) - 1.0) < 0.001,
 Assert(Math.Abs(UiScale.FromScreen(4320, 1.0) - 3.0) < 0.001,
     "8K 100%는 배율 3.0");
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 254/254");
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 255/255");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,
