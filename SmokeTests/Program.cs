@@ -993,6 +993,19 @@ Assert(bundledStats.GoalProfile(["H90H"], TopScope.MultiTop)
            is { SampleCount: >= 50, Scope: TopScope.MultiTop },
     "번들 스냅샷에 상디초월 다상위 표본 충분");
 
+// 자동 시작: 첫 희귀함이 재료로 들어가는 학습 상위 중 표본 최다를 추천한다.
+var autoStartRare = catalog.AllUnits.FirstOrDefault(unit =>
+    unit.Tier.Split('[', 2)[0].Trim() == "희귀함" &&
+    AutoStartAdvisor.RecommendGoal(catalog, bundledStats, [unit.Id]) is not null);
+Assert(autoStartRare is not null, "희귀함에서 출발하는 자동 시작 추천이 최소 1종 존재");
+var autoStartAdvice = AutoStartAdvisor.RecommendGoal(catalog, bundledStats, [autoStartRare!.Id])!;
+Assert(AutoStartAdvisor.RequiresUnit(catalog, autoStartAdvice.Goal, autoStartRare.Id) &&
+       LearnedSelection.GoalSampleCount(bundledStats, autoStartAdvice.Goal) >=
+       ClearBuildStats.MinimumGoalSamples,
+    "자동 시작 추천 상위는 그 희귀함을 재료로 쓰고 학습 표본을 충족");
+Assert(AutoStartAdvisor.RecommendGoal(catalog, bundledStats, ["luffy_common"]) is null,
+    "희귀함이 없으면 자동 시작 추천 없음");
+
 // 강화 폼 rawcode 별칭: 발라티에 강화 상디(G90H)는 H90H와 같은 유닛으로 통합된다.
 Assert(catalog.Unit("rawcode:G90H").Id == "rawcode:H90H" &&
        catalog.Unit("rawcode:G90H").Name.Contains("상디", StringComparison.Ordinal),
@@ -1393,7 +1406,7 @@ Assert(Math.Abs(UiScale.FromScreen(2160, 1.5) - 1.0) < 0.001,
 Assert(Math.Abs(UiScale.FromScreen(4320, 1.0) - 3.0) < 0.001,
     "8K 100%는 배율 3.0");
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 240/240");
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 243/243");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,

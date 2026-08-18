@@ -39,6 +39,7 @@ public partial class MainWindow : Window
     private bool _automaticStale;
     private bool _automaticDisconnected;
     private bool _liveSessionActive;
+    private bool _autoStartApplied;
     private bool _relockAfterMove;
     private bool _updatingSelections;
     private readonly HashSet<string> _expandedRouteIds = new(StringComparer.OrdinalIgnoreCase);
@@ -79,8 +80,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        var goalUnits = GoalUnits();
-        GoalCombo.ItemsSource = goalUnits;
+        RepopulateGoalChoices(_settings.GoalUnitId);
         // 수동 보정은 인식 실패를 사람이 메꾸는 경로다 — 데모 13종이 아니라
         // 카탈로그 전체에서 고를 수 있어야 한다.
         ManualUnitCombo.ItemsSource = _catalog.AllUnits
@@ -88,7 +88,6 @@ public partial class MainWindow : Window
             .OrderBy(unit => unit.Tier, StringComparer.CurrentCulture)
             .ThenBy(unit => unit.Name, StringComparer.CurrentCulture)
             .ToList();
-        GoalCombo.SelectedItem = goalUnits.FirstOrDefault(x => x.Id == _settings.GoalUnitId) ?? goalUnits.FirstOrDefault();
         RepopulateNavigationChoices();
         RepopulateBuildVariants();
         GoroseiCombo.ItemsSource = GoroseiEffects.Options;
@@ -105,6 +104,7 @@ public partial class MainWindow : Window
         RecognitionSourceCombo.SelectedIndex = _settings.RecognitionSource == "Screen" ? 1 : 0;
         AutoScanCheck.IsChecked = _settings.AutoScanEnabled;
         ClearDataRefreshCheck.IsChecked = _settings.ClearDataAutoRefresh;
+        AutoStartCheck.IsChecked = _settings.AutoStartGoal;
         DataVersionText.Text = $"데이터 {_catalog.Data.DataVersion} · {_catalog.Data.Disclaimer}" +
                                ClearStatsSummary();
 
@@ -279,13 +279,7 @@ public partial class MainWindow : Window
             DataVersionText.Text = $"데이터 {_catalog.Data.DataVersion} · {_catalog.Data.Disclaimer}" +
                                    ClearStatsSummary();
             // 새 데이터로 학습된 상위·항법 목록을 갱신한다(선택은 최대한 유지).
-            _updatingSelections = true;
-            var currentGoalId = SelectedGoal?.Id ?? _settings.GoalUnitId;
-            var goalUnits = GoalUnits();
-            GoalCombo.ItemsSource = goalUnits;
-            GoalCombo.SelectedItem = goalUnits.FirstOrDefault(x => x.Id == currentGoalId)
-                                     ?? goalUnits.FirstOrDefault();
-            _updatingSelections = false;
+            RepopulateGoalChoices(SelectedGoal?.Id ?? _settings.GoalUnitId);
             RepopulateNavigationChoices();
             RefreshAll($"신+ 클리어 데이터 {fresh.Count}판을 새로 반영했습니다.");
         });
@@ -314,6 +308,90 @@ public partial class MainWindow : Window
     }
 
     private UnitDefinition? SelectedGoal => GoalCombo.SelectedItem as UnitDefinition;
+
+    private sealed record GoalCategory(string Id, string Name, bool IsMagic, string BaseTier);
+
+    // 유저가 부르는 순서(초월→불멸→영원→제한) 우선, 그 외 티어는 뒤에 이름순.
+    private static readonly string[] GoalTierOrder = ["초월", "불멸", "영원", "제한됨", "신비함"];
+
+    private static GoalCategory CategoryFor(UnitDefinition unit)
+    {
+        var isMagic = DamageTiers.IsMagic(unit.Tier);
+        var baseTier = unit.Tier.Split('[', 2)[0].Trim();
+        var kind = isMagic ? "마딜" : "물딜";
+        return new GoalCategory($"{kind}:{baseTier}", $"{kind} - {baseTier}", isMagic, baseTier);
+    }
+
+    // 상위 선택을 "딜 유형 - 티어" 카테고리와 유닛의 2단 콤보로 나눈다(유저 요청).
+    // 카테고리 안 유닛 순서는 기존과 같이 학습 표본 많은 순을 유지한다.
+    private void RepopulateGoalChoices(string? preferredGoalId = null)
+    {
+        _updatingSelections = true;
+        try
+        {
+            var goalUnits = GoalUnits();
+            if (goalUnits.Count == 0) return;
+            var currentId = preferredGoalId ?? SelectedGoal?.Id ?? _settings.GoalUnitId;
+            var currentUnit = goalUnits.FirstOrDefault(x => x.Id == currentId) ?? goalUnits[0];
+            var categories = goalUnits
+                .Select(CategoryFor)
+                .DistinctBy(category => category.Id)
+                .OrderBy(category => category.IsMagic ? 1 : 0)
+                .ThenBy(category => Array.IndexOf(GoalTierOrder, category.BaseTier) is >= 0 and var rank
+                    ? rank
+                    : int.MaxValue)
+                .ThenBy(category => category.BaseTier, StringComparer.CurrentCulture)
+                .ToList();
+            GoalCategoryCombo.ItemsSource = categories;
+            var category = categories.First(item => item.Id == CategoryFor(currentUnit).Id);
+            GoalCategoryCombo.SelectedItem = category;
+            var units = goalUnits.Where(unit => CategoryFor(unit).Id == category.Id).ToList();
+            GoalCombo.ItemsSource = units;
+            GoalCombo.SelectedItem = units.FirstOrDefault(x => x.Id == currentUnit.Id) ?? units[0];
+        }
+        finally
+        {
+            _updatingSelections = false;
+        }
+    }
+
+    private void AutoStart_OnChanged(object sender, RoutedEventArgs e)
+    {
+        if (!_initialized) return;
+        _settings.AutoStartGoal = AutoStartCheck.IsChecked == true;
+    }
+
+    // 자동 시작: 상위를 정하지 않고 출발한 판에서 첫 희귀함이 잡히면, 그 희귀함이
+    // 들어가는 학습된 상위 중 표본 최다를 목표로 전환한다(판당 1회, 종료 시 재대기).
+    private string? TryAutoStartGoal()
+    {
+        if (!_settings.AutoStartGoal || _autoStartApplied || !_clearStats.HasData) return null;
+        var advice = AutoStartAdvisor.RecommendGoal(_catalog, _clearStats, _automatic.Keys);
+        if (advice is null) return null;
+        _autoStartApplied = true;
+        if (advice.Goal.Id.Equals(SelectedGoal?.Id, StringComparison.OrdinalIgnoreCase))
+            return null;
+        RepopulateGoalChoices(advice.Goal.Id);
+        RepopulateNavigationChoices();
+        RepopulateBuildVariants();
+        return $"첫 희귀함 {advice.Rare.Name} 감지 — 신+ {advice.Samples:#,0}판 학습된 " +
+               $"{advice.Goal.Name}(으)로 목표를 자동 전환했습니다.";
+    }
+
+    private void GoalCategoryCombo_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_updatingSelections) return;
+        if (GoalCategoryCombo.SelectedItem is not GoalCategory category) return;
+        var units = GoalUnits().Where(unit => CategoryFor(unit).Id == category.Id).ToList();
+        if (units.Count == 0) return;
+        var current = SelectedGoal;
+        GoalCombo.ItemsSource = units;
+        // 선택 변경이 GoalCombo_OnSelectionChanged를 태워 항법·빌드 방향 재구성과
+        // RefreshAll까지 이어진다.
+        GoalCombo.SelectedItem = current is not null && units.Any(x => x.Id == current.Id)
+            ? units.First(x => x.Id == current.Id)
+            : units[0];
+    }
 
     private List<NavigationOption> VisibleNavigations(string categoryId) => NavigationProfiles
         .ForCategory(categoryId)
@@ -419,16 +497,23 @@ public partial class MainWindow : Window
         }
         if (inventory.Count == 0) InventoryList.Items.Add("보유 패 없음");
 
+        // 패가 하나도 없으면 지원(2순위 이하) 추천은 근거가 없다 — 목표 카드만 남기고,
+        // 패가 잡히기 시작하면 지원 추천을 연다(유저 요청).
+        IReadOnlyList<Recommendation> visibleRecommendations =
+            recommendationInventory.Count == 0 && recommendations.Count > 1
+                ? [recommendations[0]]
+                : recommendations;
+
         RecommendationCards.Children.Clear();
-        if (recommendations.Count == 0)
+        if (visibleRecommendations.Count == 0)
             RecommendationCards.Children.Add(new TextBlock
             {
                 Text = "패 인식 대기 중",
                 Foreground = new SolidColorBrush(Color.FromRgb(156, 163, 175)),
                 FontSize = 12
             });
-        for (var i = 0; i < recommendations.Count; i++)
-            RecommendationCards.Children.Add(BuildRecommendationCard(recommendations[i], i + 1));
+        for (var i = 0; i < visibleRecommendations.Count; i++)
+            RecommendationCards.Children.Add(BuildRecommendationCard(visibleRecommendations[i], i + 1));
         // "지금 조합 가능"은 1번 우선순위 추천의 조합 단계만 보여준다(사용자 요청).
         // 여러 추천의 단계를 섞어 보여주면 지금 뭘 눌러야 하는지 흐려진다.
         var combinePlan = _combinePlanner.Plan(recommendations.Take(1).ToList(),
@@ -437,7 +522,7 @@ public partial class MainWindow : Window
             StringComparison.OrdinalIgnoreCase)
             ? _engine.RecommendEmergencySummons(recommendations, recommendationInventory)
             : Array.Empty<EmergencySummonAdvice>();
-        _overlay.Render($"{goal.Name} · {navigation.Name}", recommendations, inventoryStats, rareRerolls,
+        _overlay.Render($"{goal.Name} · {navigation.Name}", visibleRecommendations, inventoryStats, rareRerolls,
             greenBloodAdvice,
             !_greenBloodUsage.Used &&
             GreenBloodAdvisor.HasUnusedGreenBlood(_catalog, recommendationInventory),
@@ -863,6 +948,7 @@ public partial class MainWindow : Window
             var result = await recognizer.RecognizeAsync(_settings, cancellation.Token);
             if (generation != _scanGeneration || !ReferenceEquals(recognizer, _recognizer)) return;
             LogUnknownRawcodes(result);
+            string? autoStartMessage = null;
             if (result.ShouldReplaceInventory)
             {
                 _completedTopUnits.Observe(result.Entries);
@@ -873,6 +959,7 @@ public partial class MainWindow : Window
                 _automaticStale = false;
                 _automaticDisconnected = false;
                 _liveSessionActive = true;
+                autoStartMessage = TryAutoStartGoal();
             }
             else if (result.ShouldClearAutomaticInventory)
             {
@@ -883,6 +970,7 @@ public partial class MainWindow : Window
                 if (RecognitionPolicy.IsConfirmedOutOfGame(result))
                 {
                     _liveSessionActive = false;
+                    _autoStartApplied = false;
                     _completedTopUnits.Reset();
                     _greenBloodUsage.Reset();
                     // 게임 중 발견해 미뤄 둔 업데이트를 판이 끝난 지금 설치한다.
@@ -906,7 +994,7 @@ public partial class MainWindow : Window
             var detail = result.Diagnostics.UserDisplayText;
             if (!result.ShouldReplaceInventory && _automatic.Count > 0)
                 detail = string.IsNullOrWhiteSpace(detail) ? "마지막 정상 패를 유지합니다." : detail + " | 마지막 정상 패 유지";
-            RefreshAll(detail);
+            RefreshAll(autoStartMessage ?? detail);
         }
         catch (OperationCanceledException) { }
         catch (Exception)
