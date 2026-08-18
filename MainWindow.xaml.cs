@@ -17,6 +17,10 @@ public partial class MainWindow : Window
     private readonly Dictionary<string, InventoryEntry> _automatic = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, InventoryEntry> _manual = new(StringComparer.OrdinalIgnoreCase);
     private readonly DispatcherTimer _timer = new();
+    private readonly DispatcherTimer _updateTimer = new() { Interval = TimeSpan.FromMinutes(10) };
+    private UpdateInfo? _pendingUpdate;
+    private bool _updateBusy;
+    private string? _updateNoticeTag;
     private RecommendationEngine _engine = null!;
     private InventoryStatsCalculator _statsCalculator = null!;
     private RareRerollAdvisor _rareRerollAdvisor = null!;
@@ -113,6 +117,7 @@ public partial class MainWindow : Window
         Closed += (_, _) =>
         {
             _timer.Stop();
+            _updateTimer.Stop();
             _scanCancellation?.Cancel();
             _scanCancellation?.Dispose();
             SaveOverlayPosition();
@@ -128,10 +133,11 @@ public partial class MainWindow : Window
         }
         _ = RefreshClearDataAsync();
         _ = AutoUpdateAsync();
+        // 초기 버전이라 실행 중에도 주기적으로 새 릴리스를 확인해 바로 반영한다.
+        _updateTimer.Tick += async (_, _) => await CheckForUpdateAsync();
+        _updateTimer.Start();
     }
 
-    // 새 릴리스가 있으면 확인 없이 내려받아 교체하고 자동 재시작한다(유저 지시).
-    // 같은 태그를 이미 시도했다면(교체 실패·버전 미상승 등) 반복하지 않는다.
     private async Task AutoUpdateAsync()
     {
         // 이전 업데이트가 중간에 실패해 남은 임시 파일을 정리한다.
@@ -145,23 +151,60 @@ public partial class MainWindow : Window
         {
             // 잔여 파일 정리 실패는 업데이트 확인을 막지 않는다.
         }
+        await CheckForUpdateAsync();
+    }
+
+    // 새 릴리스가 있으면 확인 없이 내려받아 교체하고 자동 재시작한다(유저 지시).
+    // 게임 중이면 판이 끝난 뒤 교체해 이번 판의 자동 감지 상태(조합 완료·그린블러드,
+    // 수동 보정)를 잃지 않는다. 같은 태그를 이미 시도했다면(버전 미상승 등) 반복하지 않는다.
+    private async Task CheckForUpdateAsync()
+    {
+        if (_updateBusy) return;
         var service = new UpdateService();
         var update = await service.CheckAsync();
-        if (update is null) return;
+        if (update is null)
+        {
+            _pendingUpdate = null;
+            return;
+        }
         if (update.Tag.Equals(_settings.LastAttemptedUpdateTag, StringComparison.OrdinalIgnoreCase))
         {
-            await Dispatcher.InvokeAsync(() =>
-                FooterStatus.Text = $"{update.Tag} 자동 업데이트가 이전에 완료되지 않았습니다 — 릴리스 페이지에서 수동으로 받아주세요.");
+            await NotifyUpdateOnceAsync(update.Tag,
+                $"{update.Tag} 자동 업데이트가 이전에 완료되지 않았습니다 — 릴리스 페이지에서 수동으로 받아주세요.");
             return;
         }
         if (!UpdateService.CanSelfInstall)
         {
-            await Dispatcher.InvokeAsync(() =>
-                FooterStatus.Text = $"새 버전 {update.Tag} 공개 — 단일 exe 배포가 아니어서 자동 교체를 건너뜁니다.");
+            await NotifyUpdateOnceAsync(update.Tag,
+                $"새 버전 {update.Tag} 공개 — 단일 exe 배포가 아니어서 자동 교체를 건너뜁니다.");
             return;
         }
+        if (_liveSessionActive)
+        {
+            _pendingUpdate = update;
+            await NotifyUpdateOnceAsync(update.Tag,
+                $"새 버전 {update.Tag} 발견 — 진행 중인 게임이 끝나면 자동 업데이트합니다.");
+            return;
+        }
+        await InstallUpdateAsync(service, update);
+    }
+
+    // 10분 주기 확인이 같은 안내를 footer에 반복해서 쓰지 않게 태그당 1회만 알린다.
+    private async Task NotifyUpdateOnceAsync(string tag, string message)
+    {
+        if (tag.Equals(_updateNoticeTag, StringComparison.OrdinalIgnoreCase)) return;
+        _updateNoticeTag = tag;
+        await Dispatcher.InvokeAsync(() => FooterStatus.Text = message);
+    }
+
+    private async Task InstallUpdateAsync(UpdateService service, UpdateInfo update)
+    {
+        if (_updateBusy) return;
+        _updateBusy = true;
+        _pendingUpdate = null;
         await Dispatcher.InvokeAsync(() =>
             FooterStatus.Text = $"{update.Tag} 업데이트를 내려받는 중입니다. 완료되면 자동으로 재시작합니다.");
+        var previousAttemptTag = _settings.LastAttemptedUpdateTag;
         try
         {
             _settings.LastAttemptedUpdateTag = update.Tag;
@@ -171,8 +214,12 @@ public partial class MainWindow : Window
         }
         catch
         {
+            // 내려받기·교체 시작 자체가 실패한 경우라 재시도해도 안전하다.
+            _settings.LastAttemptedUpdateTag = previousAttemptTag;
+            SettingsStore.Save(_settings);
+            _updateBusy = false;
             await Dispatcher.InvokeAsync(() =>
-                FooterStatus.Text = $"{update.Tag} 자동 업데이트에 실패했습니다 — 다음 실행 때 다시 시도하지 않습니다.");
+                FooterStatus.Text = $"{update.Tag} 자동 업데이트에 실패했습니다 — 잠시 후 다시 시도합니다.");
         }
     }
 
@@ -836,6 +883,9 @@ public partial class MainWindow : Window
                     _liveSessionActive = false;
                     _completedTopUnits.Reset();
                     _greenBloodUsage.Reset();
+                    // 게임 중 발견해 미뤄 둔 업데이트를 판이 끝난 지금 설치한다.
+                    if (_pendingUpdate is { } pending)
+                        _ = InstallUpdateAsync(new UpdateService(), pending);
                 }
             }
             else
