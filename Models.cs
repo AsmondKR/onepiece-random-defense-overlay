@@ -266,7 +266,7 @@ public sealed class AppSettings
     // 첫 희귀함이 잡히면 그 희귀함이 들어가는 학습 상위로 목표를 자동 전환(자동 시작).
     public bool AutoStartGoal { get; set; } = true;
     public string NavigationMode { get; set; } = "PathOfKings.BountyHunter";
-    public double CaptureIntervalSeconds { get; set; } = 1.2;
+    public double CaptureIntervalSeconds { get; set; } = 0.8;
     public double MatchThreshold { get; set; } = 0.86;
     public NormalizedRect InventoryRegion { get; set; } = new(0.64, 0.58, 0.34, 0.36);
     public int GridColumns { get; set; } = 6;

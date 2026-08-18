@@ -107,6 +107,9 @@ public partial class OverlayWindow : Window
             SwpNoMove | SwpNoSize | SwpNoZOrder | SwpNoActivate | SwpFrameChanged);
     }
 
+    /// <summary>패 변화가 없는 스캔 틱에서 상태줄(시각)만 가볍게 갱신할 때 쓴다.</summary>
+    public void UpdateStatus(string status) => StatusText.Text = status;
+
     public void Render(string goalName, IReadOnlyList<Recommendation> recommendations,
         InventoryStatSummary stats, IReadOnlyList<RareRerollAdvice> rareRerolls,
         IReadOnlyList<GreenBloodAdvice> greenBloodAdvice, bool greenBloodOwned,

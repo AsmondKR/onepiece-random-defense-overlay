@@ -133,8 +133,12 @@
             <ColumnDefinition Width="Auto"/>
           </Grid.ColumnDefinitions>
           <TextBlock x:Name="FooterStatus" Text="준비됨" Foreground="#FFB3BAC8" FontSize="12" TextWrapping="Wrap"/>
-          <TextBlock Grid.Column="1" x:Name="VersionText" Foreground="#FF7F8796" FontSize="11"
-                     VerticalAlignment="Bottom" Margin="12,0,0,0"/>
+          <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Bottom" Margin="12,0,0,0">
+            <Button Content="업데이트 확인" Click="CheckUpdateNow_OnClick" Style="{StaticResource SubtleButton}"
+                    FontSize="10.5" Padding="8,2" Margin="0,0,8,0"
+                    ToolTip="새 릴리스가 있으면 바로 내려받아 자동으로 재시작합니다."/>
+            <TextBlock x:Name="VersionText" Foreground="#FF7F8796" FontSize="11" VerticalAlignment="Center"/>
+          </StackPanel>
         </Grid>
       </Border>
     </Grid>

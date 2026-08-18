@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
@@ -45,6 +46,7 @@ public partial class MainWindow : Window
     private readonly HashSet<string> _expandedRouteIds = new(StringComparer.OrdinalIgnoreCase);
     private CancellationTokenSource? _scanCancellation;
     private int _scanGeneration;
+    private string? _lastScanSignature;
 
     public MainWindow()
     {
@@ -118,6 +120,10 @@ public partial class MainWindow : Window
         _overlay.SettlementRequested += ShowSettlement;
         _overlay.Show();
         _overlay.SetClickThrough(_settings.ClickThroughOverlay);
+        // 스캔 주기 기본값을 0.8초로 내렸다(조합 반영 체감 개선) — 옛 기본값(1.2초)을
+        // 그대로 쓰던 기존 설정 파일은 새 기본값으로 함께 옮긴다.
+        if (Math.Abs(_settings.CaptureIntervalSeconds - 1.2) < 0.0005)
+            _settings.CaptureIntervalSeconds = 0.8;
         _timer.Interval = TimeSpan.FromSeconds(Math.Clamp(_settings.CaptureIntervalSeconds, 0.5, 10));
         _timer.Tick += async (_, _) => await ScanAsync();
         Closed += (_, _) =>
@@ -180,6 +186,28 @@ public partial class MainWindow : Window
         {
             await NotifyUpdateOnceAsync(update.Tag,
                 $"새 버전 {update.Tag} 공개 — 단일 exe 배포가 아니어서 자동 교체를 건너뜁니다.");
+            return;
+        }
+        await InstallUpdateAsync(service, update);
+    }
+
+    // 수동 확인(footer 버튼): 자동 확인과 달리 결과를 항상 footer에 알려주고,
+    // 이전에 실패로 기록된 태그도 다시 시도한다.
+    private async void CheckUpdateNow_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (_updateBusy) return;
+        FooterStatus.Text = "업데이트 확인 중…";
+        var service = new UpdateService();
+        var update = await service.CheckAsync();
+        if (update is null)
+        {
+            var version = UpdateService.CurrentVersion;
+            FooterStatus.Text = $"최신 버전입니다 · v{version.Major}.{version.Minor}.{version.Build}";
+            return;
+        }
+        if (!UpdateService.CanSelfInstall)
+        {
+            FooterStatus.Text = $"새 버전 {update.Tag} 공개 — 단일 exe 배포가 아니어서 자동 교체를 건너뜁니다.";
             return;
         }
         await InstallUpdateAsync(service, update);
@@ -754,6 +782,32 @@ public partial class MainWindow : Window
         else if (message is not null) FooterStatus.Text = message;
     }
 
+    // 자동 스캔 틱에서만 쓰는 얕은 갱신: 패·상태가 직전 틱과 같으면 추천 재계산과
+    // 전체 UI 재구성을 건너뛰어 게임과의 CPU 경쟁(끊김)을 줄인다. 상태줄만 갱신한다.
+    private void RefreshIfScanStateChanged(string? message)
+    {
+        var signature = BuildScanSignature();
+        if (signature == _lastScanSignature)
+        {
+            if (!string.IsNullOrWhiteSpace(message)) FooterStatus.Text = message;
+            _overlay.UpdateStatus(RecognitionStatus.Text);
+            return;
+        }
+        _lastScanSignature = signature;
+        RefreshAll(message);
+    }
+
+    private string BuildScanSignature()
+    {
+        var builder = new StringBuilder();
+        foreach (var entry in CombinedInventory().OrderBy(x => x.UnitId, StringComparer.Ordinal))
+            builder.Append(entry.UnitId).Append(':').Append(entry.Count).Append('|');
+        builder.Append(_automaticStale).Append('|').Append(_automaticDisconnected).Append('|')
+            .Append(_liveSessionActive).Append('|').Append(_autoStartApplied).Append('|')
+            .Append(_greenBloodUsage.Used).Append('|').Append(_greenBloodUsage.UsedOnUnit);
+        return builder.ToString();
+    }
+
     private UIElement BuildRecommendationCard(Recommendation item, int rank)
     {
         var headerBody = new StackPanel();
@@ -1276,7 +1330,7 @@ public partial class MainWindow : Window
             var detail = result.Diagnostics.UserDisplayText;
             if (!result.ShouldReplaceInventory && _automatic.Count > 0)
                 detail = string.IsNullOrWhiteSpace(detail) ? "마지막 정상 패를 유지합니다." : detail + " | 마지막 정상 패 유지";
-            RefreshAll(detail);
+            RefreshIfScanStateChanged(detail);
         }
         catch (OperationCanceledException) { }
         catch (Exception)
@@ -1287,7 +1341,7 @@ public partial class MainWindow : Window
                 _automaticDisconnected = false;
                 RecognitionStatus.Text = "인식 오류 · 기존 패 유지";
                 RecognitionStatus.Foreground = Brushes.Orange;
-                RefreshAll("인식 중 오류가 발생했습니다. 다음 자동 인식을 기다립니다.");
+                RefreshIfScanStateChanged("인식 중 오류가 발생했습니다. 다음 자동 인식을 기다립니다.");
             }
         }
         finally

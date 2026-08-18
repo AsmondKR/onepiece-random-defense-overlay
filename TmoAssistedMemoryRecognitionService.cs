@@ -33,6 +33,12 @@ public sealed class TmoAssistedMemoryRecognitionService : IInventoryRecognizer
     private const uint LocalControllerRawcode = 0x48304334; // canonical H0C4, memory/TMO text 4C0H
     private const int MaximumAbilityChain = 512;
 
+    // 객체당 개별 ReadProcessMemory(틱당 수천 syscall)가 게임과 커널 시간을 다투지 않게,
+    // vftable(+0)~인벤토리 포인터(+0x5A0)까지를 주소순 클러스터 몇 번으로 한꺼번에 읽는다.
+    private const int UnitBlockBytes = 0x5A8;
+    private const ulong UnitClusterGap = 0x40000;
+    private const int UnitClusterMaxBytes = 8 * 1024 * 1024;
+
     private readonly RawcodeUnitMap _unitMap;
     private readonly object _bindingGate = new();
     private BindingCache? _bindingCache;
@@ -69,6 +75,7 @@ public sealed class TmoAssistedMemoryRecognitionService : IInventoryRecognizer
     private RecognitionResult RecognizeCore(
         IReadOnlyList<System.Diagnostics.Process> gameCandidates, CancellationToken token)
     {
+        var stopwatch = Stopwatch.StartNew();
         try
         {
             token.ThrowIfCancellationRequested();
@@ -142,19 +149,26 @@ public sealed class TmoAssistedMemoryRecognitionService : IInventoryRecognizer
                     Status = "월드 로딩 대기 · 패 초기화",
                     Diagnostics = WithDetail(baseDiagnostics, "WorldFrame=0 · 캐시 반환 안 함")
                 };
-            UnitSnapshot snapshot;
-            try
+            // 웨이브 중에는 적 유닛이 계속 생기고 죽어 스냅샷 경합이 잦다. 다음 틱으로
+            // 미루는 대신 같은 틱 안에서 몇 번 더 시도해 조합 반영 지연을 줄인다.
+            var unitClassCache = new Dictionary<ulong, bool>();
+            var inventoryClassCache = new Dictionary<ulong, bool>();
+            UnitSnapshot? snapshot = null;
+            for (var attempt = 0; snapshot is null; attempt++)
             {
-                snapshot = ReadStableSnapshot(gameMemory, gameBase, gameImageSize, roots.WorldFrame, token);
-                EnsureRootsUnchanged(tmoMemory, gameMemory, binding, gameBase, roots);
-            }
-            catch (SnapshotChangedException)
-            {
-                token.ThrowIfCancellationRequested();
-                roots = ReadLiveRoots(tmoMemory, gameMemory, binding, gameBase);
-                if (roots.GameUi == 0 || roots.WorldFrame == 0) throw;
-                snapshot = ReadStableSnapshot(gameMemory, gameBase, gameImageSize, roots.WorldFrame, token);
-                EnsureRootsUnchanged(tmoMemory, gameMemory, binding, gameBase, roots);
+                try
+                {
+                    snapshot = ReadStableSnapshot(gameMemory, gameBase, gameImageSize, roots.WorldFrame,
+                        unitClassCache, inventoryClassCache, token);
+                    EnsureRootsUnchanged(tmoMemory, gameMemory, binding, gameBase, roots);
+                }
+                catch (SnapshotChangedException)
+                {
+                    if (attempt >= 2) throw;
+                    token.ThrowIfCancellationRequested();
+                    roots = ReadLiveRoots(tmoMemory, gameMemory, binding, gameBase);
+                    if (roots.GameUi == 0 || roots.WorldFrame == 0) throw;
+                }
             }
 
             // A player's CUnit set includes map-owned controllers/helpers in addition to cards.
@@ -199,7 +213,8 @@ public sealed class TmoAssistedMemoryRecognitionService : IInventoryRecognizer
                          $"pool {snapshot.PoolCount} · CUnit {snapshot.CUnitCount} · 로컬 {snapshot.LocalUnitCount} · " +
                          $"카드 {entries.Sum(x => x.Count)} · 내부/미등록 제외 {ignoredObjects} · " +
                          $"그린블러드 {(snapshot.GreenBloodKnown ? (snapshot.HasGreenBlood ? "보유" : "없음") : "확인불가")} · " +
-                         $"인벤토리 {snapshot.InventoryItemCount} · 중복 {snapshot.DuplicatePointers} · 무효 rawcode {snapshot.InvalidRawcodes}"
+                         $"인벤토리 {snapshot.InventoryItemCount} · 중복 {snapshot.DuplicatePointers} · 무효 rawcode {snapshot.InvalidRawcodes} · " +
+                         $"스캔 {stopwatch.ElapsedMilliseconds}ms"
             };
             if (snapshot.PoolPointer == 0)
                 return new RecognitionResult
@@ -450,26 +465,38 @@ public sealed class TmoAssistedMemoryRecognitionService : IInventoryRecognizer
     }
 
     private static UnitSnapshot ReadStableSnapshot(ReadOnlyProcessMemory memory, ulong gameBase,
-        ulong gameImageSize, ulong worldFrame, CancellationToken token)
+        ulong gameImageSize, ulong worldFrame, Dictionary<ulong, bool> unitClassCache,
+        Dictionary<ulong, bool> inventoryClassCache, CancellationToken token)
     {
         try
         {
-            var first = ReadSnapshot(memory, gameBase, gameImageSize, worldFrame, token);
-            var second = ReadSnapshot(memory, gameBase, gameImageSize, worldFrame, token);
-            if (!SameSnapshot(first, second))
-                throw new SnapshotChangedException("연속 두 메모리 스냅샷이 일치하지 않습니다.");
-            // Green Blood is an optional map-specific state. A transient ability-list race must
-            // never hold back an otherwise authoritative card snapshot. Publish the special state
-            // only when both independent probes agree; otherwise keep normal cards Ready and mark
-            // only Green Blood as unknown.
-            var greenBlood = TmoGreenBloodProbe.Combine(
-                ToGreenBloodState(first.GreenBloodKnown, first.HasGreenBlood),
-                ToGreenBloodState(second.GreenBloodKnown, second.HasGreenBlood));
-            return second with
+            // 연속 두 패스의 "로컬 플레이어 데이터"가 일치할 때만 발행한다. 적 유닛의
+            // 생성·사망은 로컬 패와 무관하므로 비교 대상이 아니다 — 웨이브 중에도
+            // 반영이 밀리지 않는다. 불일치하면 마지막 패스를 기준으로 이어서 재시도한다.
+            var previous = ReadSnapshot(memory, gameBase, gameImageSize, worldFrame,
+                unitClassCache, inventoryClassCache, token);
+            for (var pass = 0; pass < 3; pass++)
             {
-                GreenBloodKnown = greenBlood != GreenBloodProbeState.Unknown,
-                HasGreenBlood = greenBlood == GreenBloodProbeState.Held
-            };
+                var current = ReadSnapshot(memory, gameBase, gameImageSize, worldFrame,
+                    unitClassCache, inventoryClassCache, token);
+                if (SameSnapshot(previous, current))
+                {
+                    // Green Blood is an optional map-specific state. A transient ability-list race
+                    // must never hold back an otherwise authoritative card snapshot. Publish the
+                    // special state only when both independent probes agree; otherwise keep normal
+                    // cards Ready and mark only Green Blood as unknown.
+                    var greenBlood = TmoGreenBloodProbe.Combine(
+                        ToGreenBloodState(previous.GreenBloodKnown, previous.HasGreenBlood),
+                        ToGreenBloodState(current.GreenBloodKnown, current.HasGreenBlood));
+                    return current with
+                    {
+                        GreenBloodKnown = greenBlood != GreenBloodProbeState.Unknown,
+                        HasGreenBlood = greenBlood == GreenBloodProbeState.Held
+                    };
+                }
+                previous = current;
+            }
+            throw new SnapshotChangedException("연속 두 메모리 스냅샷이 일치하지 않습니다.");
         }
         catch (SnapshotChangedException) { throw; }
         catch (Exception exception) when (exception is Win32Exception or InvalidDataException or OverflowException)
@@ -479,18 +506,16 @@ public sealed class TmoAssistedMemoryRecognitionService : IInventoryRecognizer
     }
 
     private static bool SameSnapshot(UnitSnapshot left, UnitSnapshot right) =>
-        left.PoolCount == right.PoolCount && left.PoolPointer == right.PoolPointer &&
         left.LocalPlayerRoot == right.LocalPlayerRoot && left.LocalPlayerId == right.LocalPlayerId &&
-        left.CUnitCount == right.CUnitCount && left.LocalUnitCount == right.LocalUnitCount &&
-        left.InventoryItemCount == right.InventoryItemCount && left.DuplicatePointers == right.DuplicatePointers &&
-        left.InvalidRawcodes == right.InvalidRawcodes && left.TotalRawcodes == right.TotalRawcodes &&
-        left.PoolBytes.AsSpan().SequenceEqual(right.PoolBytes) &&
+        left.LocalUnitCount == right.LocalUnitCount &&
+        left.InventoryItemCount == right.InventoryItemCount &&
         left.StructuralFingerprint.AsSpan().SequenceEqual(right.StructuralFingerprint) &&
         left.RawcodeCounts.Count == right.RawcodeCounts.Count &&
         left.RawcodeCounts.All(pair => right.RawcodeCounts.TryGetValue(pair.Key, out var value) && value == pair.Value);
 
     private static UnitSnapshot ReadSnapshot(ReadOnlyProcessMemory memory, ulong gameBase, ulong gameImageSize,
-        ulong worldFrame, CancellationToken token)
+        ulong worldFrame, Dictionary<ulong, bool> unitClassCache, Dictionary<ulong, bool> inventoryClassCache,
+        CancellationToken token)
     {
         var localPlayerBefore = ReadLocalPlayer(memory, gameBase);
         var countAddress = checked(worldFrame + PoolCountOffset);
@@ -507,7 +532,7 @@ public sealed class TmoAssistedMemoryRecognitionService : IInventoryRecognizer
             if (countAfterEmpty != 0 || poolAfterEmpty != 0 || localAfterEmpty != localPlayerBefore)
                 throw new SnapshotChangedException("빈 pool/local player가 읽는 중 변경되었습니다.");
             return new UnitSnapshot(0, 0, localPlayerBefore.Root, localPlayerBefore.Id, 0, 0, 0, 0, 0, 0,
-                false, false, [], [], []);
+                false, false, [], []);
         }
         if (!ReadOnlyProcessMemory.IsPlausibleUserAddress(poolBefore))
             throw new SnapshotChangedException($"generic pool 주소가 비정상입니다: 0x{poolBefore:X}");
@@ -516,8 +541,6 @@ public sealed class TmoAssistedMemoryRecognitionService : IInventoryRecognizer
         var seen = new HashSet<ulong>();
         var counts = new Dictionary<uint, int>();
         var fingerprint = new List<ulong>();
-        var unitClassCache = new Dictionary<ulong, bool>();
-        var inventoryClassCache = new Dictionary<ulong, bool>();
         var cUnits = 0;
         var localUnits = 0;
         var inventoryItems = 0;
@@ -525,24 +548,52 @@ public sealed class TmoAssistedMemoryRecognitionService : IInventoryRecognizer
         var invalidRawcodes = 0;
         var controllerUnits = new List<ulong>();
 
+        var addresses = new List<ulong>(countBefore);
         for (var index = 0; index < countBefore; index++)
         {
-            token.ThrowIfCancellationRequested();
             var unit = BitConverter.ToUInt64(pointers, index * sizeof(ulong));
             if (unit == 0) continue;
             if (!ReadOnlyProcessMemory.IsPlausibleUserAddress(unit))
                 throw new SnapshotChangedException($"pool의 nonzero 객체 포인터가 비정상입니다: 0x{unit:X}");
             if (!seen.Add(unit)) { duplicatePointers++; continue; }
-            if (!HasExactMsvcClass(memory, gameBase, gameImageSize, unit, ".?AVCUnit@@", unitClassCache)) continue;
+            addresses.Add(unit);
+        }
+        var blocks = ReadUnitBlocks(memory, addresses, token);
+
+        foreach (var unit in addresses)
+        {
+            token.ThrowIfCancellationRequested();
+            ulong vftable;
+            var hasBlock = blocks.TryGetValue(unit, out var block);
+            if (hasBlock)
+                vftable = BitConverter.ToUInt64(block.Buffer, block.Offset);
+            else
+            {
+                // 클러스터에 담기지 못한 객체(읽기 불가 페이지 인접 등)는 vftable만 먼저 확인해,
+                // CUnit이 아니면 큰 블록 읽기 실패를 스냅샷 무효 사유로 만들지 않는다.
+                var head = memory.ReadAvailable(unit, sizeof(ulong));
+                if (head.Length < sizeof(ulong))
+                    throw new SnapshotChangedException($"객체 0x{unit:X} vftable을 읽지 못했습니다.");
+                vftable = BitConverter.ToUInt64(head, 0);
+            }
+            if (!IsExactMsvcClassVftable(memory, gameBase, gameImageSize, vftable, ".?AVCUnit@@", unitClassCache))
+                continue;
             cUnits++;
-            var owner = memory.ReadByte(checked(unit + UnitOwnerOffset));
+            if (!hasBlock)
+            {
+                var isolated = memory.ReadAvailable(unit, UnitBlockBytes);
+                if (isolated.Length < UnitBlockBytes)
+                    throw new SnapshotChangedException($"CUnit 0x{unit:X} 블록을 읽지 못했습니다.");
+                block = (isolated, 0);
+            }
+            var owner = block.Buffer[block.Offset + (int)UnitOwnerOffset];
+            if (owner != localPlayerBefore.Id) continue;
+            localUnits++;
             fingerprint.Add(0x4355_4E49_5400_0001UL); // CUNIT + record version
             fingerprint.Add(unit);
             fingerprint.Add(owner);
-            if (owner != localPlayerBefore.Id) continue;
-            localUnits++;
 
-            var rawcode = memory.ReadUInt32(checked(unit + UnitRawcodeOffset));
+            var rawcode = BitConverter.ToUInt32(block.Buffer, block.Offset + (int)UnitRawcodeOffset);
             fingerprint.Add(rawcode);
             if (!IsPrintableRawcode(rawcode))
             {
@@ -552,7 +603,7 @@ public sealed class TmoAssistedMemoryRecognitionService : IInventoryRecognizer
             Add(counts, rawcode);
             if (rawcode == LocalControllerRawcode) controllerUnits.Add(unit);
 
-            var inventory = memory.ReadUInt64(checked(unit + UnitInventoryOffset));
+            var inventory = BitConverter.ToUInt64(block.Buffer, block.Offset + (int)UnitInventoryOffset);
             fingerprint.Add(inventory);
             if (inventory == 0) continue;
             if (!ReadOnlyProcessMemory.IsPlausibleUserAddress(inventory))
@@ -601,20 +652,57 @@ public sealed class TmoAssistedMemoryRecognitionService : IInventoryRecognizer
         var greenBloodKnown = greenBlood != GreenBloodProbeState.Unknown;
         var hasGreenBlood = greenBlood == GreenBloodProbeState.Held;
 
-        var countAfter = memory.ReadInt32(countAddress);
+        // 적 유닛 생성·사망으로 pool 개수는 항상 흔들릴 수 있다. 발행 안전성은 로컬
+        // 데이터의 이중 패스 일치(SameSnapshot)가 보장하므로, 열거 도중 pool 버퍼
+        // 자체가 재할당·이동한 경우만 이번 패스를 무효로 본다.
         var poolAfter = memory.ReadUInt64(pointerAddress);
-        if (countAfter != countBefore || poolAfter != poolBefore)
-            throw new SnapshotChangedException("pool count/pointer가 열거 중 변경되었습니다.");
-        var pointersAfter = memory.Read(poolAfter, checked(countAfter * sizeof(ulong)));
+        if (poolAfter != poolBefore)
+            throw new SnapshotChangedException("pool pointer가 열거 중 변경되었습니다.");
         var localPlayerAfter = ReadLocalPlayer(memory, gameBase);
-        if (countAfter != countBefore || poolAfter != poolBefore || localPlayerAfter != localPlayerBefore)
+        if (localPlayerAfter != localPlayerBefore)
             throw new SnapshotChangedException("local player root/id가 열거 중 변경되었습니다.");
-        if (!pointers.AsSpan().SequenceEqual(pointersAfter))
-            throw new SnapshotChangedException("pool pointer bytes가 열거 중 변경되었습니다.");
         return new UnitSnapshot(countBefore, poolBefore, localPlayerBefore.Root, localPlayerBefore.Id, cUnits,
             localUnits, inventoryItems, duplicatePointers, invalidRawcodes, counts.Values.Sum(),
-            greenBloodKnown, hasGreenBlood, counts,
-            pointersAfter, fingerprint.ToArray());
+            greenBloodKnown, hasGreenBlood, counts, fingerprint.ToArray());
+    }
+
+    /// <summary>
+    /// 풀 객체 주소들을 정렬해 인접 묶음당 한 번의 큰 읽기로 필요한 필드 블록을 가져온다.
+    /// 읽지 못한 구간의 객체는 결과에서 빠지며, 호출측이 개별 읽기로 폴백한다.
+    /// </summary>
+    private static Dictionary<ulong, (byte[] Buffer, int Offset)> ReadUnitBlocks(
+        ReadOnlyProcessMemory memory, List<ulong> addresses, CancellationToken token)
+    {
+        var result = new Dictionary<ulong, (byte[] Buffer, int Offset)>(addresses.Count);
+        if (addresses.Count == 0) return result;
+        var sorted = new List<ulong>(addresses);
+        sorted.Sort();
+        var start = 0;
+        while (start < sorted.Count)
+        {
+            token.ThrowIfCancellationRequested();
+            var first = sorted[start];
+            var end = checked(first + UnitBlockBytes);
+            var last = start;
+            while (last + 1 < sorted.Count)
+            {
+                var next = sorted[last + 1];
+                var nextEnd = checked(next + UnitBlockBytes);
+                if (next > end && next - end > UnitClusterGap) break;
+                if (nextEnd - first > (ulong)UnitClusterMaxBytes) break;
+                if (nextEnd > end) end = nextEnd;
+                last++;
+            }
+            var buffer = memory.ReadAvailable(first, (int)(end - first));
+            for (var index = start; index <= last; index++)
+            {
+                var offset = (long)(sorted[index] - first);
+                if (offset + UnitBlockBytes <= buffer.Length)
+                    result[sorted[index]] = (buffer, (int)offset);
+            }
+            start = last + 1;
+        }
+        return result;
     }
 
     private static GreenBloodProbeState ToGreenBloodState(bool known, bool held) =>
@@ -686,9 +774,23 @@ public sealed class TmoAssistedMemoryRecognitionService : IInventoryRecognizer
     private static bool HasExactMsvcClass(ReadOnlyProcessMemory memory, ulong imageBase, ulong imageSize,
         ulong objectAddress, string expected, IDictionary<ulong, bool> vftableCache)
     {
+        ulong vftable;
         try
         {
-            var vftable = memory.ReadUInt64(objectAddress);
+            vftable = memory.ReadUInt64(objectAddress);
+        }
+        catch (Exception exception) when (exception is Win32Exception or InvalidDataException)
+        {
+            throw new SnapshotChangedException("MSVC RTTI 구조가 읽는 중 변경되었습니다: " + exception.Message);
+        }
+        return IsExactMsvcClassVftable(memory, imageBase, imageSize, vftable, expected, vftableCache);
+    }
+
+    private static bool IsExactMsvcClassVftable(ReadOnlyProcessMemory memory, ulong imageBase, ulong imageSize,
+        ulong vftable, string expected, IDictionary<ulong, bool> vftableCache)
+    {
+        try
+        {
             if (vftableCache.TryGetValue(vftable, out var cached)) return cached;
             if (!InsideImage(vftable, imageBase, imageSize, 1) || vftable < 8)
             {
@@ -799,7 +901,7 @@ public sealed class TmoAssistedMemoryRecognitionService : IInventoryRecognizer
     private sealed record UnitSnapshot(int PoolCount, ulong PoolPointer, ulong LocalPlayerRoot, ushort LocalPlayerId,
         int CUnitCount,
         int LocalUnitCount, int InventoryItemCount, int DuplicatePointers, int InvalidRawcodes, int TotalRawcodes,
-        bool GreenBloodKnown, bool HasGreenBlood, Dictionary<uint, int> RawcodeCounts, byte[] PoolBytes,
+        bool GreenBloodKnown, bool HasGreenBlood, Dictionary<uint, int> RawcodeCounts,
         ulong[] StructuralFingerprint);
     private sealed class SnapshotChangedException(string message) : InvalidOperationException(message);
     private sealed class BindingNotReadyException(string message) : InvalidOperationException(message);
