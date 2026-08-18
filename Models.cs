@@ -250,12 +250,16 @@ public sealed class RecognitionDiagnostics
     {
         get
         {
+            // 인식이 성공한 상태에서는 수치 요약을, 실패·대기 상태(수치가 없을 때)에는
+            // Detail의 원인·조치 안내를 그대로 보여준다. 예전에는 Detail을 아예 버려서
+            // 연동이 안 될 때 "확인하는 중입니다"만 반복돼 원격 진단이 불가능했다.
             var parts = new List<string>();
             if (!string.IsNullOrWhiteSpace(ProcessVersion)) parts.Add($"워크 버전 {ProcessVersion}");
             if (MappedObjects > 0 || ObservedObjects > 0)
                 parts.Add($"인식 패 {MappedObjects}개");
             if (UnknownObjects > 0) parts.Add($"내부 유닛 {UnknownObjects}개 제외");
-            return parts.Count > 0 ? string.Join(" · ", parts) : "연동 상태를 확인하는 중입니다.";
+            if (parts.Count > 0) return string.Join(" · ", parts);
+            return string.IsNullOrWhiteSpace(Detail) ? "연동 상태를 확인하는 중입니다." : Detail;
         }
     }
 }

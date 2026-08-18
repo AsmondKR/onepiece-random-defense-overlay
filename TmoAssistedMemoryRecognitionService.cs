@@ -43,6 +43,7 @@ public sealed class TmoAssistedMemoryRecognitionService : IInventoryRecognizer
     private readonly object _bindingGate = new();
     private BindingCache? _bindingCache;
     private DateTime _nextWrapperSearchUtc;
+    private string? _lastWaitingDetail;
 
     public TmoAssistedMemoryRecognitionService(DataCatalog catalog) => _unitMap = new RawcodeUnitMap(catalog);
 
@@ -181,16 +182,20 @@ public sealed class TmoAssistedMemoryRecognitionService : IInventoryRecognizer
                         " 보입니다. 오버레이가 새 티모지지 버전을 지원하도록 업데이트될 때까지 연동이 불가합니다.");
                 string waitingDetail;
                 if (throttled)
-                    waitingDetail = "리더 래퍼 재탐색 대기 중입니다.";
+                    // 재탐색 대기 틱마다 문구가 바뀌면 유저가 캡처한 화면으로 원인을 못 읽는다.
+                    // 직전에 확정한 진단을 그대로 유지한다.
+                    waitingDetail = _lastWaitingDetail ?? "리더 래퍼 재탐색 대기 중입니다.";
                 else if (openFailureCount > 0 && scannedTmoCount == 0)
                     waitingDetail =
-                        $"TMO 프로세스 {tmoCandidates.Count}개 전부 메모리 열기 실패(권한 부족) — " +
+                        $"TMO {TmoBuildLabel(tmoExePathSeen)} 프로세스 {tmoCandidates.Count}개 전부 메모리 열기 실패(권한 부족) — " +
                         "티모지지나 워크가 관리자 권한으로 실행 중입니다. 이 앱도 관리자 권한으로 실행해야 연동됩니다.";
                 else
                     waitingDetail =
-                        $"TMO 프로세스 {tmoCandidates.Count}개 조사(권한 실패 {openFailureCount}건) — 리더 래퍼 미발견. " +
+                        $"TMO {TmoBuildLabel(tmoExePathSeen)} 프로세스 {tmoCandidates.Count}개 조사" +
+                        $"(권한 실패 {openFailureCount}건) — 리더 래퍼 미발견. " +
                         "원랜디 판에 들어가 게임 화면에 티모지지 자체 오버레이가 뜨는지 확인해 보세요. " +
                         "안 뜨면 티모지지가 워크를 인식하지 못한 상태라 티모지지 재시작이 필요합니다.";
+                if (!throttled) _lastWaitingDetail = waitingDetail;
                 return Failure(RecognitionState.Waiting,
                     "티모지지-워크 연동 대기 · 원랜디 입장 시 자동 연결", waitingDetail);
             }
@@ -950,6 +955,24 @@ public sealed class TmoAssistedMemoryRecognitionService : IInventoryRecognizer
         var actual = TmoExecutableHashCache.Sha256(path);
         if (!actual.Equals(expectedHash, StringComparison.OrdinalIgnoreCase))
             throw new ExecutableIdentityException($"{displayName} SHA-256 불일치: {actual[..12]}…");
+    }
+
+    /// <summary>대기 진단에 넣을 티모지지 빌드 식별자(파일 버전 + 해시 앞자리).</summary>
+    private static string TmoBuildLabel(string? path)
+    {
+        if (path is null) return "(경로 불명)";
+        try
+        {
+            var version = FileVersionInfo.GetVersionInfo(path).FileVersion ?? "?";
+            var hash = TmoExecutableHashCache.Sha256(path);
+            var known = hash.Equals(SupportedTmoSha256, StringComparison.OrdinalIgnoreCase) ? "검증됨" : "미검증";
+            return $"{version}/{hash[..8]} {known}";
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException
+                                          or CryptographicException or Win32Exception)
+        {
+            return "(확인 불가)";
+        }
     }
 
     /// <summary>리더 래퍼 미발견의 원인이 티모지지 버전 차이인지 확인한다(캐시된 해시 재사용).</summary>
