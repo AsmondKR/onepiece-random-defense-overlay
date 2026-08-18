@@ -1340,17 +1340,17 @@ Assert(UpdateService.ParseLatest("""{"tag_name":"v9.9.9","assets":[]}""",
         new Version(0, 2, 0)) is null,
     "exe 자산이 없으면 업데이트를 시도하지 않음");
 
-// 해상도별 UI 자동 배율: FHD 기준 1.0, 논리 높이(물리/DPI배율)에 비례.
+// 해상도별 UI 자동 배율: 2K(논리 1440) 기준 1.0, 더 큰 화면만 비례 확대.
+Assert(Math.Abs(UiScale.FromScreen(1440, 1.0) - 1.0) < 0.001,
+    "2K 100%는 배율 1.0 (기준 크기 유지)");
 Assert(Math.Abs(UiScale.FromScreen(1080, 1.0) - 1.0) < 0.001,
-    "FHD 100%는 배율 1.0");
-Assert(Math.Abs(UiScale.FromScreen(2160, 1.0) - 2.0) < 0.001,
-    "4K 100%는 배율 2.0 (화면 대비 크기 유지)");
-Assert(Math.Abs(UiScale.FromScreen(2160, 1.5) - 4.0 / 3) < 0.001,
-    "4K 150%는 윈도우 배율을 뺀 나머지만 보정");
-Assert(Math.Abs(UiScale.FromScreen(4320, 1.0) - 4.0) < 0.001,
-    "8K 100%는 배율 4.0");
-Assert(Math.Abs(UiScale.FromScreen(768, 1.0) - 0.8) < 0.001,
-    "저해상도는 0.8 아래로 줄이지 않음");
+    "FHD는 줄이지 않고 1.0 유지");
+Assert(Math.Abs(UiScale.FromScreen(2160, 1.0) - 1.5) < 0.001,
+    "4K 100%는 배율 1.5");
+Assert(Math.Abs(UiScale.FromScreen(2160, 1.5) - 1.0) < 0.001,
+    "4K 150%는 이미 논리 1440이라 그대로 1.0");
+Assert(Math.Abs(UiScale.FromScreen(4320, 1.0) - 3.0) < 0.001,
+    "8K 100%는 배율 3.0");
 
 Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 235/235");
 return;
