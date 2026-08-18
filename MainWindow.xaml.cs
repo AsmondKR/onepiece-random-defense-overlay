@@ -18,7 +18,6 @@ public partial class MainWindow : Window
     private readonly Dictionary<string, InventoryEntry> _manual = new(StringComparer.OrdinalIgnoreCase);
     private readonly DispatcherTimer _timer = new();
     private readonly DispatcherTimer _updateTimer = new() { Interval = TimeSpan.FromMinutes(10) };
-    private UpdateInfo? _pendingUpdate;
     private bool _updateBusy;
     private string? _updateNoticeTag;
     private RecommendationEngine _engine = null!;
@@ -158,18 +157,15 @@ public partial class MainWindow : Window
     }
 
     // 새 릴리스가 있으면 확인 없이 내려받아 교체하고 자동 재시작한다(유저 지시).
-    // 게임 중이면 판이 끝난 뒤 교체해 이번 판의 자동 감지 상태(조합 완료·그린블러드,
-    // 수동 보정)를 잃지 않는다. 같은 태그를 이미 시도했다면(버전 미상승 등) 반복하지 않는다.
+    // 게임 중이어도 미루지 않고 즉시 교체한다(유저 지시 — 재시작 후 스캔이 바로
+    // 패를 다시 읽으므로 손실은 이번 판의 수동 보정 정도다).
+    // 같은 태그를 이미 시도했다면(버전 미상승 등) 반복하지 않는다.
     private async Task CheckForUpdateAsync()
     {
         if (_updateBusy) return;
         var service = new UpdateService();
         var update = await service.CheckAsync();
-        if (update is null)
-        {
-            _pendingUpdate = null;
-            return;
-        }
+        if (update is null) return;
         if (update.Tag.Equals(_settings.LastAttemptedUpdateTag, StringComparison.OrdinalIgnoreCase))
         {
             await NotifyUpdateOnceAsync(update.Tag,
@@ -180,13 +176,6 @@ public partial class MainWindow : Window
         {
             await NotifyUpdateOnceAsync(update.Tag,
                 $"새 버전 {update.Tag} 공개 — 단일 exe 배포가 아니어서 자동 교체를 건너뜁니다.");
-            return;
-        }
-        if (_liveSessionActive)
-        {
-            _pendingUpdate = update;
-            await NotifyUpdateOnceAsync(update.Tag,
-                $"새 버전 {update.Tag} 발견 — 진행 중인 게임이 끝나면 자동 업데이트합니다.");
             return;
         }
         await InstallUpdateAsync(service, update);
@@ -204,7 +193,6 @@ public partial class MainWindow : Window
     {
         if (_updateBusy) return;
         _updateBusy = true;
-        _pendingUpdate = null;
         await Dispatcher.InvokeAsync(() =>
             FooterStatus.Text = $"{update.Tag} 업데이트를 내려받는 중입니다. 완료되면 자동으로 재시작합니다.");
         var previousAttemptTag = _settings.LastAttemptedUpdateTag;
@@ -1098,9 +1086,6 @@ public partial class MainWindow : Window
                     _rejectedGoals.Clear();
                     _completedTopUnits.Reset();
                     _greenBloodUsage.Reset();
-                    // 게임 중 발견해 미뤄 둔 업데이트를 판이 끝난 지금 설치한다.
-                    if (_pendingUpdate is { } pending)
-                        _ = InstallUpdateAsync(new UpdateService(), pending);
                 }
             }
             else
