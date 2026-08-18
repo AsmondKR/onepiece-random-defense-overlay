@@ -67,7 +67,15 @@
           </StackPanel>
         </ScrollViewer>
       </Border>
-      <TextBlock Grid.Row="2" Grid.ColumnSpan="2" x:Name="StatusText" Foreground="#FFB3BAC8" FontSize="12" Margin="2,10,2,0"/>
+      <Grid Grid.Row="2" Grid.ColumnSpan="2" Margin="2,10,2,0">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition/>
+          <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <TextBlock x:Name="StatusText" Foreground="#FFB3BAC8" FontSize="12"/>
+        <TextBlock Grid.Column="1" x:Name="OverlayVersionText" Foreground="#FF7F8796" FontSize="10.5"
+                   VerticalAlignment="Bottom" Margin="10,0,0,0"/>
+      </Grid>
     </Grid>
   </Border>
 </Window>

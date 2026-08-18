@@ -33,6 +33,8 @@ public partial class OverlayWindow : Window
     public OverlayWindow()
     {
         InitializeComponent();
+        var appVersion = UpdateService.CurrentVersion;
+        OverlayVersionText.Text = $"v{appVersion.Major}.{appVersion.Minor}.{appVersion.Build}";
         SourceInitialized += (_, _) => ApplyClickThroughStyle();
         Loaded += (_, _) =>
         {
