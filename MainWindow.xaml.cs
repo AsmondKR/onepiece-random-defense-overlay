@@ -198,7 +198,12 @@ public partial class MainWindow : Window
         if (_updateBusy) return;
         FooterStatus.Text = "업데이트 확인 중…";
         var service = new UpdateService();
-        var update = await service.CheckAsync();
+        var (update, failed) = await service.CheckDetailedAsync();
+        if (failed)
+        {
+            FooterStatus.Text = "업데이트 확인에 실패했습니다 — 네트워크 상태를 확인해 주세요.";
+            return;
+        }
         if (update is null)
         {
             var version = UpdateService.CurrentVersion;

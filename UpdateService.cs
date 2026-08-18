@@ -30,16 +30,20 @@ public sealed class UpdateService(Func<string, Task<string>>? fetcher = null)
     public static Version CurrentVersion =>
         Assembly.GetExecutingAssembly().GetName().Version ?? new Version(0, 0, 0);
 
-    public async Task<UpdateInfo?> CheckAsync()
+    public async Task<UpdateInfo?> CheckAsync() =>
+        (await CheckDetailedAsync().ConfigureAwait(false)).Update;
+
+    /// <summary>수동 확인용: "업데이트 없음"과 "확인 실패(네트워크 등)"를 구분해 준다.</summary>
+    public async Task<(UpdateInfo? Update, bool Failed)> CheckDetailedAsync()
     {
         try
         {
             var json = await _fetch(LatestApiUrl).ConfigureAwait(false);
-            return ParseLatest(json, CurrentVersion);
+            return (ParseLatest(json, CurrentVersion), false);
         }
         catch
         {
-            return null;
+            return (null, true);
         }
     }
 
@@ -64,9 +68,12 @@ public sealed class UpdateService(Func<string, Task<string>>? fetcher = null)
         Math.Max(0, value.Build), Math.Max(0, value.Revision));
 
     /// <summary>단일 exe 실행(자기 자신 교체 가능) 여부.</summary>
+    // 단일 exe도 실행 시 압축 해제 폴더(AppContext.BaseDirectory)에는 OrandOverlay.dll이
+    // 풀려 있어, 거기서 dll을 찾으면 항상 "폴더 배포"로 오판해 자동 교체가 영영 막힌다.
+    // 폴더 배포 여부는 "실행 파일 바로 옆"에 dll이 있는지로만 구분한다.
     public static bool CanSelfInstall =>
         Environment.ProcessPath is { Length: > 0 } path &&
-        !File.Exists(Path.Combine(AppContext.BaseDirectory, "OrandOverlay.dll"));
+        !File.Exists(Path.Combine(Path.GetDirectoryName(path) ?? "", "OrandOverlay.dll"));
 
     /// <summary>
     /// 새 exe를 옆에 내려받고, 앱 종료를 기다렸다가 교체·재시작하는 파워셸을 띄운 뒤
