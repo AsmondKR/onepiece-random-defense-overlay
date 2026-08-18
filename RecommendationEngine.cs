@@ -1210,7 +1210,9 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
             StringComparer.OrdinalIgnoreCase);
         var ingredientTotals = new Dictionary<string,
             Dictionary<string, (RecipeTreeNode Node, long Required, int SelectionOrder)>>(StringComparer.OrdinalIgnoreCase);
-        foreach (var child in root.Children) Visit(child);
+        // 목표 자신의 최종 조합도 하나의 단계다 — 재료가 다 모였을 때 "어떤 유닛을
+        // 선택해 무슨 키를 누르는지"까지 카드에서 보이게 루트부터 방문한다(유저 요청).
+        Visit(root);
 
         return totals.Values
             .Select(value => new RecipeCraftStep
