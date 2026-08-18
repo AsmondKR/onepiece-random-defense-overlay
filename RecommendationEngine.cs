@@ -227,6 +227,18 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
 
         var visibleGoal = showGoal ? [goalSuggestion] : Enumerable.Empty<Recommendation>();
         var results = visibleGoal.Concat(nearest).Take(Math.Max(1, take)).ToList();
+
+        // 유저는 1번부터 순서대로 조합한다 — 위 순위 빌드가 소비할 패를 차감한 잔여
+        // 패로 아래 순위의 완료율·남은 조합을 다시 계산해, 같은 카드가 여러 순위에
+        // 이중 집계되지 않게 한다(1번 완료 시 2번 %가 부풀어 보이던 문제).
+        IReadOnlyDictionary<string, int> cascadeInventory = counts;
+        for (var i = 0; i < results.Count; i++)
+        {
+            results[i] = EvaluateCraft(catalog.Unit(results[i].Route.GoalUnitId),
+                cascadeInventory, calculator, out var remainingAfterBuild);
+            cascadeInventory = remainingAfterBuild;
+        }
+
         foreach (var recommendation in results)
         {
             if (recommendation.Route.GoalUnitId.Equals(goalUnitId, StringComparison.OrdinalIgnoreCase))
@@ -1036,7 +1048,14 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
 
     private Recommendation EvaluateCraft(UnitDefinition unit,
         IReadOnlyDictionary<string, int> inventory,
-        RecipeCompletionCalculator calculator)
+        RecipeCompletionCalculator calculator) =>
+        EvaluateCraft(unit, inventory, calculator, out _);
+
+    /// <summary>remainingAfterBuild = 이 유닛의 빌드가 소비하고 남는 패(순위 캐스케이드용).</summary>
+    private Recommendation EvaluateCraft(UnitDefinition unit,
+        IReadOnlyDictionary<string, int> inventory,
+        RecipeCompletionCalculator calculator,
+        out Dictionary<string, int> remainingAfterBuild)
     {
         var progress = calculator.Calculate([unit.Id], inventory);
         var missing = progress.MissingLeaves.FirstOrDefault();
@@ -1045,6 +1064,8 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
             .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.OrdinalIgnoreCase);
         var recipeTree = BuildRecipeTree(unit.Id, 1, availability,
             new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+        // BuildRecipeTree가 소비하고 남긴 잔여 패 — 아래 순위 완료율 계산의 입력이 된다.
+        remainingAfterBuild = availability;
         return new Recommendation
         {
             Route = new RouteDefinition

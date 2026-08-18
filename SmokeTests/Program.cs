@@ -808,6 +808,21 @@ finally
     File.Delete(cachePath);
 }
 
+// 순위 캐스케이드: 위 순위 빌드가 소비한 카드는 아래 순위 완료율에 이중 집계되지 않는다.
+var cascadeBase = engine.RecommendNearestCrafts("yamato_transcendent", [], 8);
+var cascadeSharedLeaf = cascadeBase[0].RecipeProgress.Leaves
+    .FirstOrDefault(leaf => cascadeBase.Skip(1).Any(other =>
+        other.RecipeProgress.Leaves.Any(x =>
+            x.UnitId.Equals(leaf.UnitId, StringComparison.OrdinalIgnoreCase))));
+Assert(cascadeSharedLeaf is not null, "1번과 하위 순위가 공유하는 재료 존재(캐스케이드 전제)");
+var cascadeRecommendations = engine.RecommendNearestCrafts("yamato_transcendent",
+    Inventory(cascadeSharedLeaf!.UnitId), 8);
+var cascadeAllocated = cascadeRecommendations.Sum(rec => rec.RecipeProgress.Leaves
+    .Where(leaf => leaf.UnitId.Equals(cascadeSharedLeaf.UnitId, StringComparison.OrdinalIgnoreCase))
+    .Sum(leaf => leaf.OwnedCount));
+Assert(cascadeAllocated == 1,
+    "카드 1장은 전체 순위를 통틀어 한 번만 완료율에 집계(위 순위가 소비하면 아래 순위 제외)");
+
 // 클라이언트 갱신은 저장소(GitHub) 스냅샷만 사용한다 — 티모지지 서버 미접속.
 Assert(ClearSnapshotRefreshService.ParseManifest(
         "{\"schemaVersion\":1,\"newestSampleAt\":\"2026-08-16T00:00:00Z\",\"sampleCount\":3}")
@@ -1378,7 +1393,7 @@ Assert(Math.Abs(UiScale.FromScreen(2160, 1.5) - 1.0) < 0.001,
 Assert(Math.Abs(UiScale.FromScreen(4320, 1.0) - 3.0) < 0.001,
     "8K 100%는 배율 3.0");
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 238/238");
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 240/240");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,
