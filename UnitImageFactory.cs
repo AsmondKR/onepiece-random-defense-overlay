@@ -7,8 +7,19 @@ namespace OrandOverlay;
 
 public static class UnitImageFactory
 {
-    public static FrameworkElement Create(string imageUrl, string unitName, double size)
+    /// <summary>
+    /// 티모지지 유닛 아이콘. 번들된 PNG(Data\images\rawcode_*.png)를 우선 쓰고
+    /// (webp 코덱·오프라인 문제 없음), 없으면 URL 시도, 그마저 안 되면 이니셜.
+    /// </summary>
+    public static FrameworkElement Create(string imageUrl, string unitName, double size,
+        string? unitId = null)
     {
+        if (unitId is { Length: > 0 })
+        {
+            var bundled = Path.Combine(AppContext.BaseDirectory, "Data", "images",
+                unitId.Replace(':', '_') + ".png");
+            if (File.Exists(bundled)) imageUrl = bundled;
+        }
         var fallback = new Border
         {
             Width = size,

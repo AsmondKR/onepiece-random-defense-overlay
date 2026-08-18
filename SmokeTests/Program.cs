@@ -369,14 +369,14 @@ Assert(doflamingoWithRareOwned.RemainingCraftSteps.All(step =>
 var doflamingoRareStep = doflamingoChanged.RemainingCraftSteps.Single(step =>
     step.UnitId == "rawcode:L10h");
 var doflamingoClickGuide = RecommendationPresentation.CraftIngredientLine(doflamingoRareStep);
-Assert(doflamingoClickGuide.StartsWith("먼저 선택:") && doflamingoClickGuide.Contains("로브 루치") &&
+Assert(doflamingoClickGuide.StartsWith("선택할 유닛:") && doflamingoClickGuide.Contains("로브 루치") &&
        doflamingoClickGuide.Contains("함께 조합:") && doflamingoClickGuide.Contains("쵸파 가드 포인트") &&
        !doflamingoClickGuide.Contains('×') && !KoreanLabels.ContainsLatin(doflamingoClickGuide),
     "각 조합 단계에 실제로 선택할 직전 재료 유닛을 한글로 표시");
 var yamatoEmpty = engine.RecommendNearestCrafts("yamato_transcendent", [], 1)[0];
 var enelSpecialStep = yamatoEmpty.RemainingCraftSteps.Single(step => step.UnitId == "rawcode:Q00h");
 var enelClickGuide = RecommendationPresentation.CraftIngredientLine(enelSpecialStep);
-Assert(enelClickGuide.StartsWith("먼저 선택: 저격왕 우솝", StringComparison.Ordinal) &&
+Assert(enelClickGuide.StartsWith("선택할 유닛: 저격왕 우솝", StringComparison.Ordinal) &&
        enelClickGuide.Contains("함께 조합: 베포 / 상디", StringComparison.Ordinal) &&
        !enelClickGuide.Contains('×'),
     "공식 조합식 순서를 보존하고 조합 안내의 중복 수량 표시는 제거");
@@ -1315,6 +1315,14 @@ Assert(kingPlan.Any(step => step.TargetUnitId.Equals("rawcode:HA0h", StringCompa
     "킹 재료가 모이면 자동조합 계획에 킹(Z)이 잡힘");
 Assert(combinePlanner.Plan(kingCrafts, []).Count == 0,
     "재료가 없으면 자동조합 계획도 비어 있음");
+var hotkeyEngine = new RecommendationEngine(catalog, null, combineHotkeys);
+var hotkeyPicks = hotkeyEngine.RecommendNearestCrafts("yamato_transcendent", [], take: 3);
+var keyedStep = hotkeyPicks.SelectMany(item => item.RemainingCraftSteps)
+    .FirstOrDefault(step => step.CombineKey is { Length: > 0 });
+Assert(keyedStep is not null &&
+       RecommendationPresentation.CraftIngredientLine(keyedStep)
+           .Contains("유닛 조합 키: ", StringComparison.Ordinal),
+    "조합 키를 아는 단계는 선택할 유닛과 조합 키로 안내");
 
 // 자동 업데이트: 최신 릴리스 태그가 현재 버전보다 높을 때만 exe 자산을 고른다.
 const string releaseJson = """
@@ -1332,7 +1340,7 @@ Assert(UpdateService.ParseLatest("""{"tag_name":"v9.9.9","assets":[]}""",
         new Version(0, 2, 0)) is null,
     "exe 자산이 없으면 업데이트를 시도하지 않음");
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 229/229");
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 230/230");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,

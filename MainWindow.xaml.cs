@@ -23,6 +23,7 @@ public partial class MainWindow : Window
     private GreenBloodAdvisor _greenBloodAdvisor = null!;
     private GreenBloodAdvisor.UsageTracker _greenBloodUsage = null!;
     private SpecialDismantleAdvisor _specialAdvisor = null!;
+    private CombineHotkeyCatalog _combineHotkeys = null!;
     private AutoCombinePlanner _combinePlanner = null!;
     private ClearBuildStats _clearStats = ClearBuildStats.Empty;
     private CompletedTopUnitTracker _completedTopUnits = null!;
@@ -48,14 +49,16 @@ public partial class MainWindow : Window
         {
             _catalog.Load();
             _clearStats = ClearBuildStats.Load(ClearSamplePaths());
-            _engine = new RecommendationEngine(_catalog, _clearStats.HasData ? _clearStats : null);
+            _combineHotkeys = CombineHotkeyCatalog.Load(
+                Path.Combine(AppContext.BaseDirectory, "Data", "tmo-combine-hotkeys.json"));
+            _engine = new RecommendationEngine(_catalog, _clearStats.HasData ? _clearStats : null,
+                _combineHotkeys);
             _statsCalculator = new InventoryStatsCalculator(_catalog);
             _rareRerollAdvisor = new RareRerollAdvisor(_catalog);
             _greenBloodAdvisor = new GreenBloodAdvisor(_catalog);
             _greenBloodUsage = new GreenBloodAdvisor.UsageTracker(_catalog);
             _specialAdvisor = new SpecialDismantleAdvisor(_catalog);
-            _combinePlanner = new AutoCombinePlanner(_catalog, CombineHotkeyCatalog.Load(
-                Path.Combine(AppContext.BaseDirectory, "Data", "tmo-combine-hotkeys.json")));
+            _combinePlanner = new AutoCombinePlanner(_catalog, _combineHotkeys);
             _completedTopUnits = new CompletedTopUnitTracker(_catalog);
             _recognizers["Screen"] = new ScreenRecognitionService(_catalog);
             _recognizers["Memory"] = new TmoAssistedMemoryRecognitionService(_catalog);
@@ -223,7 +226,7 @@ public partial class MainWindow : Window
         await Dispatcher.InvokeAsync(() =>
         {
             _clearStats = reloaded;
-            _engine = new RecommendationEngine(_catalog, _clearStats);
+            _engine = new RecommendationEngine(_catalog, _clearStats, _combineHotkeys);
             DataVersionText.Text = $"데이터 {_catalog.Data.DataVersion} · {_catalog.Data.Disclaimer}" +
                                    ClearStatsSummary();
             // 새 데이터로 학습된 상위·항법 목록을 갱신한다(선택은 최대한 유지).
@@ -586,7 +589,7 @@ public partial class MainWindow : Window
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         row.ColumnDefinitions.Add(new ColumnDefinition());
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var icon = UnitImageFactory.Create(node.Image, node.Name, 42);
+        var icon = UnitImageFactory.Create(node.Image, node.Name, 42, node.UnitId);
         icon.Margin = new Thickness(0, 0, 9, 0);
         row.Children.Add(icon);
 
@@ -648,7 +651,7 @@ public partial class MainWindow : Window
     private static UIElement BuildMissingLeafCard(RecipeLeafProgress leaf)
     {
         var stack = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
-        stack.Children.Add(UnitImageFactory.Create(leaf.Image, leaf.Name, 42));
+        stack.Children.Add(UnitImageFactory.Create(leaf.Image, leaf.Name, 42, leaf.UnitId));
         stack.Children.Add(new TextBlock
         {
             Text = RecommendationPresentation.CraftUnitName(leaf.Name, leaf.Tier),

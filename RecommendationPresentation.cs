@@ -44,9 +44,12 @@ public static class RecommendationPresentation
     {
         if (step.Ingredients.Count == 0) return "조합할 하위 유닛 없음";
         var ordered = step.Ingredients.OrderBy(ingredient => ingredient.SelectionOrder).ToList();
-        var trigger = IngredientName(ordered[0]);
-        if (ordered.Count == 1) return $"먼저 선택: {trigger}";
-        return $"먼저 선택: {trigger}\n함께 조합: " +
+        var line = $"선택할 유닛: {IngredientName(ordered[0])}";
+        // 맵에서 추출한 조합 키가 있으면 실제 조작(선택 → 키)을 그대로 안내한다.
+        if (step.CombineKey is { Length: > 0 } key)
+            return line + $"\n유닛 조합 키: {key}";
+        if (ordered.Count == 1) return line;
+        return line + "\n함께 조합: " +
                string.Join(" / ", ordered.Skip(1).Select(IngredientName));
 
         static string IngredientName(RecipeCraftIngredient ingredient)

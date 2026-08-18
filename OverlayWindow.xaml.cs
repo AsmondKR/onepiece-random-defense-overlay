@@ -416,8 +416,8 @@ public partial class OverlayWindow : Window
         CurrentStatsPanel.Children.Add(magicGoal
             ? CoreStatCard("마방깎", stats.MagicArmorReduction, magicArmorTarget,
                 gorosei == GoroseiMode.Warcury
-                    ? "워큐리: 마방 10퍼센트 상쇄 필요"
-                    : "소스 1점 이상 권장 · 에넬 제한 채용 시 급증")
+                    ? "워큐리 보정: 마방깎 10 필요"
+                    : "마방깎 유닛 1기 이상 (예: 갓 에넬 · 후지토라)")
             : CoreStatCard("방깎", stats.TotalArmorReduction, armorTarget,
                 ArmorBreakdown(stats)));
 
@@ -788,7 +788,7 @@ public partial class OverlayWindow : Window
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         row.ColumnDefinitions.Add(new ColumnDefinition());
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var icon = UnitImageFactory.Create(node.Image, node.Name, 40);
+        var icon = UnitImageFactory.Create(node.Image, node.Name, 40, node.UnitId);
         icon.Margin = new Thickness(0, 0, 9, 0);
         row.Children.Add(icon);
 
@@ -924,7 +924,7 @@ public partial class OverlayWindow : Window
     private static UIElement MissingLeafCard(RecipeLeafProgress leaf)
     {
         var stack = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
-        stack.Children.Add(UnitImageFactory.Create(leaf.Image, leaf.Name, 40));
+        stack.Children.Add(UnitImageFactory.Create(leaf.Image, leaf.Name, 40, leaf.UnitId));
         stack.Children.Add(new TextBlock
         {
             Text = RecommendationPresentation.CraftUnitName(leaf.Name, leaf.Tier),

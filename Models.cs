@@ -98,6 +98,8 @@ public sealed class RecipeCraftStep
     public int RequiredCount { get; init; }
     public int OwnedCount { get; init; }
     public List<RecipeCraftIngredient> Ingredients { get; init; } = [];
+    // 맵에서 추출한 이 유닛의 조합 스킬 단축키(미상이면 null).
+    public string? CombineKey { get; init; }
 
     [JsonIgnore]
     public int MissingCount => Math.Max(0, RequiredCount - OwnedCount);

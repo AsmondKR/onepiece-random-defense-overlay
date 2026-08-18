@@ -2,7 +2,8 @@ using System.Globalization;
 
 namespace OrandOverlay;
 
-public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? clearStats = null)
+public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? clearStats = null,
+    CombineHotkeyCatalog? combineHotkeys = null)
 {
     // RecommendNearestCrafts 진입 시 항법에 따라 설정된다. 1상위 항법이면 1상위
     // 클리어만, 긴급소집 같은 다상위 항법이면 상위 2기 이상 클리어만 집계한
@@ -1115,7 +1116,7 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
         };
     }
 
-    private static List<RecipeCraftStep> BuildRemainingCraftSteps(RecipeTreeNode root)
+    private List<RecipeCraftStep> BuildRemainingCraftSteps(RecipeTreeNode root)
     {
         var totals = new Dictionary<string, (RecipeTreeNode Node, long Required, long Owned)>(
             StringComparer.OrdinalIgnoreCase);
@@ -1132,6 +1133,8 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
                 Image = value.Node.Image,
                 RequiredCount = (int)Math.Min(int.MaxValue, value.Required),
                 OwnedCount = (int)Math.Min(int.MaxValue, value.Owned),
+                CombineKey = combineHotkeys
+                    ?.FindByResult(catalog.Unit(value.Node.UnitId).Rawcodes)?.Key,
                 Ingredients = ingredientTotals.GetValueOrDefault(value.Node.UnitId)?.Values
                     .Select(ingredient => new RecipeCraftIngredient
                     {
