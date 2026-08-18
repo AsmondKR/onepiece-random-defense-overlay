@@ -40,6 +40,7 @@ public partial class MainWindow : Window
     private bool _liveSessionActive;
     private bool _autoStartApplied;
     private readonly HashSet<string> _rejectedGoals = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _expandedBuildNodes = new(StringComparer.OrdinalIgnoreCase);
     private bool _relockAfterMove;
     private bool _updatingSelections;
     private readonly HashSet<string> _expandedRouteIds = new(StringComparer.OrdinalIgnoreCase);
@@ -572,7 +573,8 @@ public partial class MainWindow : Window
         var recommendations = _engine.RecommendNearestCrafts(goal.Id, recommendationInventory,
             navigationMode: navigation.Id, gorosei: gorosei, buildVariant: buildVariant);
         var inventoryStats = _statsCalculator.Calculate(recommendationInventory);
-        var rareRerolls = _rareRerollAdvisor.Evaluate(recommendationInventory, recommendations);
+        var rareRerolls = _rareRerollAdvisor.Evaluate(recommendationInventory, recommendations,
+            goal, _clearStats.HasData ? _clearStats : null);
         IReadOnlyList<GreenBloodAdvice> greenBloodAdvice = _greenBloodUsage.Used
             ? Array.Empty<GreenBloodAdvice>()
             : _greenBloodAdvisor.Evaluate(goal, recommendationInventory,
@@ -754,11 +756,11 @@ public partial class MainWindow : Window
         return bar;
     }
 
-    private static UIElement BuildRecommendationDetails(Recommendation item)
+    private UIElement BuildRecommendationDetails(Recommendation item)
     {
         var stack = new StackPanel { Margin = new Thickness(0, 12, 0, 0) };
-        stack.Children.Add(BuildDetailSectionTitle("남은 조합"));
-        stack.Children.Add(BuildRemainingRecipe(item.RemainingCraftSteps));
+        stack.Children.Add(BuildDetailSectionTitle("남은 조합 · 전설 먼저"));
+        stack.Children.Add(BuildRemainingRecipe(item));
 
         stack.Children.Add(BuildDetailSectionTitle("부족한 최하위 재료", new Thickness(0, 12, 0, 4)));
         if (item.RecipeProgress.MissingLeaves.Count == 0)
@@ -807,10 +809,13 @@ public partial class MainWindow : Window
         return stack;
     }
 
-    private static UIElement BuildRemainingRecipe(IReadOnlyList<RecipeCraftStep> steps)
+    // 남은 조합을 단계식으로 보여준다(유저 요청): 전설급을 먼저 리스트업하고,
+    // 전설을 펼치면 하위 희귀함, 희귀함을 펼치면 재료가 나온다.
+    private UIElement BuildRemainingRecipe(Recommendation item)
     {
         var stack = new StackPanel();
-        if (steps.Count == 0)
+        var (legends, others) = BuildDrilldown.Build(item);
+        if (legends.Count == 0 && others.Count == 0)
         {
             stack.Children.Add(new TextBlock
             {
@@ -820,12 +825,63 @@ public partial class MainWindow : Window
             });
             return stack;
         }
-        for (var i = 0; i < steps.Count; i++)
-            stack.Children.Add(BuildRemainingRecipeCard(steps[i], i + 1));
+        var number = 1;
+        foreach (var group in legends)
+            stack.Children.Add(BuildLegendDrill(item.Route.Id, group, number++));
+        foreach (var step in others)
+            stack.Children.Add(BuildRemainingRecipeCard(step, number++));
         return stack;
     }
 
-    private static UIElement BuildRemainingRecipeCard(RecipeCraftStep node, int stepNumber)
+    private UIElement BuildLegendDrill(string routeId, BuildDrilldown.LegendGroup group, int number)
+    {
+        var card = BuildRemainingRecipeCard(group.Step, number);
+        if (group.Rares.Count == 0) return card;
+        var key = routeId + "|" + group.Step.UnitId;
+        var children = new StackPanel { Margin = new Thickness(16, 0, 0, 4) };
+        foreach (var rare in group.Rares)
+            children.Children.Add(BuildRareDrill(key, rare));
+        var expander = new Expander
+        {
+            Header = card,
+            Content = children,
+            IsExpanded = _expandedBuildNodes.Contains(key),
+            HorizontalContentAlignment = HorizontalAlignment.Stretch
+        };
+        expander.Expanded += (_, _) => _expandedBuildNodes.Add(key);
+        expander.Collapsed += (_, _) => _expandedBuildNodes.Remove(key);
+        return expander;
+    }
+
+    private UIElement BuildRareDrill(string parentKey, RecipeCraftStep rare)
+    {
+        var key = parentKey + "|" + rare.UnitId;
+        var expander = new Expander
+        {
+            Header = BuildRemainingRecipeCard(rare, null),
+            Content = BuildIngredientDetail(rare),
+            IsExpanded = _expandedBuildNodes.Contains(key),
+            HorizontalContentAlignment = HorizontalAlignment.Stretch
+        };
+        expander.Expanded += (_, _) => _expandedBuildNodes.Add(key);
+        expander.Collapsed += (_, _) => _expandedBuildNodes.Remove(key);
+        return expander;
+    }
+
+    private static UIElement BuildIngredientDetail(RecipeCraftStep step) => new TextBlock
+    {
+        Text = "재료: " + string.Join(" · ", step.Ingredients
+            .OrderBy(ingredient => ingredient.SelectionOrder)
+            .Select(ingredient =>
+                RecommendationPresentation.SafeText(ingredient.Name).Trim() +
+                (ingredient.RequiredCount > 1 ? $" ×{ingredient.RequiredCount}" : ""))),
+        Foreground = new SolidColorBrush(Color.FromRgb(166, 177, 196)),
+        FontSize = 12,
+        TextWrapping = TextWrapping.Wrap,
+        Margin = new Thickness(16, 3, 0, 5)
+    };
+
+    private static UIElement BuildRemainingRecipeCard(RecipeCraftStep node, int? stepNumber)
     {
         var row = new Grid();
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -839,7 +895,8 @@ public partial class MainWindow : Window
         var text = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
         text.Children.Add(new TextBlock
         {
-            Text = $"{stepNumber}. {RecommendationPresentation.CraftUnitName(node.Name, node.Tier)}",
+            Text = (stepNumber is { } number ? $"{number}. " : "") +
+                   RecommendationPresentation.CraftUnitName(node.Name, node.Tier),
             Foreground = Brushes.White,
             FontSize = 13,
             FontWeight = FontWeights.SemiBold,

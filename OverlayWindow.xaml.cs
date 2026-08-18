@@ -25,6 +25,7 @@ public partial class OverlayWindow : Window
     private bool _clickThrough;
     private bool _allowClose;
     private readonly HashSet<string> _expandedRouteIds = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _expandedBuildNodes = new(StringComparer.OrdinalIgnoreCase);
     private string _lastRecommendationSignature = "";
     private string _lastStatsSignature = "";
     private string _lastRerollSignature = "";
@@ -766,11 +767,11 @@ public partial class OverlayWindow : Window
         return bar;
     }
 
-    private static UIElement RecommendationDetailsPanel(Recommendation item)
+    private UIElement RecommendationDetailsPanel(Recommendation item)
     {
         var stack = new StackPanel { Margin = new Thickness(0, 8, 0, 0) };
-        stack.Children.Add(DetailSectionTitle("남은 조합"));
-        stack.Children.Add(RemainingRecipePanel(item.RemainingCraftSteps));
+        stack.Children.Add(DetailSectionTitle("남은 조합 · 전설 먼저"));
+        stack.Children.Add(RemainingRecipePanel(item));
         stack.Children.Add(MissingLeavesPanel(item.RecipeProgress));
         stack.Children.Add(DetailSectionTitle("유닛 능력", new Thickness(0, 10, 0, 0)));
         if (item.CompositionUnits.Count > 0)
@@ -778,10 +779,12 @@ public partial class OverlayWindow : Window
         return stack;
     }
 
-    private static UIElement RemainingRecipePanel(IReadOnlyList<RecipeCraftStep> steps)
+    // 남은 조합 단계식 표시(유저 요청): 전설급 먼저, 펼치면 하위 희귀함, 또 펼치면 재료.
+    private UIElement RemainingRecipePanel(Recommendation item)
     {
         var stack = new StackPanel();
-        if (steps.Count == 0)
+        var (legends, others) = BuildDrilldown.Build(item);
+        if (legends.Count == 0 && others.Count == 0)
         {
             stack.Children.Add(new TextBlock
             {
@@ -791,12 +794,63 @@ public partial class OverlayWindow : Window
             });
             return stack;
         }
-        for (var i = 0; i < steps.Count; i++)
-            stack.Children.Add(RemainingRecipeCard(steps[i], i + 1));
+        var number = 1;
+        foreach (var group in legends)
+            stack.Children.Add(LegendDrill(item.Route.Id, group, number++));
+        foreach (var step in others)
+            stack.Children.Add(RemainingRecipeCard(step, number++));
         return stack;
     }
 
-    private static UIElement RemainingRecipeCard(RecipeCraftStep node, int stepNumber)
+    private UIElement LegendDrill(string routeId, BuildDrilldown.LegendGroup group, int number)
+    {
+        var card = RemainingRecipeCard(group.Step, number);
+        if (group.Rares.Count == 0) return card;
+        var key = routeId + "|" + group.Step.UnitId;
+        var children = new StackPanel { Margin = new Thickness(14, 0, 0, 4) };
+        foreach (var rare in group.Rares)
+            children.Children.Add(RareDrill(key, rare));
+        var expander = new Expander
+        {
+            Header = card,
+            Content = children,
+            IsExpanded = _expandedBuildNodes.Contains(key),
+            HorizontalContentAlignment = HorizontalAlignment.Stretch
+        };
+        expander.Expanded += (_, _) => _expandedBuildNodes.Add(key);
+        expander.Collapsed += (_, _) => _expandedBuildNodes.Remove(key);
+        return expander;
+    }
+
+    private UIElement RareDrill(string parentKey, RecipeCraftStep rare)
+    {
+        var key = parentKey + "|" + rare.UnitId;
+        var expander = new Expander
+        {
+            Header = RemainingRecipeCard(rare, null),
+            Content = IngredientDetail(rare),
+            IsExpanded = _expandedBuildNodes.Contains(key),
+            HorizontalContentAlignment = HorizontalAlignment.Stretch
+        };
+        expander.Expanded += (_, _) => _expandedBuildNodes.Add(key);
+        expander.Collapsed += (_, _) => _expandedBuildNodes.Remove(key);
+        return expander;
+    }
+
+    private static UIElement IngredientDetail(RecipeCraftStep step) => new TextBlock
+    {
+        Text = "재료: " + string.Join(" · ", step.Ingredients
+            .OrderBy(ingredient => ingredient.SelectionOrder)
+            .Select(ingredient =>
+                RecommendationPresentation.SafeText(ingredient.Name).Trim() +
+                (ingredient.RequiredCount > 1 ? $" ×{ingredient.RequiredCount}" : ""))),
+        Foreground = new SolidColorBrush(Color.FromRgb(166, 177, 196)),
+        FontSize = 11.5,
+        TextWrapping = TextWrapping.Wrap,
+        Margin = new Thickness(14, 3, 0, 5)
+    };
+
+    private static UIElement RemainingRecipeCard(RecipeCraftStep node, int? stepNumber)
     {
         var row = new Grid();
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -810,7 +864,8 @@ public partial class OverlayWindow : Window
         var text = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
         text.Children.Add(new TextBlock
         {
-            Text = $"{stepNumber}. {RecommendationPresentation.CraftUnitName(node.Name, node.Tier)}",
+            Text = (stepNumber is { } number ? $"{number}. " : "") +
+                   RecommendationPresentation.CraftUnitName(node.Name, node.Tier),
             Foreground = Brushes.White,
             FontSize = 13,
             FontWeight = FontWeights.SemiBold,

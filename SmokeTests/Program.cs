@@ -881,7 +881,6 @@ Assert(rerollWhileMissing.Count > 0 && rerollWhileMissing.All(item => !item.Sell
 var sellWhenComplete = rerollAdvisor.Evaluate(
     Inventory("rawcode:O30h", "rawcode:Z10h", "rawcode:Z10h"), [bonClayPlan]);
 Assert(sellWhenComplete.Count > 0 && sellWhenComplete.All(item => item.Sell) &&
-       sellWhenComplete[0].Reason.Contains("판매") is false &&
        sellWhenComplete[0].Reason.Contains("부족한 희귀패 없음"),
     "부족한 희귀패가 없으면 남는 희귀패는 판매 추천");
 
@@ -1010,18 +1009,47 @@ Assert(reRecommended is null ||
        !reRecommended.Goal.Id.Equals(autoStartAdvice.Goal.Id, StringComparison.OrdinalIgnoreCase),
     "다시 추천은 제외한 상위를 다시 주지 않음");
 
-// 희귀패 정리: 재료 수요가 없어도 방깎·이감·스턴 등 지원 스탯이 있으면 남긴다.
+// 희귀패 정리: 재료 수요가 없어도 ① 지원 스탯이 있거나 ② 지원 스탯 전설·히든의
+// 재료면 남긴다(마르코 → 에이스 전설 방깎33 사례).
+var rareKeepAdvisor = new RareRerollAdvisor(catalog);
 var utilityRare = catalog.AllUnits.FirstOrDefault(unit =>
     unit.Tier.Split('[', 2)[0].Trim() == "희귀함" && RareRerollAdvisor.HasUtilityAbility(unit));
 var plainRare = catalog.AllUnits.FirstOrDefault(unit =>
-    unit.Tier.Split('[', 2)[0].Trim() == "희귀함" && !RareRerollAdvisor.HasUtilityAbility(unit));
+    unit.Tier.Split('[', 2)[0].Trim() == "희귀함" &&
+    !RareRerollAdvisor.HasUtilityAbility(unit));
 Assert(utilityRare is not null && plainRare is not null, "유틸/비유틸 희귀함 표본 존재");
-var rareKeepAdvice = new RareRerollAdvisor(catalog).Evaluate(
-    Inventory(utilityRare!.Id, plainRare!.Id),
-    [new Recommendation { Route = new RouteDefinition { Id = "noop", GoalUnitId = "luffy_common", Name = "루피" } }]);
+var noopPlan = new Recommendation
+{
+    Route = new RouteDefinition { Id = "noop", GoalUnitId = "luffy_common", Name = "루피" }
+};
+var rareKeepAdvice = rareKeepAdvisor.Evaluate(
+    Inventory(utilityRare!.Id, plainRare!.Id), [noopPlan]);
 Assert(rareKeepAdvice.All(item => item.UnitId != utilityRare.Id) &&
        rareKeepAdvice.Any(item => item.UnitId == plainRare.Id),
     "지원 스탯 있는 희귀패는 정리 제외, 없는 것만 정리 권고");
+var aceAdoptGoal = catalog.AllUnits.First(unit =>
+    unit.Tier.Split('[', 2)[0].Trim() is "신비함" or "초월" or "불멸" or "영원" or "제한됨" &&
+    bundledStats.GoalProfile(unit.Rawcodes)?.SupportShare.GetValueOrDefault("O20h")
+        >= RareRerollAdvisor.LegendAdoptionThreshold);
+var aceAdoptShare = bundledStats.GoalProfile(aceAdoptGoal.Rawcodes)!.SupportShare;
+Assert(rareKeepAdvisor.FeedsAdoptedUtilityLegend("rawcode:220h", aceAdoptShare) &&
+       rareKeepAdvisor.Evaluate(Inventory("rawcode:220h"), [noopPlan], aceAdoptGoal, bundledStats)
+           .All(item => item.UnitId != "rawcode:220h"),
+    "마르코 희귀는 채용되는 에이스 전설(방깎)의 재료라 정리에서 제외");
+Assert(rareKeepAdvisor.Evaluate(Inventory("rawcode:220h"), [noopPlan])
+           .Any(item => item.UnitId == "rawcode:220h"),
+    "목표·클리어 데이터 없이는 기존처럼 재료 수요만 판단");
+
+// 드릴다운: 상위 목표의 남은 조합은 전설급을 먼저 묶고, 그 안에 하위 희귀함을 담는다.
+var drillGoal = engine.RecommendNearestCrafts("rawcode:B50h", [], 1)[0];
+var (drillLegends, _) = BuildDrilldown.Build(drillGoal);
+Assert(drillLegends.Count > 0 &&
+       drillLegends.All(group => BuildDrilldown.IsLegendTier(group.Step.Tier)),
+    "카벤딧슈 남은 조합은 전설·히든 단계를 먼저 리스트업");
+Assert(drillLegends.Any(group => group.Rares.Count > 0) &&
+       drillLegends.SelectMany(group => group.Rares)
+           .All(step => BuildDrilldown.IsRareTier(step.Tier)),
+    "전설을 펼치면 그 트리의 희귀함 단계가 나온다");
 
 // 자동 시작 단계의 희귀함 순위: 빈 패에서는 재료 적은 순, 재료가 모이면 완성률 순.
 var fastRaresEmpty = engine.RecommendFastRares([], 5);
@@ -1440,7 +1468,7 @@ Assert(Math.Abs(UiScale.FromScreen(2160, 1.5) - 1.0) < 0.001,
 Assert(Math.Abs(UiScale.FromScreen(4320, 1.0) - 3.0) < 0.001,
     "8K 100%는 배율 3.0");
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 248/248");
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 252/252");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,

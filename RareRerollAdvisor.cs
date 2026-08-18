@@ -18,9 +18,16 @@ public sealed class RareRerollAdvisor(DataCatalog catalog)
 {
     public IReadOnlyList<RareRerollAdvice> Evaluate(
         IEnumerable<InventoryEntry> inventory,
-        IReadOnlyList<Recommendation> recommendations)
+        IReadOnlyList<Recommendation> recommendations,
+        UnitDefinition? goal = null,
+        ClearBuildStats? clearStats = null)
     {
         if (recommendations.Count == 0) return [];
+        // 현재 목표의 신+ 클리어에서 실제 채용되는 지원 유닛 채용률 — 유틸 전설
+        // 보존 판단의 근거가 된다(에이스 전설 사례).
+        var supportShare = goal is not null && clearStats is { HasData: true }
+            ? clearStats.GoalProfile(goal.Rawcodes)?.SupportShare
+            : null;
 
         var owned = inventory
             .Where(entry => entry.Count > 0)
@@ -48,10 +55,14 @@ public sealed class RareRerollAdvisor(DataCatalog catalog)
         return owned
             .Select(pair => (pair.Key, Count: pair.Value, Unit: catalog.Unit(pair.Key)))
             .Where(item => BaseTier(item.Unit.Tier) == "희귀함")
-            // 재료로는 안 쓰여도 방깎·이감·스턴 같은 지원 스탯을 주는 희귀패는 패에
-            // 남길 가치가 있다(예: 마르코 희귀 = 방깎 소스) — 정리 대상에서 제외(유저 피드백).
+            // 재료로는 안 쓰여도 ① 자체 지원 스탯(방깎·이감·스턴 등)이 있거나
+            // ② 현재 목표의 클리어에서 실제 채용(3% 이상)되는 유틸 전설·히든의 직계
+            // 재료인 희귀패(예: 마르코 → 에이스 전설 방깎33)는 남긴다(유저 피드백).
+            // 거의 모든 희귀함이 어떤 유틸 전설로든 이어지므로(실측 42종 중 41종)
+            // 채용률 조건 없이 넓히면 정리 기능 자체가 무력화된다.
             .Where(item => rareDemand.GetValueOrDefault(item.Key) > 0 ||
-                           !HasUtilityAbility(item.Unit))
+                           (!HasUtilityAbility(item.Unit) &&
+                            !FeedsAdoptedUtilityLegend(item.Key, supportShare)))
             .Select(item =>
             {
                 var needed = rareDemand.GetValueOrDefault(item.Key);
@@ -114,6 +125,30 @@ public sealed class RareRerollAdvisor(DataCatalog catalog)
     public static bool HasUtilityAbility(UnitDefinition unit) => unit.OfficialAbilities
         .Any(ability => UtilityAbilityNames.Contains(
             RecommendationPresentation.SafeText(ability.Name), StringComparer.Ordinal));
+
+    public const double LegendAdoptionThreshold = 0.03;
+
+    private List<UnitDefinition>? _utilityLegends;
+
+    /// <summary>
+    /// 현재 목표의 클리어에서 채용률 3% 이상인 유틸 전설·히든의 직계 재료인지.
+    /// 목표·클리어 데이터가 없으면 false(정리 로직은 재료 수요만 본다).
+    /// </summary>
+    public bool FeedsAdoptedUtilityLegend(string unitId,
+        IReadOnlyDictionary<string, double>? supportShare)
+    {
+        if (supportShare is null) return false;
+        _utilityLegends ??= catalog.AllUnits
+            .Where(unit => BaseTier(unit.Tier) is "전설" or "히든")
+            .Where(HasUtilityAbility)
+            .DistinctBy(unit => unit.Id)
+            .ToList();
+        return _utilityLegends.Any(legend =>
+            legend.Rawcodes.Any(code =>
+                supportShare.GetValueOrDefault(code) >= LegendAdoptionThreshold) &&
+            legend.Recipe.Keys.Any(key =>
+                catalog.Unit(key).Id.Equals(unitId, StringComparison.OrdinalIgnoreCase)));
+    }
 
     private static string BaseTier(string tier) => tier.Split('[', 2)[0].Trim();
 
