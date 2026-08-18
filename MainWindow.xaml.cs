@@ -113,6 +113,7 @@ public partial class MainWindow : Window
         _overlay.RestorePosition(_settings.OverlayLeft, _settings.OverlayTop);
         _overlay.PositionCommitted += Overlay_OnPositionCommitted;
         _overlay.HiddenByUser += () => OverlayButton.Content = "오버레이 보이기";
+        _overlay.ReRecommendRequested += () => ReRecommend_OnClick(this, new RoutedEventArgs());
         _overlay.Show();
         _overlay.SetClickThrough(_settings.ClickThroughOverlay);
         _timer.Interval = TimeSpan.FromSeconds(Math.Clamp(_settings.CaptureIntervalSeconds, 0.5, 10));
