@@ -20,7 +20,11 @@
       </Grid.RowDefinitions>
       <Grid Grid.ColumnSpan="2" Background="Transparent" Cursor="SizeAll" MouseLeftButtonDown="DragArea_OnMouseLeftButtonDown">
         <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-        <TextBlock x:Name="GoalText" Text="야마토 초월" Foreground="White" FontSize="22" FontWeight="SemiBold"/>
+        <StackPanel>
+          <TextBlock x:Name="GoalText" Text="야마토 초월" Foreground="White" FontSize="22" FontWeight="SemiBold"/>
+          <TextBlock x:Name="PhaseHintText" Foreground="#FFFBBF24" FontSize="11.5"
+                     TextWrapping="Wrap" Margin="0,4,0,0" Visibility="Collapsed"/>
+        </StackPanel>
         <Border Grid.Column="1" x:Name="ClickThroughBadge" Visibility="Collapsed"
                 Background="#33334155" CornerRadius="9" Padding="8,3" VerticalAlignment="Center">
           <TextBlock Text="클릭 통과" Foreground="#FF9CA3AF" FontSize="10"/>

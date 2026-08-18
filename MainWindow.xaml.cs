@@ -363,10 +363,11 @@ public partial class MainWindow : Window
 
     // 자동 시작: 상위를 정하지 않고 출발한 판에서 첫 희귀함이 잡히면, 그 희귀함이
     // 들어가는 학습된 상위 중 표본 최다를 목표로 전환한다(판당 1회, 종료 시 재대기).
-    private string? TryAutoStartGoal()
+    private string? TryAutoStartGoal(IEnumerable<InventoryEntry> inventory)
     {
         if (!_settings.AutoStartGoal || _autoStartApplied || !_clearStats.HasData) return null;
-        var advice = AutoStartAdvisor.RecommendGoal(_catalog, _clearStats, _automatic.Keys);
+        var advice = AutoStartAdvisor.RecommendGoal(_catalog, _clearStats,
+            inventory.Where(entry => entry.Count > 0).Select(entry => entry.UnitId));
         if (advice is null) return null;
         _autoStartApplied = true;
         if (advice.Goal.Id.Equals(SelectedGoal?.Id, StringComparison.OrdinalIgnoreCase))
@@ -451,12 +452,6 @@ public partial class MainWindow : Window
     private void RefreshAll(string? message = null)
     {
         if (!_initialized) return;
-        var goal = GoalCombo.SelectedItem as UnitDefinition;
-        if (goal is null) return;
-        var navigation = NavigationCombo.SelectedItem as NavigationOption ??
-                         NavigationProfiles.Find(_settings.NavigationMode);
-        _settings.GoalUnitId = goal.Id;
-        _settings.NavigationMode = navigation.Id;
         var inventory = CombinedInventory();
         var recommendationInventoryBase = _automaticDisconnected
             ? CombinedInventory(includeAutomatic: false)
@@ -473,6 +468,14 @@ public partial class MainWindow : Window
                     new InventoryEntry { UnitId = "greenblood_buff", Count = 1, Confidence = 1 }
                 })
                 .ToList();
+        // 자동 시작: 첫 희귀함이 잡히는 순간 목표를 전환하고, 아래에서 새 목표로 추천한다.
+        var autoStartMessage = TryAutoStartGoal(recommendationInventory);
+        var goal = GoalCombo.SelectedItem as UnitDefinition;
+        if (goal is null) return;
+        var navigation = NavigationCombo.SelectedItem as NavigationOption ??
+                         NavigationProfiles.Find(_settings.NavigationMode);
+        _settings.GoalUnitId = goal.Id;
+        _settings.NavigationMode = navigation.Id;
         var gorosei = (GoroseiCombo.SelectedItem as GoroseiOption)?.Mode
                       ?? GoroseiEffects.Parse(_settings.GoroseiMode);
         _settings.GoroseiMode = gorosei.ToString();
@@ -497,14 +500,29 @@ public partial class MainWindow : Window
         }
         if (inventory.Count == 0) InventoryList.Items.Add("보유 패 없음");
 
-        // 패가 하나도 없으면 지원(2순위 이하) 추천은 근거가 없다 — 목표 카드만 남기고,
-        // 패가 잡히기 시작하면 지원 추천을 연다(유저 요청).
-        IReadOnlyList<Recommendation> visibleRecommendations =
-            recommendationInventory.Count == 0 && recommendations.Count > 1
+        // 자동 시작 단계(첫 희귀함 전): 상위 카드 대신, 현재 패로 가장 빨리 완성되는
+        // 희귀함 순위를 보여준다(패스트 유니크). 첫 희귀함이 잡히면 상위 추천으로 전환.
+        // 그 외에는, 패가 하나도 없으면 지원(2순위 이하) 근거가 없어 목표 카드만 남긴다.
+        var rarePhase = _settings.AutoStartGoal && !_autoStartApplied;
+        IReadOnlyList<Recommendation> visibleRecommendations = rarePhase
+            ? _engine.RecommendFastRares(recommendationInventory)
+            : recommendationInventory.Count == 0 && recommendations.Count > 1
                 ? [recommendations[0]]
                 : recommendations;
+        var phaseHint = rarePhase
+            ? "7라운드까지 희귀함이 안 나오면 선택 위습 1~2개 사용 권장"
+            : null;
 
         RecommendationCards.Children.Clear();
+        if (rarePhase)
+            RecommendationCards.Children.Add(new TextBlock
+            {
+                Text = $"첫 희귀함 찾기 · 빠른 완성 순 — {phaseHint}",
+                Foreground = new SolidColorBrush(Color.FromRgb(251, 191, 36)),
+                FontSize = 12,
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 0, 0, 7)
+            });
         if (visibleRecommendations.Count == 0)
             RecommendationCards.Children.Add(new TextBlock
             {
@@ -516,13 +534,15 @@ public partial class MainWindow : Window
             RecommendationCards.Children.Add(BuildRecommendationCard(visibleRecommendations[i], i + 1));
         // "지금 조합 가능"은 1번 우선순위 추천의 조합 단계만 보여준다(사용자 요청).
         // 여러 추천의 단계를 섞어 보여주면 지금 뭘 눌러야 하는지 흐려진다.
-        var combinePlan = _combinePlanner.Plan(recommendations.Take(1).ToList(),
+        var combinePlan = _combinePlanner.Plan(visibleRecommendations.Take(1).ToList(),
             recommendationInventory);
         var emergencySummons = navigation.Id.Equals("AlliedForces.EmergencyCall",
             StringComparison.OrdinalIgnoreCase)
             ? _engine.RecommendEmergencySummons(recommendations, recommendationInventory)
             : Array.Empty<EmergencySummonAdvice>();
-        _overlay.Render($"{goal.Name} · {navigation.Name}", visibleRecommendations, inventoryStats, rareRerolls,
+        _overlay.Render(
+            rarePhase ? "첫 희귀함 찾기 · 빠른 완성 순" : $"{goal.Name} · {navigation.Name}",
+            visibleRecommendations, inventoryStats, rareRerolls,
             greenBloodAdvice,
             !_greenBloodUsage.Used &&
             GreenBloodAdvisor.HasUnusedGreenBlood(_catalog, recommendationInventory),
@@ -530,8 +550,10 @@ public partial class MainWindow : Window
             gorosei, _greenBloodUsage.Used,
             _specialAdvisor.Evaluate(recommendationInventory, recommendations, goal,
                 _clearStats.HasData ? _clearStats : null),
-            _engine.ActiveStunTarget, _engine.ActiveStunCap);
-        if (message is not null) FooterStatus.Text = message;
+            _engine.ActiveStunTarget, _engine.ActiveStunCap,
+            phaseHint);
+        if (autoStartMessage is not null) FooterStatus.Text = autoStartMessage;
+        else if (message is not null) FooterStatus.Text = message;
     }
 
     private UIElement BuildRecommendationCard(Recommendation item, int rank)
@@ -948,7 +970,6 @@ public partial class MainWindow : Window
             var result = await recognizer.RecognizeAsync(_settings, cancellation.Token);
             if (generation != _scanGeneration || !ReferenceEquals(recognizer, _recognizer)) return;
             LogUnknownRawcodes(result);
-            string? autoStartMessage = null;
             if (result.ShouldReplaceInventory)
             {
                 _completedTopUnits.Observe(result.Entries);
@@ -959,7 +980,6 @@ public partial class MainWindow : Window
                 _automaticStale = false;
                 _automaticDisconnected = false;
                 _liveSessionActive = true;
-                autoStartMessage = TryAutoStartGoal();
             }
             else if (result.ShouldClearAutomaticInventory)
             {
@@ -994,7 +1014,7 @@ public partial class MainWindow : Window
             var detail = result.Diagnostics.UserDisplayText;
             if (!result.ShouldReplaceInventory && _automatic.Count > 0)
                 detail = string.IsNullOrWhiteSpace(detail) ? "마지막 정상 패를 유지합니다." : detail + " | 마지막 정상 패 유지";
-            RefreshAll(autoStartMessage ?? detail);
+            RefreshAll(detail);
         }
         catch (OperationCanceledException) { }
         catch (Exception)
@@ -1042,6 +1062,8 @@ public partial class MainWindow : Window
     private void GoalCombo_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_updatingSelections) return;
+        // 유저가 직접 상위를 고르면 이번 판의 자동 시작(희귀함 우선) 단계를 끝낸다.
+        if (_initialized) _autoStartApplied = true;
         // 상위가 바뀌면 그 상위 기준으로 학습된 항법·빌드 방향을 다시 보여준다.
         if (_initialized)
         {

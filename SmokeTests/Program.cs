@@ -1006,6 +1006,23 @@ Assert(AutoStartAdvisor.RequiresUnit(catalog, autoStartAdvice.Goal, autoStartRar
 Assert(AutoStartAdvisor.RecommendGoal(catalog, bundledStats, ["luffy_common"]) is null,
     "희귀함이 없으면 자동 시작 추천 없음");
 
+// 자동 시작 단계의 희귀함 순위: 빈 패에서는 재료 적은 순, 재료가 모이면 완성률 순.
+var fastRaresEmpty = engine.RecommendFastRares([], 5);
+Assert(fastRaresEmpty.Count == 5 && fastRaresEmpty.All(rec =>
+        catalog.Unit(rec.Route.GoalUnitId).Tier.Split('[', 2)[0].Trim() == "희귀함"),
+    "자동 시작 단계는 희귀함만 순위로 보여줌");
+var targetRare = fastRaresEmpty[0];
+var targetRareMaterials = targetRare.RecipeProgress.Leaves
+    .SelectMany(leaf => Enumerable.Repeat(leaf.UnitId, (int)leaf.RequiredCount))
+    .ToArray();
+var fastRaresReady = engine.RecommendFastRares(Inventory(targetRareMaterials), 5);
+Assert(fastRaresReady.Zip(fastRaresReady.Skip(1)).All(pair =>
+           pair.First.RecipeProgress.CompletionRatio >=
+           pair.Second.RecipeProgress.CompletionRatio - 1e-9) &&
+       fastRaresReady.Single(rec => rec.Route.GoalUnitId == targetRare.Route.GoalUnitId)
+           .RecipeProgress.CompletionRatio >= 0.999,
+    "완성률 내림차순 정렬 + 재료 모인 희귀함은 100퍼센트");
+
 // 강화 폼 rawcode 별칭: 발라티에 강화 상디(G90H)는 H90H와 같은 유닛으로 통합된다.
 Assert(catalog.Unit("rawcode:G90H").Id == "rawcode:H90H" &&
        catalog.Unit("rawcode:G90H").Name.Contains("상디", StringComparison.Ordinal),
@@ -1406,7 +1423,7 @@ Assert(Math.Abs(UiScale.FromScreen(2160, 1.5) - 1.0) < 0.001,
 Assert(Math.Abs(UiScale.FromScreen(4320, 1.0) - 3.0) < 0.001,
     "8K 100%는 배율 3.0");
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 243/243");
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 245/245");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,

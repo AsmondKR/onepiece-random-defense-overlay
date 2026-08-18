@@ -105,9 +105,14 @@ public partial class OverlayWindow : Window
         bool greenBloodUsed = false,
         IReadOnlyList<SpecialDismantleAdvice>? specialAdvice = null,
         double stunTarget = 1.4,
-        double stunCap = 1.5)
+        double stunCap = 1.5,
+        string? phaseHint = null)
     {
         GoalText.Text = goalName;
+        PhaseHintText.Text = phaseHint ?? "";
+        PhaseHintText.Visibility = phaseHint is { Length: > 0 }
+            ? Visibility.Visible
+            : Visibility.Collapsed;
         StatusText.Text = status;
         RenderCurrentStats(stats, magicGoal, gorosei, stunTarget, stunCap);
         RenderRareRerolls(rareRerolls, recommendations.Count > 0);

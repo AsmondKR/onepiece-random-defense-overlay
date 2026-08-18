@@ -249,6 +249,31 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
         return results;
     }
 
+    /// <summary>
+    /// 자동 시작 단계: 현재 패로 가장 빨리 완성되는 희귀함 순위. 서로 대안 관계라
+    /// 각 희귀함은 전체 패 기준으로 독립 평가한다(순위 캐스케이드 미적용).
+    /// 빈 패에서는 재료 수가 적은(빨리 나오는) 순서가 된다.
+    /// </summary>
+    public IReadOnlyList<Recommendation> RecommendFastRares(
+        IEnumerable<InventoryEntry> inventory, int take = 5)
+    {
+        var counts = inventory
+            .GroupBy(x => x.UnitId, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.Sum(x => x.Count),
+                StringComparer.OrdinalIgnoreCase);
+        var calculator = new RecipeCompletionCalculator(catalog.Unit);
+        return catalog.AllUnits
+            .Where(unit => unit.Tier.Split('[', 2)[0].Trim() == "희귀함")
+            .Where(unit => unit.Recipe.Count > 0)
+            .DistinctBy(unit => unit.Id)
+            .Select(unit => EvaluateCraft(unit, counts, calculator))
+            .Where(recommendation => recommendation.RecipeProgress.RequiredLeafCount > 0)
+            .OrderByDescending(recommendation => recommendation.RecipeProgress.CompletionRatio)
+            .ThenBy(recommendation => recommendation.RecipeProgress.RequiredLeafCount)
+            .Take(Math.Max(1, take))
+            .ToList();
+    }
+
     // 배(해적선 060h·고대의 배 Y50h)는 일반 재료 조합으로 만들 수 없는 특수 획득물이다.
     // 좀비·토큰·확장팩·초월쿠마 같은 기타 재료는 게임 안에서 정상 획득 루트가 있으므로
     // 게이트하지 않는다(전부 게이트하면 초월 후보가 통째로 사라진다).
