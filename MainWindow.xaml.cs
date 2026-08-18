@@ -124,6 +124,42 @@ public partial class MainWindow : Window
             _ = ScanAsync();
         }
         _ = RefreshClearDataAsync();
+        _ = AutoUpdateAsync();
+    }
+
+    // 새 릴리스가 있으면 확인 없이 내려받아 교체하고 자동 재시작한다(유저 지시).
+    // 같은 태그를 이미 시도했다면(교체 실패·버전 미상승 등) 반복하지 않는다.
+    private async Task AutoUpdateAsync()
+    {
+        var service = new UpdateService();
+        var update = await service.CheckAsync();
+        if (update is null) return;
+        if (update.Tag.Equals(_settings.LastAttemptedUpdateTag, StringComparison.OrdinalIgnoreCase))
+        {
+            await Dispatcher.InvokeAsync(() =>
+                FooterStatus.Text = $"{update.Tag} 자동 업데이트가 이전에 완료되지 않았습니다 — 릴리스 페이지에서 수동으로 받아주세요.");
+            return;
+        }
+        if (!UpdateService.CanSelfInstall)
+        {
+            await Dispatcher.InvokeAsync(() =>
+                FooterStatus.Text = $"새 버전 {update.Tag} 공개 — 단일 exe 배포가 아니어서 자동 교체를 건너뜁니다.");
+            return;
+        }
+        await Dispatcher.InvokeAsync(() =>
+            FooterStatus.Text = $"{update.Tag} 업데이트를 내려받는 중입니다. 완료되면 자동으로 재시작합니다.");
+        try
+        {
+            _settings.LastAttemptedUpdateTag = update.Tag;
+            SettingsStore.Save(_settings);
+            await service.DownloadAndInstallAsync(update);
+            await Dispatcher.InvokeAsync(() => Application.Current.Shutdown());
+        }
+        catch
+        {
+            await Dispatcher.InvokeAsync(() =>
+                FooterStatus.Text = $"{update.Tag} 자동 업데이트에 실패했습니다 — 다음 실행 때 다시 시도하지 않습니다.");
+        }
     }
 
     // 필드의 강화 폼처럼 카탈로그에 없는 rawcode를 파일로 남겨, 별칭 등록으로

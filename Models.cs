@@ -276,6 +276,8 @@ public sealed class AppSettings
     public string OverlayToggleKey { get; set; } = "Capital";
     // 신+ 판별 전역 변수(오로성). 게임 시작 안내창을 보고 선택한다.
     public string GoroseiMode { get; set; } = "None";
+    // 자동 업데이트 무한 루프 방지: 같은 태그는 한 번만 시도한다.
+    public string LastAttemptedUpdateTag { get; set; } = "";
 }
 
 /// <summary>긴급소집 와일드카드(특별함 선택) 사용처 한 건.</summary>

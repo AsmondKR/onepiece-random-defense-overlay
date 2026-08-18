@@ -1316,7 +1316,23 @@ Assert(kingPlan.Any(step => step.TargetUnitId.Equals("rawcode:HA0h", StringCompa
 Assert(combinePlanner.Plan(kingCrafts, []).Count == 0,
     "재료가 없으면 자동조합 계획도 비어 있음");
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 226/226");
+// 자동 업데이트: 최신 릴리스 태그가 현재 버전보다 높을 때만 exe 자산을 고른다.
+const string releaseJson = """
+    {"tag_name":"v9.9.9","assets":[
+      {"name":"readme.txt","browser_download_url":"https://x/readme.txt"},
+      {"name":"OrandOverlay.exe","browser_download_url":"https://x/OrandOverlay.exe"}]}
+    """;
+Assert(UpdateService.ParseLatest(releaseJson, new Version(0, 2, 0))
+           is { Tag: "v9.9.9", DownloadUrl: "https://x/OrandOverlay.exe" },
+    "새 릴리스가 있으면 exe 자산과 태그를 해석");
+Assert(UpdateService.ParseLatest(releaseJson.Replace("v9.9.9", "v0.2.0"),
+        new Version(0, 2, 0)) is null,
+    "같은 버전이면 업데이트로 판정하지 않음");
+Assert(UpdateService.ParseLatest("""{"tag_name":"v9.9.9","assets":[]}""",
+        new Version(0, 2, 0)) is null,
+    "exe 자산이 없으면 업데이트를 시도하지 않음");
+
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 229/229");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,

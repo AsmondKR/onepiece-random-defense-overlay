@@ -1,0 +1,134 @@
+using System.Diagnostics;
+using System.Net.Http;
+using System.Reflection;
+using System.Text;
+using System.Text.Json;
+
+namespace OrandOverlay;
+
+public sealed record UpdateInfo(Version Latest, string Tag, string DownloadUrl);
+
+/// <summary>
+/// GitHub Releases 기반 자동 업데이트. 시작 시 최신 릴리스를 확인하고, 단일 exe로
+/// 실행 중일 때만 새 exe를 내려받아 교체·재시작한다. 다중 파일 배포(publish 폴더)로
+/// 실행 중이면 릴리스 페이지만 연다. 확인 실패는 조용히 무시한다(오프라인 등).
+/// </summary>
+public sealed class UpdateService(Func<string, Task<string>>? fetcher = null)
+{
+    public const string LatestApiUrl =
+        "https://api.github.com/repos/AsmondKR/onepiece-random-defense-overlay/releases/latest";
+    public const string ReleasesPageUrl =
+        "https://github.com/AsmondKR/onepiece-random-defense-overlay/releases/latest";
+
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
+    private readonly Func<string, Task<string>> _fetch = fetcher ?? FetchViaHttp;
+
+    public static Version CurrentVersion =>
+        Assembly.GetExecutingAssembly().GetName().Version ?? new Version(0, 0, 0);
+
+    public async Task<UpdateInfo?> CheckAsync()
+    {
+        try
+        {
+            var json = await _fetch(LatestApiUrl).ConfigureAwait(false);
+            return ParseLatest(json, CurrentVersion);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>최신 릴리스 JSON을 해석해 현재 버전보다 높을 때만 업데이트 정보를 준다.</summary>
+    public static UpdateInfo? ParseLatest(string json, Version current)
+    {
+        var release = JsonSerializer.Deserialize<LatestRelease>(json, JsonOptions);
+        if (release?.TagName is not { Length: > 0 } tag) return null;
+        var text = tag.TrimStart('v', 'V');
+        if (!Version.TryParse(text, out var latest)) return null;
+        // Version 비교는 미지정 필드(-1)를 0으로 정규화해 2.0 == 2.0.0으로 본다.
+        var normalizedLatest = Normalize(latest);
+        if (normalizedLatest <= Normalize(current)) return null;
+        var asset = release.Assets?.FirstOrDefault(item =>
+            item.Name?.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) == true);
+        if (asset?.BrowserDownloadUrl is not { Length: > 0 } url) return null;
+        return new UpdateInfo(normalizedLatest, tag, url);
+    }
+
+    private static Version Normalize(Version value) => new(
+        Math.Max(0, value.Major), Math.Max(0, value.Minor),
+        Math.Max(0, value.Build), Math.Max(0, value.Revision));
+
+    /// <summary>단일 exe 실행(자기 자신 교체 가능) 여부.</summary>
+    public static bool CanSelfInstall =>
+        Environment.ProcessPath is { Length: > 0 } path &&
+        !File.Exists(Path.Combine(AppContext.BaseDirectory, "OrandOverlay.dll"));
+
+    /// <summary>
+    /// 새 exe를 옆에 내려받고, 앱 종료를 기다렸다가 교체·재시작하는 파워셸을 띄운 뒤
+    /// 앱을 닫는다. 호출 전에 CanSelfInstall을 확인해야 한다.
+    /// </summary>
+    public async Task DownloadAndInstallAsync(UpdateInfo update)
+    {
+        var exePath = Environment.ProcessPath!;
+        var newPath = exePath + ".new";
+        using (var client = new HttpClient { Timeout = TimeSpan.FromMinutes(5) })
+        {
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("OrandOverlay-Updater");
+            await using var source = await client.GetStreamAsync(update.DownloadUrl)
+                .ConfigureAwait(false);
+            await using var target = File.Create(newPath);
+            await source.CopyToAsync(target).ConfigureAwait(false);
+        }
+
+        var script = $$"""
+            for ($i = 0; $i -lt 120; $i++) {
+              try { Remove-Item -LiteralPath '{{exePath}}' -ErrorAction Stop; break }
+              catch { Start-Sleep -Milliseconds 500 }
+            }
+            Move-Item -LiteralPath '{{newPath}}' -Destination '{{exePath}}' -Force
+            Start-Process -FilePath '{{exePath}}'
+            """;
+        var encoded = Convert.ToBase64String(Encoding.Unicode.GetBytes(script));
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = "powershell.exe",
+            Arguments = $"-NoProfile -WindowStyle Hidden -EncodedCommand {encoded}",
+            UseShellExecute = true,
+            WindowStyle = ProcessWindowStyle.Hidden
+        });
+    }
+
+    public static void OpenReleasesPage() =>
+        Process.Start(new ProcessStartInfo { FileName = ReleasesPageUrl, UseShellExecute = true });
+
+    private static async Task<string> FetchViaHttp(string url)
+    {
+        using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("OrandOverlay-Updater");
+        client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
+        return await client.GetStringAsync(url).ConfigureAwait(false);
+    }
+
+    private sealed class LatestRelease
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("tag_name")]
+        public string? TagName { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("assets")]
+        public List<ReleaseAsset>? Assets { get; set; }
+    }
+
+    private sealed class ReleaseAsset
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("name")]
+        public string? Name { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("browser_download_url")]
+        public string? BrowserDownloadUrl { get; set; }
+    }
+}
