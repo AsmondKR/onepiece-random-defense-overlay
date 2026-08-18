@@ -879,7 +879,9 @@ public partial class MainWindow : Window
         {
             var children = new StackPanel { Margin = new Thickness(16, 0, 0, 4) };
             foreach (var child in node.Children)
-                children.Children.Add(BuildDrillNode(key, child, null));
+                children.Children.Add(node.FlatChildren
+                    ? BuildRemainingRecipeCard(child.Step, null)
+                    : BuildDrillNode(key, child, null));
             content = children;
         }
         else

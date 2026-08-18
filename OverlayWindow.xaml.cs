@@ -823,7 +823,9 @@ public partial class OverlayWindow : Window
         {
             var children = new StackPanel { Margin = new Thickness(14, 0, 0, 4) };
             foreach (var child in node.Children)
-                children.Children.Add(DrillNodeElement(key, child, null));
+                children.Children.Add(node.FlatChildren
+                    ? RemainingRecipeCard(child.Step, null)
+                    : DrillNodeElement(key, child, null));
             content = children;
         }
         else
