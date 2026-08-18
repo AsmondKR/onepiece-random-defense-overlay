@@ -1039,13 +1039,11 @@ Assert(rareKeepAdvisor.Evaluate(Inventory("rawcode:220h"), [noopPlan])
 var drillGoal = engine.RecommendNearestCrafts("rawcode:B50h", [], 1)[0];
 var (drillLegends, _) = BuildDrilldown.Build(drillGoal);
 Assert(drillLegends.Count > 0 &&
-       drillLegends.All(group => group.Step.Tier.Split('[', 2)[0].Trim()
-           is "전설" or "히든" or "변화된" or "왜곡됨"),
+       BuildDrilldown.IsLegendTier(drillLegends[0].Step.Tier),
     "카벤딧슈 남은 조합은 전설급 단계를 먼저 리스트업");
-Assert(drillLegends.Any(group => group.Children.Count > 0) &&
-       drillLegends.SelectMany(group => group.Children)
-           .All(child => BuildDrilldown.IsRareTier(child.Step.Tier)),
-    "전설을 펼치면 그 트리의 희귀함 단계가 나온다");
+Assert(FlattenDrill(drillLegends).Any(node => BuildDrilldown.IsRareTier(node.Step.Tier)) &&
+       drillLegends.Any(group => group.Children.Count > 0),
+    "전설을 펼치면 그 트리의 하위(희귀함 포함) 단계가 나온다");
 var aceEternal = engine.RecommendNearestCrafts("rawcode:950h", [], 1)[0];
 var (aceGroups, _) = BuildDrilldown.Build(aceEternal);
 Assert(aceGroups.Any(group => group.Step.Tier.Split('[', 2)[0].Trim() is "변화된" or "왜곡됨" &&
@@ -1054,10 +1052,11 @@ Assert(aceGroups.Any(group => group.Step.Tier.Split('[', 2)[0].Trim() is "변화
     "변화된·왜곡됨 단계도 드릴다운으로 묶고 그 안에 전설 단계가 나온다");
 var rareDrill = engine.RecommendFastRares([], 50)
     .Select(BuildDrilldown.Build)
-    .FirstOrDefault(result => result.Legends.Count > 0);
+    .FirstOrDefault(result => result.Legends.Any(group =>
+        group.Step.Tier.Split('[', 2)[0].Trim() == "특별함"));
 Assert(rareDrill.Legends is { Count: > 0 } specialGroups &&
-       specialGroups.All(group => group.Step.Tier.Split('[', 2)[0].Trim() == "특별함"),
-    "희귀함 카드 드릴다운은 특별함 단계를 묶어 보여줌");
+       specialGroups.Any(group => group.Step.Tier.Split('[', 2)[0].Trim() == "특별함"),
+    "희귀함 카드 드릴다운에도 특별함 단계가 나온다");
 
 // 세라핌 기물 추천: 그린블러드 1개 레시피로 편입, 목표별 채용률 최고 세라핌 포함.
 // 세라핌 포함은 클리어 프로필이 있어야 작동하므로 학습 엔진으로 검증한다.
@@ -1503,6 +1502,10 @@ static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,
 static List<InventoryEntry> Inventory(params string[] ids) => ids
     .Select(id => new InventoryEntry { UnitId = id, Count = 1, IsManual = true })
     .ToList();
+
+static IEnumerable<BuildDrilldown.DrillNode> FlattenDrill(
+    IEnumerable<BuildDrilldown.DrillNode> nodes) =>
+    nodes.SelectMany(node => new[] { node }.Concat(FlattenDrill(node.Children)));
 
 static double SupportAbility(UnitDefinition unit, params string[] abilityNames) =>
     unit.OfficialAbilities

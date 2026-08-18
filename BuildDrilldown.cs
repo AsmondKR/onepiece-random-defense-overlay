@@ -1,17 +1,14 @@
 namespace OrandOverlay;
 
 /// <summary>
-/// 상위 목표의 남은 조합을 티어 사다리로 묶는다(유저 요청): 변화된·왜곡됨 → 전설·히든
-/// → 희귀함 순으로 내려가며, 각 단계를 펼치면 다음 단계가, 마지막 단계를 펼치면 재료가
-/// 나온다. 희귀함 목표(자동 시작 단계)는 특별함 단계를 묶는다. 사다리에 속하지 않는
-/// 단계(목표 직계 특별·최종 조합 등)는 원래 순서대로 뒤에 붙는다.
+/// 남은 조합을 실제 조합 트리 그대로 단계화한다(유저 요청): 최상위는 목표의 직계
+/// 재료 단계(티어 높은 순 — 전설급 먼저), 각 단계를 펼치면 그 단계의 하위 조합
+/// 단계가, 더 내려갈 단계가 없으면 재료 목록이 나온다. 같은 유닛이 여러 갈래에
+/// 나오면 처음 등장한 자리에서 한 번만 보여준다.
 /// </summary>
 public static class BuildDrilldown
 {
     public sealed record DrillNode(RecipeCraftStep Step, IReadOnlyList<DrillNode> Children);
-
-    private static readonly string[][] TopLadder = [["변화된", "왜곡됨"], ["전설", "히든"], ["희귀함"]];
-    private static readonly string[][] RareLadder = [["특별함"]];
 
     public static (IReadOnlyList<DrillNode> Legends, IReadOnlyList<RecipeCraftStep> Others)
         Build(Recommendation item)
@@ -19,54 +16,49 @@ public static class BuildDrilldown
         var steps = item.RemainingCraftSteps;
         if (item.RecipeTree is null || steps.Count == 0)
             return ([], steps);
-        var ladder = BaseTier(item.RecipeTree.Tier) == "희귀함" ? RareLadder : TopLadder;
         var stepsByUnit = steps
             .GroupBy(step => step.UnitId, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.First(),
                 StringComparer.OrdinalIgnoreCase);
 
         var nested = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var groups = Collect(item.RecipeTree, stepsByUnit, ladder, 0, nested,
-            new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+        var groups = CollectTree(item.RecipeTree, stepsByUnit, nested)
+            .OrderByDescending(node => TierRank(node.Step.Tier))
+            .ToList();
         var others = steps.Where(step => !nested.Contains(step.UnitId)).ToList();
         return (groups, others);
     }
 
-    private static List<DrillNode> Collect(RecipeTreeNode node,
-        IReadOnlyDictionary<string, RecipeCraftStep> stepsByUnit,
-        string[][] ladder, int minLevel, ISet<string> nested, ISet<string> visited)
+    private static List<DrillNode> CollectTree(RecipeTreeNode node,
+        IReadOnlyDictionary<string, RecipeCraftStep> stepsByUnit, ISet<string> visited)
     {
         var result = new List<DrillNode>();
         foreach (var child in node.Children)
         {
-            var level = LadderLevel(ladder, minLevel, child.Tier);
-            if (level >= 0 && stepsByUnit.TryGetValue(child.UnitId, out var step))
+            if (stepsByUnit.TryGetValue(child.UnitId, out var step) && visited.Add(child.UnitId))
             {
-                if (visited.Add(child.UnitId))
-                {
-                    var children = level + 1 < ladder.Length
-                        ? Collect(child, stepsByUnit, ladder, level + 1, nested, visited)
-                        : [];
-                    result.Add(new DrillNode(step, children));
-                    nested.Add(child.UnitId);
-                }
+                result.Add(new DrillNode(step, CollectTree(child, stepsByUnit, visited)));
                 continue;
             }
-            result.AddRange(Collect(child, stepsByUnit, ladder, minLevel, nested, visited));
+            // 조합 단계가 아닌 노드(최하위 재료·보유 완료)나 이미 표시한 유닛은
+            // 건너뛰고 그 아래만 계속 살핀다.
+            result.AddRange(CollectTree(child, stepsByUnit, visited));
         }
         return result;
     }
 
-    // 사다리에서 minLevel 이후 처음으로 이 티어가 속하는 단계. 없으면 -1.
-    // 전설이 목표 직계인 경우처럼 상위 단계(변화된)를 건너뛰는 트리도 자연히 묶인다.
-    private static int LadderLevel(string[][] ladder, int minLevel, string tier)
+    private static int TierRank(string tier) => BaseTier(tier) switch
     {
-        var baseTier = BaseTier(tier);
-        for (var level = minLevel; level < ladder.Length; level++)
-            if (ladder[level].Contains(baseTier, StringComparer.Ordinal))
-                return level;
-        return -1;
-    }
+        "왜곡됨" => 8,
+        "변화된" => 7,
+        "히든" => 6,
+        "전설" => 5,
+        "신비함" => 4,
+        "희귀함" => 3,
+        "특별함" => 2,
+        "안흔함" => 1,
+        _ => 0
+    };
 
     public static bool IsLegendTier(string tier) => BaseTier(tier) is "전설" or "히든";
 
