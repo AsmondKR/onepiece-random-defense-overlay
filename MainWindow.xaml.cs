@@ -113,6 +113,7 @@ public partial class MainWindow : Window
         _overlay.PositionCommitted += Overlay_OnPositionCommitted;
         _overlay.HiddenByUser += () => OverlayButton.Content = "오버레이 보이기";
         _overlay.ReRecommendRequested += ShowReRecommendMenu;
+        _overlay.SettlementRequested += ShowSettlement;
         _overlay.Show();
         _overlay.SetClickThrough(_settings.ClickThroughOverlay);
         _timer.Interval = TimeSpan.FromSeconds(Math.Clamp(_settings.CaptureIntervalSeconds, 0.5, 10));
@@ -343,6 +344,37 @@ public partial class MainWindow : Window
         {
             _updatingSelections = false;
         }
+    }
+
+    private void Settlement_OnClick(object sender, RoutedEventArgs e) => ShowSettlement();
+
+    // 클리어 정산: 인식된 유닛(클리어 화면에선 필드 배치 유닛도 로컬 소유로 잡힘)을
+    // 티어별로 세어 작은 창으로 보여준다.
+    private void ShowSettlement()
+    {
+        var report = SettlementReport.Build(_catalog, CombinedInventory());
+        var window = new Window
+        {
+            Title = "클리어 정산",
+            Owner = this,
+            SizeToContent = SizeToContent.WidthAndHeight,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Background = new SolidColorBrush(Color.FromRgb(15, 17, 24)),
+            Topmost = true,
+            MaxWidth = 560,
+            ResizeMode = ResizeMode.NoResize,
+            Content = new TextBlock
+            {
+                Text = report,
+                Foreground = Brushes.White,
+                FontSize = 14,
+                LineHeight = 24,
+                Margin = new Thickness(20, 16, 20, 16),
+                TextWrapping = TextWrapping.Wrap,
+                FontFamily = new FontFamily("Malgun Gothic")
+            }
+        };
+        window.Show();
     }
 
     private void AutoStart_OnChanged(object sender, RoutedEventArgs e)

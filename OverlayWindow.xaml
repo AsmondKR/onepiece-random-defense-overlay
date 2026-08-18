@@ -26,6 +26,9 @@
                      TextWrapping="Wrap" Margin="0,4,0,0" Visibility="Collapsed"/>
         </StackPanel>
         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+          <Button Content="정산" Click="SettlementButton_OnClick"
+                  Style="{StaticResource SubtleButton}" Margin="0,0,6,0"
+                  ToolTip="클리어 직후 인식된 유닛을 티어별로 세어 몇 전설을 짰는지 보여줍니다."/>
           <Button Content="다시 추천" Click="ReRecommendButton_OnClick"
                   Style="{StaticResource SubtleButton}" Margin="0,0,6,0"
                   ToolTip="지금 패 기준으로 조합이 가장 가까운 학습 상위를 다시 계산해 추천합니다."/>

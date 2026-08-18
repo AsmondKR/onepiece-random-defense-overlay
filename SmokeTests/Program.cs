@@ -1086,6 +1086,14 @@ Assert(!seraphimEngine.RecommendNearestCrafts("rawcode:A90H", [], 8,
     .Any(rec => catalog.Unit(rec.Route.GoalUnitId).Tier.Split('[', 2)[0].Trim() == "세라핌"),
     "그린블러드를 이미 썼으면 세라핌을 추천하지 않음");
 
+// 클리어 정산: 인식 유닛을 티어별로 세고, 흔함 등 정산 외 티어는 제외한다.
+var settlement = SettlementReport.Build(catalog,
+    Inventory("rawcode:I70h", "rawcode:3A0h", "rawcode:340h", "luffy_common"));
+Assert(settlement.Contains("제한됨 1기") && settlement.Contains("세라핌 1기") &&
+       settlement.Contains("히든 1기") && settlement.Contains("합계 3기") &&
+       !settlement.Contains("루피"),
+    "정산은 상위·전설급만 티어별로 집계");
+
 // 자동 시작 단계의 희귀함 순위: 빈 패에서는 재료 적은 순, 재료가 모이면 완성률 순.
 var fastRaresEmpty = engine.RecommendFastRares([], 5);
 Assert(fastRaresEmpty.Count == 5 && fastRaresEmpty.All(rec =>
@@ -1503,7 +1511,7 @@ Assert(Math.Abs(UiScale.FromScreen(2160, 1.5) - 1.0) < 0.001,
 Assert(Math.Abs(UiScale.FromScreen(4320, 1.0) - 3.0) < 0.001,
     "8K 100%는 배율 3.0");
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 258/258");
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 259/259");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,
