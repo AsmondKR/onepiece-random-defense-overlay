@@ -1022,11 +1022,30 @@ public partial class MainWindow : Window
     [DllImport("user32.dll")]
     private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
 
+    // Windows 11 DWM으로 제목바를 앱 테마 색에 맞춘다(네이티브 버튼·동작 유지).
+    // 미지원 OS(Win10 등)에서는 다크 모드 캡션까지만 적용되고 색 지정은 무시된다.
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value,
+        int size);
+
+    private static void ApplyThemedTitleBar(IntPtr handle)
+    {
+        var enabled = 1;
+        _ = DwmSetWindowAttribute(handle, 20, ref enabled, sizeof(int)); // 다크 캡션
+        var caption = 0x001F1612; // COLORREF(BGR) — 앱 배경 #12161F
+        _ = DwmSetWindowAttribute(handle, 35, ref caption, sizeof(int));
+        var text = 0x00FAF4F2; // 본문 밝은 텍스트 #F2F4FA
+        _ = DwmSetWindowAttribute(handle, 36, ref text, sizeof(int));
+        var border = 0x00F65C8B; // 브랜드 보라 #8B5CF6
+        _ = DwmSetWindowAttribute(handle, 34, ref border, sizeof(int));
+    }
+
     protected override void OnSourceInitialized(EventArgs e)
     {
         base.OnSourceInitialized(e);
         if (!_initialized) return;
         var helper = new WindowInteropHelper(this);
+        ApplyThemedTitleBar(helper.Handle);
         // 예전 기본값(Scroll Lock)은 키보드에 따라 입력이 안 들어와 Caps Lock으로 이전.
         if (string.IsNullOrWhiteSpace(_settings.OverlayToggleKey) ||
             _settings.OverlayToggleKey.Equals("Scroll", StringComparison.OrdinalIgnoreCase))
