@@ -131,6 +131,17 @@ public partial class MainWindow : Window
     // 같은 태그를 이미 시도했다면(교체 실패·버전 미상승 등) 반복하지 않는다.
     private async Task AutoUpdateAsync()
     {
+        // 이전 업데이트가 중간에 실패해 남은 임시 파일을 정리한다.
+        try
+        {
+            if (Environment.ProcessPath is { Length: > 0 } processPath &&
+                File.Exists(processPath + ".new"))
+                File.Delete(processPath + ".new");
+        }
+        catch
+        {
+            // 잔여 파일 정리 실패는 업데이트 확인을 막지 않는다.
+        }
         var service = new UpdateService();
         var update = await service.CheckAsync();
         if (update is null) return;
