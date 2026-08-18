@@ -1,7 +1,7 @@
 <Window x:Class="OrandOverlay.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="원랜디 상위 유닛 도우미 설정" Width="1080" Height="720" MinWidth="920" MinHeight="620"
+        Title="원피스 유닛 추천 도우미" Width="1080" Height="720" MinWidth="920" MinHeight="620"
         FontFamily="Malgun Gothic"
         Background="#FF0F1118" Foreground="White" WindowStartupLocation="CenterScreen">
   <Grid Margin="22">
