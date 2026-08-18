@@ -250,7 +250,7 @@ public partial class MainWindow : Window
     private static string[] ClearSamplePaths() =>
     [
         Path.Combine(AppContext.BaseDirectory, "Data", "tmo-clear-samples.json"),
-        TmoClearRefreshService.CacheFile
+        ClearSnapshotRefreshService.CacheFile
     ];
 
     private string ClearStatsSummary() => _clearStats.HasData
@@ -259,16 +259,16 @@ public partial class MainWindow : Window
         : " · 클리어 데이터 없음(수작업 우선순위 사용)";
 
     /// <summary>
-    /// 앱 시작 후 한 번, 번들 스냅샷 이후의 신규 신+ 클리어 기록을 증분 수신한다.
-    /// 실패해도 기존 번들+캐시 데이터로 계속 동작한다.
+    /// 앱 시작 후 한 번, 저장소 스냅샷이 번들보다 새로우면 증분 수신한다.
+    /// 티모지지 서버에는 접속하지 않는다. 실패해도 기존 번들+캐시로 계속 동작한다.
     /// </summary>
     private async Task RefreshClearDataAsync()
     {
         if (!_settings.ClearDataAutoRefresh) return;
         var newerThan = _clearStats.NewestSampleAt ?? DateTimeOffset.UtcNow.AddDays(-14);
-        var fresh = await new TmoClearRefreshService().FetchNewSamplesAsync(newerThan);
+        var fresh = await new ClearSnapshotRefreshService().FetchNewSamplesAsync(newerThan);
         if (fresh.Count == 0) return;
-        TmoClearRefreshService.MergeIntoCache(TmoClearRefreshService.CacheFile, fresh,
+        ClearSnapshotRefreshService.MergeIntoCache(ClearSnapshotRefreshService.CacheFile, fresh,
             DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"));
         var reloaded = await Task.Run(() => ClearBuildStats.Load(ClearSamplePaths()));
         if (!reloaded.HasData) return;

@@ -790,16 +790,16 @@ Assert(legendHiddenOnly.All(item =>
 var cachePath = Path.Combine(Path.GetTempPath(), $"orand-clear-cache-test-{Guid.NewGuid():N}.json");
 try
 {
-    var firstMerge = TmoClearRefreshService.MergeIntoCache(cachePath,
+    var firstMerge = ClearSnapshotRefreshService.MergeIntoCache(cachePath,
         [GodClear("m-1", 10, clearT0, ("DB0H", "초월 [물딜]")),
          GodClear("m-2", 11, clearT0, ("DB0H", "초월 [물딜]"))], "t");
     Assert(firstMerge.Count == 2 && File.Exists(cachePath), "클리어 캐시 최초 병합 저장");
-    var secondMerge = TmoClearRefreshService.MergeIntoCache(cachePath,
+    var secondMerge = ClearSnapshotRefreshService.MergeIntoCache(cachePath,
         [GodClear("m-2", 11, clearT0, ("DB0H", "초월 [물딜]")),
          GodClear("m-3", 12, clearT0.AddMinutes(1), ("DB0H", "초월 [물딜]"))], "t");
     Assert(secondMerge.Count == 3, "캐시 병합은 id 중복을 제거");
     File.WriteAllText(cachePath, "{corrupted");
-    var repairedMerge = TmoClearRefreshService.MergeIntoCache(cachePath,
+    var repairedMerge = ClearSnapshotRefreshService.MergeIntoCache(cachePath,
         [GodClear("m-4", 9, clearT0, ("DB0H", "초월 [물딜]"))], "t");
     Assert(repairedMerge.Count == 1, "손상 캐시는 무시하고 재작성");
 }
@@ -808,13 +808,39 @@ finally
     File.Delete(cachePath);
 }
 
-var livePage = TmoClearRefreshService.ParseLivePage(
-    "{\"clears\":[{\"id\":\"L1\",\"createdAt\":\"2026-08-16T00:00:00Z\",\"difficulty\":\"신\"," +
-    "\"unitCount\":5,\"units\":[{\"code\":\"DB0H\",\"count\":1,\"grade\":\"초월 [물딜]\"}]}]," +
-    "\"nextCursor\":null}");
-Assert(livePage is not null && livePage.Value.Samples.Count == 1 &&
-       livePage.Value.Samples[0].Difficulty == "신", "라이브 클리어 페이지 해석");
-Assert(TmoClearRefreshService.ParseLivePage("not-json") is null, "손상 응답은 무해하게 무시");
+// 클라이언트 갱신은 저장소(GitHub) 스냅샷만 사용한다 — 티모지지 서버 미접속.
+Assert(ClearSnapshotRefreshService.ParseManifest(
+        "{\"schemaVersion\":1,\"newestSampleAt\":\"2026-08-16T00:00:00Z\",\"sampleCount\":3}")
+    == DateTimeOffset.Parse("2026-08-16T00:00:00Z"), "스냅샷 매니페스트 해석");
+Assert(ClearSnapshotRefreshService.ParseManifest("not-json") is null,
+    "손상 매니페스트는 무해하게 무시");
+var snapshotCalls = new List<string>();
+var snapshotJson = ClearSampleDocument.Serialize(
+    [GodClear("g-new", 10, clearT0.AddDays(2), ("DB0H", "초월 [물딜]")),
+     GodClear("g-old", 10, clearT0.AddDays(-30), ("DB0H", "초월 [물딜]"))], "test", "now");
+var manifestJson = "{\"schemaVersion\":1,\"newestSampleAt\":\"" +
+                   clearT0.AddDays(2).ToString("yyyy-MM-ddTHH:mm:ssZ") +
+                   "\",\"sampleCount\":2}";
+var snapshotService = new ClearSnapshotRefreshService(url =>
+{
+    snapshotCalls.Add(url);
+    return Task.FromResult(url == ClearSnapshotRefreshService.ManifestUrl
+        ? manifestJson
+        : snapshotJson);
+});
+var freshSamples = snapshotService.FetchNewSamplesAsync(clearT0).GetAwaiter().GetResult();
+Assert(freshSamples.Count == 1 && freshSamples[0].Id == "g-new",
+    "저장소 스냅샷에서 로컬 최신 이후 표본만 수신");
+var idleService = new ClearSnapshotRefreshService(url =>
+{
+    snapshotCalls.Add(url);
+    return Task.FromResult(manifestJson);
+});
+Assert(idleService.FetchNewSamplesAsync(clearT0.AddDays(3)).GetAwaiter().GetResult().Count == 0,
+    "스냅샷이 더 새롭지 않으면 매니페스트만 보고 전체 내려받기 생략");
+Assert(snapshotCalls.All(url =>
+        url.StartsWith("https://raw.githubusercontent.com/", StringComparison.Ordinal)),
+    "클라이언트 갱신 요청은 전부 저장소로만 향함");
 
 var roundTrip = ClearSampleDocument.Parse(ClearSampleDocument.Serialize(
     [GodClear("s-1", 10, clearT0, ("DB0H", "초월 [물딜]"))], "test", "now"));
@@ -1352,7 +1378,7 @@ Assert(Math.Abs(UiScale.FromScreen(2160, 1.5) - 1.0) < 0.001,
 Assert(Math.Abs(UiScale.FromScreen(4320, 1.0) - 3.0) < 0.001,
     "8K 100%는 배율 3.0");
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 235/235");
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 238/238");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,

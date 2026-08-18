@@ -8,8 +8,8 @@ namespace OrandOverlay;
 public static class UnitImageFactory
 {
     /// <summary>
-    /// 티모지지 유닛 아이콘. 번들된 PNG(Data\images\rawcode_*.png)를 우선 쓰고
-    /// (webp 코덱·오프라인 문제 없음), 없으면 URL 시도, 그마저 안 되면 이니셜.
+    /// 유닛 아이콘. 번들된 PNG(Data\images\rawcode_*.png)만 사용하고
+    /// (webp 코덱·오프라인 문제 없음), 없으면 이니셜 타일. 원격 요청은 하지 않는다.
     /// </summary>
     public static FrameworkElement Create(string imageUrl, string unitName, double size,
         string? unitId = null)
@@ -38,7 +38,10 @@ public static class UnitImageFactory
         };
         var container = new Grid { Width = size, Height = size };
         container.Children.Add(fallback);
-        if (!Uri.TryCreate(imageUrl, UriKind.Absolute, out var uri)) return container;
+        // 원격(티모지지 CDN) 요청은 하지 않는다 — 서버 부하를 만들지 않기로 한 약속.
+        // 번들에 없는 유닛은 이니셜 타일로 표시된다.
+        if (!Uri.TryCreate(imageUrl, UriKind.Absolute, out var uri) ||
+            !uri.IsFile) return container;
 
         try
         {
