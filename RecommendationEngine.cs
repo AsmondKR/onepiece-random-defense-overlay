@@ -1125,6 +1125,7 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
             new HashSet<string>(StringComparer.OrdinalIgnoreCase));
         // BuildRecipeTree가 소비하고 남긴 잔여 패 — 아래 순위 완료율 계산의 입력이 된다.
         remainingAfterBuild = availability;
+        var remainingSteps = BuildRemainingCraftSteps(recipeTree, inventory, calculator);
         return new Recommendation
         {
             Route = new RouteDefinition
@@ -1135,9 +1136,13 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
             },
             Score = progress.CompletionRatio * 100,
             MissingUnits = progress.MissingLeaves.Select(leaf => leaf.Name).ToList(),
-            NextAction = missing is null
-                ? "지금 바로 조합할 수 있습니다."
-                : $"가장 부족한 패: {missing.Name} ×{missing.MissingCount}",
+            // 완성률은 최하위 재료 기준이라, 100%여도 중간 단계(희귀·전설 등)를
+            // 아직 조합하지 않았을 수 있다 — "바로 조합"은 남은 단계가 없을 때만.
+            NextAction = missing is not null
+                ? $"가장 부족한 패: {missing.Name} ×{missing.MissingCount}"
+                : remainingSteps.Count > 0
+                    ? $"최하위 재료 확보 — 아래 {remainingSteps.Count}단계를 차례로 조합하면 완성"
+                    : "지금 바로 조합할 수 있습니다.",
             RecipeProgress = progress,
             CompositionUnits =
             [
@@ -1157,7 +1162,7 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
                 }
             ],
             RecipeTree = recipeTree,
-            RemainingCraftSteps = BuildRemainingCraftSteps(recipeTree, inventory, calculator)
+            RemainingCraftSteps = remainingSteps
         };
     }
 
