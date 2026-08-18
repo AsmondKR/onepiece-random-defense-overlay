@@ -378,8 +378,68 @@ public partial class MainWindow : Window
         RepopulateGoalChoices(advice.Goal.Id);
         RepopulateNavigationChoices();
         RepopulateBuildVariants();
+        var navigationNote = "";
+        if (RecommendNavigationForGoal(advice.Goal) is { } navigationPick &&
+            (NavigationCombo.SelectedItem as NavigationOption)?.Id != navigationPick.Option.Id)
+        {
+            SelectNavigation(navigationPick.Option);
+            navigationNote = $" 항법 추천: {navigationPick.Option.Name}({navigationPick.Reason}).";
+        }
         return $"첫 희귀함 {advice.Rare.Name} 감지 — 신+ {advice.Samples:#,0}판 학습된 " +
-               $"{advice.Goal.Name}(으)로 목표를 자동 전환했습니다.";
+               $"{advice.Goal.Name}(으)로 목표를 자동 전환했습니다.{navigationNote}";
+    }
+
+    // 항법 추천: 클리어 API에 항법 필드가 없어 직접 학습은 불가 — 상위 기수 스코프
+    // 표본(1상위 vs 다상위)이 많은 쪽 계열에서 학습된 첫 항법을 고른다. 현재 선택이
+    // 이미 그 계열의 학습된 항법이면 유저 취향을 존중해 바꾸지 않는다(null 반환).
+    private (NavigationOption Option, string Reason)? RecommendNavigationForGoal(UnitDefinition goal)
+    {
+        if (!_clearStats.HasData) return null;
+        var solo = _clearStats.GoalProfile(goal.Rawcodes, TopScope.SoloTop)?.SampleCount ?? 0;
+        var multi = _clearStats.GoalProfile(goal.Rawcodes, TopScope.MultiTop)?.SampleCount ?? 0;
+        var preferMulti = multi > solo;
+        bool FitsScope(NavigationOption option) => preferMulti
+            ? option.AllowsMultipleTopUnits
+            : option.CanCraftTopUnits && !option.AllowsMultipleTopUnits;
+        var learned = NavigationProfiles.Categories
+            .SelectMany(category => VisibleNavigations(category.Id))
+            .ToList();
+        if (NavigationCombo.SelectedItem is NavigationOption current &&
+            learned.Any(option => option.Id == current.Id) && FitsScope(current))
+            return null;
+        var pick = learned.FirstOrDefault(FitsScope) ?? learned.FirstOrDefault();
+        if (pick is null) return null;
+        return (pick, preferMulti
+            ? $"다상위 {multi:#,0}판 > 1상위 {solo:#,0}판"
+            : $"1상위 {solo:#,0}판 우세");
+    }
+
+    // 항법 콤보를 특정 항법으로 강제 선택한다(자동 시작의 항법 추천용).
+    private void SelectNavigation(NavigationOption option)
+    {
+        _updatingSelections = true;
+        try
+        {
+            var categories = NavigationProfiles.Categories
+                .Where(category => VisibleNavigations(category.Id).Count > 0)
+                .ToList();
+            if (categories.Count == 0) categories = NavigationProfiles.Categories.ToList();
+            NavigationCategoryCombo.ItemsSource = categories;
+            NavigationCategoryCombo.SelectedItem = categories.FirstOrDefault(category =>
+                category.Id.Equals(option.CategoryId, StringComparison.OrdinalIgnoreCase)) ?? categories[0];
+            var options = VisibleNavigations(option.CategoryId);
+            if (options.Count == 0) options = NavigationProfiles.ForCategory(option.CategoryId).ToList();
+            NavigationCombo.ItemsSource = options;
+            NavigationCombo.SelectedItem = options.FirstOrDefault(item => item.Id == option.Id)
+                                           ?? options[0];
+            if (NavigationCombo.SelectedItem is NavigationOption selected)
+                NavigationSummaryText.Text = selected.Summary;
+            _settings.NavigationMode = option.Id;
+        }
+        finally
+        {
+            _updatingSelections = false;
+        }
     }
 
     private void GoalCategoryCombo_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
