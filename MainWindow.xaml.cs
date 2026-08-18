@@ -48,6 +48,8 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        Loaded += (_, _) => ApplyResolutionScale();
+        DpiChanged += (_, _) => Dispatcher.BeginInvoke(new Action(ApplyResolutionScale));
         _settings = SettingsStore.Load();
         try
         {
@@ -1118,6 +1120,14 @@ public partial class MainWindow : Window
 
     private void ToggleOverlay_OnClick(object sender, RoutedEventArgs e) =>
         ToggleOverlayVisibility();
+
+    // 설정 창도 모니터 해상도(FHD~8K)에 맞춰 창 전체를 비례 확대한다.
+    private void ApplyResolutionScale()
+    {
+        var scale = UiScale.Apply(this, 1080, 720);
+        MinWidth = 920 * scale;
+        MinHeight = 620 * scale;
+    }
 
     private void ToggleOverlayVisibility()
     {

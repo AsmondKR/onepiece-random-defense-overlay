@@ -33,7 +33,16 @@ public partial class OverlayWindow : Window
     {
         InitializeComponent();
         SourceInitialized += (_, _) => ApplyClickThroughStyle();
-        Loaded += (_, _) => ClampToVisibleMonitor();
+        Loaded += (_, _) =>
+        {
+            ApplyResolutionScale();
+            ClampToVisibleMonitor();
+        };
+        DpiChanged += (_, _) => Dispatcher.BeginInvoke(new Action(() =>
+        {
+            ApplyResolutionScale();
+            ClampToVisibleMonitor();
+        }));
         Closing += OverlayWindow_OnClosing;
         Closed += (_, _) => SystemEvents.DisplaySettingsChanged -= DisplaySettingsChanged;
         SystemEvents.DisplaySettingsChanged += DisplaySettingsChanged;
@@ -1044,7 +1053,11 @@ public partial class OverlayWindow : Window
         // and display-topology changes still use the safety clamp.
         if (double.IsFinite(Left) && double.IsFinite(Top) &&
             (Math.Abs(Left - startLeft) >= 0.5 || Math.Abs(Top - startTop) >= 0.5))
+        {
+            // 드래그로 다른 해상도의 모니터에 옮겨졌을 수 있으니 배율을 다시 잡는다.
+            ApplyResolutionScale();
             PositionCommitted?.Invoke(Left, Top);
+        }
     }
 
     private void OverlayWindow_OnClosing(object? sender, CancelEventArgs e)
@@ -1060,10 +1073,14 @@ public partial class OverlayWindow : Window
         if (Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished) return;
         Dispatcher.BeginInvoke(new Action(() =>
         {
+            ApplyResolutionScale();
             ClampToVisibleMonitor();
             PositionCommitted?.Invoke(Left, Top);
         }));
     }
+
+    // 오버레이가 놓인 모니터 해상도(FHD~8K)에 맞춰 창 전체를 비례 확대한다.
+    private void ApplyResolutionScale() => UiScale.Apply(this, 720, 700);
 
     private void ClampToVisibleMonitor()
     {
