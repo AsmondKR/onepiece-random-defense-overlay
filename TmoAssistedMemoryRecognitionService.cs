@@ -42,6 +42,7 @@ public sealed class TmoAssistedMemoryRecognitionService : IInventoryRecognizer
     private readonly RawcodeUnitMap _unitMap;
     private readonly object _bindingGate = new();
     private BindingCache? _bindingCache;
+    private DateTime _nextWrapperSearchUtc;
 
     public TmoAssistedMemoryRecognitionService(DataCatalog catalog) => _unitMap = new RawcodeUnitMap(catalog);
 
@@ -50,30 +51,38 @@ public sealed class TmoAssistedMemoryRecognitionService : IInventoryRecognizer
 
     private RecognitionResult Recognize(CancellationToken token)
     {
-        // 워크 프로세스가 여러 개일 수 있어(런처 잔존·재시작) 전부 열거해 두고,
-        // 티모지지 리더가 실제로 붙은 프로세스를 따라간다.
+        // 워크·티모지지 모두 같은 이름의 프로세스가 여러 개일 수 있다(런처 잔존·재시작,
+        // 티모지지는 런처/렌더러/리더 다중 프로세스). 전부 열거해 두고 리더가 실제로
+        // 붙은 조합을 따라간다.
         var gameCandidates = System.Diagnostics.Process.GetProcessesByName("Warcraft III")
-            .OrderByDescending(process =>
-            {
-                try { return process.StartTime; }
-                catch (Exception exception) when (exception is Win32Exception or InvalidOperationException)
-                {
-                    return DateTime.MinValue;
-                }
-            })
+            .OrderByDescending(StartTimeOrMin)
+            .ToList();
+        var tmoCandidates = System.Diagnostics.Process.GetProcessesByName("TMO.GG")
+            .OrderByDescending(StartTimeOrMin)
             .ToList();
         try
         {
-            return RecognizeCore(gameCandidates, token);
+            return RecognizeCore(gameCandidates, tmoCandidates, token);
         }
         finally
         {
             foreach (var process in gameCandidates) process.Dispose();
+            foreach (var process in tmoCandidates) process.Dispose();
+        }
+    }
+
+    private static DateTime StartTimeOrMin(System.Diagnostics.Process process)
+    {
+        try { return process.StartTime; }
+        catch (Exception exception) when (exception is Win32Exception or InvalidOperationException)
+        {
+            return DateTime.MinValue;
         }
     }
 
     private RecognitionResult RecognizeCore(
-        IReadOnlyList<System.Diagnostics.Process> gameCandidates, CancellationToken token)
+        IReadOnlyList<System.Diagnostics.Process> gameCandidates,
+        IReadOnlyList<System.Diagnostics.Process> tmoCandidates, CancellationToken token)
     {
         var stopwatch = Stopwatch.StartNew();
         try
@@ -85,24 +94,84 @@ public sealed class TmoAssistedMemoryRecognitionService : IInventoryRecognizer
             if (gameCandidates.Count == 0)
                 return Failure(RecognitionState.Waiting, "워크 미실행 · 패 초기화",
                     "Warcraft III 프로세스를 기다리는 중입니다.", confirmsSessionBoundary: true);
-            using var tmoProcess = WarcraftMemoryRecognitionService.FindNewestProcess("TMO.GG");
-            if (tmoProcess is null)
+            if (tmoCandidates.Count == 0)
                 return Failure(RecognitionState.Waiting, "티모지지 미실행 · 패 초기화",
                     "TMO.GG를 실행하면 읽기 전용 라이브 연동을 재개합니다.");
 
-            var tmoModule = tmoProcess.MainModule
-                ?? throw new InvalidOperationException("TMO.GG 메인 모듈을 확인할 수 없습니다.");
+            // 티모지지는 런처·렌더러·리더 등 같은 이름의 프로세스를 여러 개 띄운다.
+            // "최신 1개"만 스캔하면 리더가 아닌 프로세스를 붙잡아 래퍼를 영영 못 찾는
+            // 환경이 있다(외부 유저 실측) — 리더 래퍼가 발견되는 프로세스가 나올 때까지
+            // 전부 조사한다. 캐시된 바인딩이 있으면 그 프로세스는 스캔 없이 통과한다.
+            int? cachedTmoPid = null;
+            int? cachedGamePid = null;
+            lock (_bindingGate)
+                if (_bindingCache is { } cachedBinding)
+                {
+                    cachedTmoPid = cachedBinding.Key.TmoPid;
+                    cachedGamePid = cachedBinding.Key.GamePid;
+                }
+            System.Diagnostics.Process? tmoProcess = null;
+            ProcessModule? tmoModule = null;
+            ReadOnlyProcessMemory? tmoMemoryFound = null;
+            HashSet<int>? readerPids = null;
+            var scannedTmoCount = 0;
+            var throttled = false;
+            foreach (var candidate in tmoCandidates.OrderByDescending(item => item.Id == cachedTmoPid))
+            {
+                token.ThrowIfCancellationRequested();
+                ProcessModule? module;
+                try { module = candidate.MainModule; }
+                catch (Exception exception) when (exception is Win32Exception or InvalidOperationException)
+                {
+                    continue;
+                }
+                if (module is null) continue;
+                ReadOnlyProcessMemory memory;
+                try { memory = ReadOnlyProcessMemory.Open(candidate.Id); }
+                catch (Win32Exception) { continue; }
+                HashSet<int> pids;
+                if (candidate.Id == cachedTmoPid && cachedGamePid is { } knownGamePid)
+                    pids = [knownGamePid];
+                else
+                {
+                    // 미연동 상태의 전 프로세스 전체 스캔은 무겁다 — 2.5초에 1회로 제한.
+                    if (DateTime.UtcNow < _nextWrapperSearchUtc)
+                    {
+                        memory.Dispose();
+                        throttled = true;
+                        break;
+                    }
+                    scannedTmoCount++;
+                    try { pids = FindWrapperTargetPids(memory, (ulong)module.BaseAddress.ToInt64(), token); }
+                    catch
+                    {
+                        memory.Dispose();
+                        throw;
+                    }
+                }
+                if (pids.Count > 0)
+                {
+                    tmoProcess = candidate;
+                    tmoModule = module;
+                    tmoMemoryFound = memory;
+                    readerPids = pids;
+                    break;
+                }
+                memory.Dispose();
+            }
+            if (scannedTmoCount > 0 && readerPids is null)
+                _nextWrapperSearchUtc = DateTime.UtcNow.AddSeconds(2.5);
+            if (tmoProcess is null || tmoModule is null || tmoMemoryFound is null || readerPids is null)
+                return Failure(RecognitionState.Waiting,
+                    "티모지지-워크 연동 대기 · 원랜디 입장 시 자동 연결",
+                    (throttled
+                        ? "리더 래퍼 재탐색 대기 중입니다."
+                        : $"TMO 프로세스 {tmoCandidates.Count}개 조사 — 리더 래퍼 미발견.") +
+                    " 원랜디 판에 입장해도 계속 뜨면: 게임 화면에 티모지지 오버레이가 뜨는지 확인하고," +
+                    " 워크를 관리자 권한으로 실행했다면 이 앱도 관리자 권한으로 실행해 보세요.");
+            using var tmoMemory = tmoMemoryFound;
             var tmoVersion = tmoModule.FileVersionInfo.FileVersion ?? "unknown";
             var tmoBase = (ulong)tmoModule.BaseAddress.ToInt64();
-            using var tmoMemory = ReadOnlyProcessMemory.Open(tmoProcess.Id);
-
-            // 티모지지 리더 래퍼가 가리키는 워크 pid를 먼저 읽어 그 프로세스를 고른다.
-            // 여러 워크 중 "최신"이 아니라 리더가 붙은 쪽을 따라야 pid 불일치로 연동이
-            // 영영 안 붙는 문제가 없다. 캐시된 바인딩이 있으면 스캔을 생략한다.
-            HashSet<int>? readerPids;
-            lock (_bindingGate)
-                readerPids = _bindingCache is { } cachedBinding ? [cachedBinding.Key.GamePid] : null;
-            readerPids ??= FindWrapperTargetPids(tmoMemory, tmoBase, token);
             var gameProcess = gameCandidates.FirstOrDefault(process => readerPids.Contains(process.Id))
                               ?? gameCandidates[0];
 
@@ -110,7 +179,8 @@ public sealed class TmoAssistedMemoryRecognitionService : IInventoryRecognizer
                 ?? throw new InvalidOperationException("Warcraft III 메인 모듈을 확인할 수 없습니다.");
             var gameVersion = gameModule.FileVersionInfo.FileVersion ?? "unknown";
             var baseDiagnostics = Diagnostics(gameProcess.Id, gameVersion,
-                $"TMO {tmoVersion} · PID {tmoProcess.Id} · 워크 후보 {gameCandidates.Count}개");
+                $"TMO {tmoVersion} · PID {tmoProcess.Id} (프로세스 {tmoCandidates.Count}개) · " +
+                $"리더 대상 pid [{string.Join(",", readerPids)}] · 워크 후보 {gameCandidates.Count}개");
 
             if (!gameVersion.Equals(SupportedWarcraftVersion, StringComparison.OrdinalIgnoreCase))
                 return Failure(RecognitionState.Unsupported, $"워크 {gameVersion} 미지원 · 기존 패 유지",
@@ -248,6 +318,9 @@ public sealed class TmoAssistedMemoryRecognitionService : IInventoryRecognizer
         {
             // 티모지지 리더 래퍼는 원랜디 판에 입장해야 생성된다 — 로비·메뉴에서는
             // 이 대기 상태가 정상이라, 오류처럼 읽히지 않게 행동 안내를 담는다.
+            // 여기 도달했다면 캐시가 가리키던 래퍼도 죽은 것이라 비워서, 다음 틱이
+            // 캐시 프로세스에 갇히지 않고 전 프로세스를 다시 조사하게 한다.
+            lock (_bindingGate) _bindingCache = null;
             return Failure(RecognitionState.Waiting,
                 "티모지지-워크 연동 대기 · 원랜디 입장 시 자동 연결",
                 exception.Message +
