@@ -2,6 +2,7 @@ bin/
 obj/
 bin-verify/
 publish/
+publish-single/
 *.user
 *.suo
 .vs/

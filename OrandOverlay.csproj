@@ -8,6 +8,7 @@
     <Nullable>enable</Nullable>
     <AssemblyName>OrandOverlay</AssemblyName>
     <RootNamespace>OrandOverlay</RootNamespace>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
     <Content Include="Data\**\*">

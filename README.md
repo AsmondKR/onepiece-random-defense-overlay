@@ -21,6 +21,11 @@
 게임 상황도 따라갑니다 — 항법(바운티헌터, 긴급소집 등), 오로성 효과, 마딜/물딜 차이,
 니카의 이감/노이감 같은 빌드 갈림길까지 반영해서 추천이 달라집니다.
 
+## 다운로드
+
+[Releases](https://github.com/AsmondKR/onepiece-random-defense-overlay/releases)에서
+`OrandOverlay.exe` 파일 하나만 받으면 됩니다. 설치 과정 없이 바로 실행됩니다.
+
 ## 사용법
 
 1. `OrandOverlay.exe`를 실행합니다. (설치 불필요, Windows 전용)
@@ -54,7 +59,12 @@
 ```bash
 dotnet build -c Release
 dotnet run --project SmokeTests -c Release   # 테스트 226종
-dotnet publish -c Release -r win-x64 --self-contained true -o publish
+
+# 배포용 단일 exe
+dotnet publish -c Release -r win-x64 --self-contained true \
+  -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true \
+  -p:IncludeAllContentForSelfExtract=true -p:EnableCompressionInSingleFile=true \
+  -o publish-single
 ```
 
 앱 실행 중이라 bin 폴더가 잠겼다면 `-p:BaseOutputPath=bin-verify/`를 붙이면 됩니다.
