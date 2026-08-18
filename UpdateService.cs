@@ -72,17 +72,28 @@ public sealed class UpdateService(Func<string, Task<string>>? fetcher = null)
     /// 새 exe를 옆에 내려받고, 앱 종료를 기다렸다가 교체·재시작하는 파워셸을 띄운 뒤
     /// 앱을 닫는다. 호출 전에 CanSelfInstall을 확인해야 한다.
     /// </summary>
-    public async Task DownloadAndInstallAsync(UpdateInfo update)
+    public async Task DownloadAndInstallAsync(UpdateInfo update, IProgress<double>? progress = null)
     {
         var exePath = Environment.ProcessPath!;
         var newPath = exePath + ".new";
         using (var client = new HttpClient { Timeout = TimeSpan.FromMinutes(5) })
         {
             client.DefaultRequestHeaders.UserAgent.ParseAdd("OrandOverlay-Updater");
-            await using var source = await client.GetStreamAsync(update.DownloadUrl)
-                .ConfigureAwait(false);
+            using var response = await client.GetAsync(update.DownloadUrl,
+                HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
+            var totalBytes = response.Content.Headers.ContentLength ?? 0;
+            await using var source = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
             await using var target = File.Create(newPath);
-            await source.CopyToAsync(target).ConfigureAwait(false);
+            var buffer = new byte[81920];
+            long copied = 0;
+            int read;
+            while ((read = await source.ReadAsync(buffer).ConfigureAwait(false)) > 0)
+            {
+                await target.WriteAsync(buffer.AsMemory(0, read)).ConfigureAwait(false);
+                copied += read;
+                if (totalBytes > 0) progress?.Report((double)copied / totalBytes);
+            }
         }
 
         var script = $$"""

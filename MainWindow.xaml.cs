@@ -195,15 +195,54 @@ public partial class MainWindow : Window
     {
         if (_updateBusy) return;
         _updateBusy = true;
+        // 진행바 창 — 업데이트가 돌고 있음을 눈에 보이게(유저 요청).
+        Window? progressWindow = null;
+        ProgressBar? progressBar = null;
+        TextBlock? progressLabel = null;
         await Dispatcher.InvokeAsync(() =>
-            FooterStatus.Text = $"{update.Tag} 업데이트를 내려받는 중입니다. 완료되면 자동으로 재시작합니다.");
+        {
+            FooterStatus.Text = $"{update.Tag} 업데이트를 내려받는 중입니다. 완료되면 자동으로 재시작합니다.";
+            progressLabel = new TextBlock
+            {
+                Text = $"{update.Tag} 업데이트 내려받는 중…",
+                Foreground = Brushes.White,
+                FontSize = 13,
+                Margin = new Thickness(0, 0, 0, 10)
+            };
+            progressBar = new ProgressBar { Minimum = 0, Maximum = 100, Height = 14, Width = 320 };
+            var body = new StackPanel { Margin = new Thickness(20, 16, 20, 16) };
+            body.Children.Add(progressLabel);
+            body.Children.Add(progressBar);
+            progressWindow = new Window
+            {
+                Title = "자동 업데이트",
+                Owner = this,
+                SizeToContent = SizeToContent.WidthAndHeight,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Background = new SolidColorBrush(Color.FromRgb(15, 17, 24)),
+                Topmost = true,
+                ResizeMode = ResizeMode.NoResize,
+                Content = body
+            };
+            progressWindow.Show();
+        });
+        var progress = new Progress<double>(value =>
+        {
+            if (progressBar is null || progressLabel is null) return;
+            progressBar.Value = value * 100;
+            progressLabel.Text = $"{update.Tag} 업데이트 내려받는 중… {value:P0}";
+        });
         var previousAttemptTag = _settings.LastAttemptedUpdateTag;
         try
         {
             _settings.LastAttemptedUpdateTag = update.Tag;
             SettingsStore.Save(_settings);
-            await service.DownloadAndInstallAsync(update);
-            await Dispatcher.InvokeAsync(() => Application.Current.Shutdown());
+            await service.DownloadAndInstallAsync(update, progress);
+            await Dispatcher.InvokeAsync(() =>
+            {
+                if (progressLabel is not null) progressLabel.Text = $"{update.Tag} 설치 후 재시작합니다…";
+                Application.Current.Shutdown();
+            });
         }
         catch
         {
@@ -212,7 +251,10 @@ public partial class MainWindow : Window
             SettingsStore.Save(_settings);
             _updateBusy = false;
             await Dispatcher.InvokeAsync(() =>
-                FooterStatus.Text = $"{update.Tag} 자동 업데이트에 실패했습니다 — 잠시 후 다시 시도합니다.");
+            {
+                progressWindow?.Close();
+                FooterStatus.Text = $"{update.Tag} 자동 업데이트에 실패했습니다 — 잠시 후 다시 시도합니다.";
+            });
         }
     }
 

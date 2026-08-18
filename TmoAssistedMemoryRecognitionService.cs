@@ -44,14 +44,38 @@ public sealed class TmoAssistedMemoryRecognitionService : IInventoryRecognizer
 
     private RecognitionResult Recognize(CancellationToken token)
     {
+        // 워크 프로세스가 여러 개일 수 있어(런처 잔존·재시작) 전부 열거해 두고,
+        // 티모지지 리더가 실제로 붙은 프로세스를 따라간다.
+        var gameCandidates = System.Diagnostics.Process.GetProcessesByName("Warcraft III")
+            .OrderByDescending(process =>
+            {
+                try { return process.StartTime; }
+                catch (Exception exception) when (exception is Win32Exception or InvalidOperationException)
+                {
+                    return DateTime.MinValue;
+                }
+            })
+            .ToList();
+        try
+        {
+            return RecognizeCore(gameCandidates, token);
+        }
+        finally
+        {
+            foreach (var process in gameCandidates) process.Dispose();
+        }
+    }
+
+    private RecognitionResult RecognizeCore(
+        IReadOnlyList<System.Diagnostics.Process> gameCandidates, CancellationToken token)
+    {
         try
         {
             token.ThrowIfCancellationRequested();
             if (_unitMap.Error is not null)
                 return Failure(RecognitionState.ConfigurationError, "유닛 코드 데이터 오류 · 기존 패 유지", _unitMap.Error);
 
-            using var gameProcess = WarcraftMemoryRecognitionService.FindNewestProcess("Warcraft III");
-            if (gameProcess is null)
+            if (gameCandidates.Count == 0)
                 return Failure(RecognitionState.Waiting, "워크 미실행 · 패 초기화",
                     "Warcraft III 프로세스를 기다리는 중입니다.", confirmsSessionBoundary: true);
             using var tmoProcess = WarcraftMemoryRecognitionService.FindNewestProcess("TMO.GG");
@@ -61,12 +85,25 @@ public sealed class TmoAssistedMemoryRecognitionService : IInventoryRecognizer
 
             var tmoModule = tmoProcess.MainModule
                 ?? throw new InvalidOperationException("TMO.GG 메인 모듈을 확인할 수 없습니다.");
+            var tmoVersion = tmoModule.FileVersionInfo.FileVersion ?? "unknown";
+            var tmoBase = (ulong)tmoModule.BaseAddress.ToInt64();
+            using var tmoMemory = ReadOnlyProcessMemory.Open(tmoProcess.Id);
+
+            // 티모지지 리더 래퍼가 가리키는 워크 pid를 먼저 읽어 그 프로세스를 고른다.
+            // 여러 워크 중 "최신"이 아니라 리더가 붙은 쪽을 따라야 pid 불일치로 연동이
+            // 영영 안 붙는 문제가 없다. 캐시된 바인딩이 있으면 스캔을 생략한다.
+            HashSet<int>? readerPids;
+            lock (_bindingGate)
+                readerPids = _bindingCache is { } cachedBinding ? [cachedBinding.Key.GamePid] : null;
+            readerPids ??= FindWrapperTargetPids(tmoMemory, tmoBase, token);
+            var gameProcess = gameCandidates.FirstOrDefault(process => readerPids.Contains(process.Id))
+                              ?? gameCandidates[0];
+
             var gameModule = gameProcess.MainModule
                 ?? throw new InvalidOperationException("Warcraft III 메인 모듈을 확인할 수 없습니다.");
-            var tmoVersion = tmoModule.FileVersionInfo.FileVersion ?? "unknown";
             var gameVersion = gameModule.FileVersionInfo.FileVersion ?? "unknown";
             var baseDiagnostics = Diagnostics(gameProcess.Id, gameVersion,
-                $"TMO {tmoVersion} · PID {tmoProcess.Id}");
+                $"TMO {tmoVersion} · PID {tmoProcess.Id} · 워크 후보 {gameCandidates.Count}개");
 
             if (!gameVersion.Equals(SupportedWarcraftVersion, StringComparison.OrdinalIgnoreCase))
                 return Failure(RecognitionState.Unsupported, $"워크 {gameVersion} 미지원 · 기존 패 유지",
@@ -75,13 +112,11 @@ public sealed class TmoAssistedMemoryRecognitionService : IInventoryRecognizer
                 return Failure(RecognitionState.Unsupported, $"티모지지 {tmoVersion} 미지원 · 기존 패 유지",
                     $"검증된 TMO {SupportedTmoVersion} 빌드만 허용합니다.", baseDiagnostics);
 
-            var tmoBase = (ulong)tmoModule.BaseAddress.ToInt64();
             var gameBase = (ulong)gameModule.BaseAddress.ToInt64();
             var gameImageSize = checked((ulong)gameModule.ModuleMemorySize);
             var key = new BindingKey(tmoProcess.Id, tmoProcess.StartTime.ToUniversalTime().Ticks, tmoBase,
                 gameProcess.Id, gameProcess.StartTime.ToUniversalTime().Ticks, gameBase);
 
-            using var tmoMemory = ReadOnlyProcessMemory.Open(tmoProcess.Id);
             using var gameMemory = ReadOnlyProcessMemory.Open(gameProcess.Id);
             var binding = GetOrFindBinding(key, tmoModule.FileName, gameModule.FileName,
                 tmoMemory, gameMemory, gameImageSize, token);
@@ -284,6 +319,58 @@ public sealed class TmoAssistedMemoryRecognitionService : IInventoryRecognizer
             throw new InvalidDataException("Warcraft 이미지 범위를 검증할 수 없습니다.");
         lock (_bindingGate) _bindingCache = matches[0];
         return matches[0];
+    }
+
+    /// <summary>
+    /// 티모지지 리더 래퍼(vtable 일치 후보)가 가리키는 워크 pid 집합을 가볍게 수집한다.
+    /// 전체 검증 전 단계라 vtable 일치 + pid 필드 읽기까지만 수행한다.
+    /// </summary>
+    private static HashSet<int> FindWrapperTargetPids(ReadOnlyProcessMemory tmoMemory, ulong tmoBase,
+        CancellationToken token)
+    {
+        var pids = new HashSet<int>();
+        var expectedVmt = checked(tmoBase + TmoWar3VmtRva);
+        var target = BitConverter.GetBytes(expectedVmt);
+        foreach (var region in tmoMemory.ReadablePrivateRegions())
+        {
+            token.ThrowIfCancellationRequested();
+            const int chunkSize = 2 * 1024 * 1024;
+            ulong offset = 0;
+            while (offset < region.Size)
+            {
+                token.ThrowIfCancellationRequested();
+                var nominal = (int)Math.Min((ulong)chunkSize, region.Size - offset);
+                var readCount = (int)Math.Min((ulong)nominal + 7UL, region.Size - offset);
+                var chunkAddress = checked(region.BaseAddress + offset);
+                var bytes = tmoMemory.ReadAvailable(chunkAddress, readCount);
+                if (bytes.Length >= sizeof(ulong))
+                {
+                    var searchStart = 0;
+                    while (searchStart <= bytes.Length - target.Length)
+                    {
+                        var relative = bytes.AsSpan(searchStart).IndexOf(target);
+                        if (relative < 0) break;
+                        var index = searchStart + relative;
+                        if (index < nominal)
+                        {
+                            try
+                            {
+                                pids.Add(tmoMemory.ReadInt32(
+                                    checked(chunkAddress + (ulong)index + WrapperWarcraftPidOffset)));
+                            }
+                            catch (Exception exception) when (
+                                exception is Win32Exception or InvalidDataException or OverflowException)
+                            {
+                                // 후보가 진짜 래퍼가 아닐 수 있다 — pid 읽기 실패는 무시.
+                            }
+                        }
+                        searchStart = index + 1;
+                    }
+                }
+                offset += (ulong)nominal;
+            }
+        }
+        return pids;
     }
 
     private static bool TryCreateBinding(ulong wrapper, BindingKey key, ReadOnlyProcessMemory tmoMemory,
