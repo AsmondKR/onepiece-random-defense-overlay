@@ -51,10 +51,10 @@ public partial class OverlayWindow : Window
 
     public event Action<double, double>? PositionCommitted;
     public event Action? HiddenByUser;
-    public event Action? ReRecommendRequested;
+    public event Action<FrameworkElement>? ReRecommendRequested;
 
     private void ReRecommendButton_OnClick(object sender, RoutedEventArgs e) =>
-        ReRecommendRequested?.Invoke();
+        ReRecommendRequested?.Invoke((FrameworkElement)sender);
 
     public void RestorePosition(double? left, double? top)
     {

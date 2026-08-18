@@ -112,7 +112,7 @@ public partial class MainWindow : Window
         _overlay.RestorePosition(_settings.OverlayLeft, _settings.OverlayTop);
         _overlay.PositionCommitted += Overlay_OnPositionCommitted;
         _overlay.HiddenByUser += () => OverlayButton.Content = "오버레이 보이기";
-        _overlay.ReRecommendRequested += () => ReRecommend_OnClick(this, new RoutedEventArgs());
+        _overlay.ReRecommendRequested += ShowReRecommendMenu;
         _overlay.Show();
         _overlay.SetClickThrough(_settings.ClickThroughOverlay);
         _timer.Interval = TimeSpan.FromSeconds(Math.Clamp(_settings.CaptureIntervalSeconds, 0.5, 10));
@@ -386,9 +386,12 @@ public partial class MainWindow : Window
         return prefix + navigationNote;
     }
 
-    // 다시 추천: 지금 패 기준으로 조합이 가장 가까운(완성률 최고) 학습 상위를
-    // 다시 계산해 추천한다. 동률이면 신+ 표본이 많은 쪽을 고른다(유저 요청).
-    private void ReRecommend_OnClick(object sender, RoutedEventArgs e)
+    // 다시 추천: 지금 패 기준으로 조합이 가장 가까운(완성률 순) 학습 상위 순위를
+    // 목록으로 보여주고, 골라서 전환한다(유저 요청).
+    private void ReRecommend_OnClick(object sender, RoutedEventArgs e) =>
+        ShowReRecommendMenu(sender as FrameworkElement ?? this);
+
+    private void ShowReRecommendMenu(FrameworkElement anchor)
     {
         if (!_initialized) return;
         var counts = CombinedInventory()
@@ -397,28 +400,46 @@ public partial class MainWindow : Window
             .ToDictionary(group => group.Key, group => group.Sum(entry => entry.Count),
                 StringComparer.OrdinalIgnoreCase);
         var calculator = new RecipeCompletionCalculator(_catalog.Unit);
-        var best = GoalUnits()
+        var ranked = GoalUnits()
             .Select(unit => (Unit: unit,
                 Ratio: calculator.Calculate([unit.Id], counts).CompletionRatio,
                 Samples: LearnedSelection.GoalSampleCount(_clearStats, unit)))
             .OrderByDescending(pair => pair.Ratio)
             .ThenByDescending(pair => pair.Samples)
-            .FirstOrDefault();
-        if (best.Unit is null)
+            .Take(6)
+            .ToList();
+        if (ranked.Count == 0)
         {
             RefreshAll("학습된 상위가 없어 추천할 수 없습니다.");
             return;
         }
-        _autoStartApplied = true;
-        var percent = Math.Round(best.Ratio * 100, MidpointRounding.AwayFromZero);
-        if (best.Unit.Id.Equals(SelectedGoal?.Id, StringComparison.OrdinalIgnoreCase))
+        var menu = new ContextMenu
         {
-            RefreshAll($"지금 패 기준 최적 상위도 {best.Unit.Name}입니다 (완성률 {percent:0}퍼센트).");
-            return;
+            PlacementTarget = anchor,
+            Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom
+        };
+        var rank = 1;
+        foreach (var entry in ranked)
+        {
+            var unit = entry.Unit;
+            var percent = Math.Round(entry.Ratio * 100, MidpointRounding.AwayFromZero);
+            var samples = entry.Samples;
+            var isCurrent = unit.Id.Equals(SelectedGoal?.Id, StringComparison.OrdinalIgnoreCase);
+            var item = new MenuItem
+            {
+                Header = $"{rank++}. {unit.Name} · 완성률 {percent:0}% · 신+ {samples:#,0}판" +
+                         (isCurrent ? " (현재 목표)" : ""),
+                IsEnabled = !isCurrent
+            };
+            item.Click += (_, _) =>
+            {
+                _autoStartApplied = true;
+                RefreshAll(ApplyGoalAdvice(unit,
+                    $"다시 추천: {unit.Name} 선택 (완성률 {percent:0}퍼센트 · 신+ {samples:#,0}판)."));
+            };
+            menu.Items.Add(item);
         }
-        RefreshAll(ApplyGoalAdvice(best.Unit,
-            $"다시 추천: 지금 패로 가장 가까운 상위 {best.Unit.Name} " +
-            $"(완성률 {percent:0}퍼센트 · 신+ {best.Samples:#,0}판 학습)."));
+        menu.IsOpen = true;
     }
 
     // 항법 추천: 클리어 API에 항법 필드가 없어 직접 학습은 불가 — 상위 기수 스코프
