@@ -16,7 +16,6 @@ public partial class MainWindow : Window
     private readonly DataCatalog _catalog = new();
     private readonly AppSettings _settings;
     private readonly Dictionary<string, InventoryEntry> _automatic = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, InventoryEntry> _manual = new(StringComparer.OrdinalIgnoreCase);
     private readonly DispatcherTimer _timer = new();
     // 릴리스 확인은 API가 아니라 리다이렉트 태그 조사라 호출 제한 부담이 없다 — 2분이면
     // 새 릴리스가 몇 분 안에 전 유저에게 퍼진다.
@@ -34,7 +33,6 @@ public partial class MainWindow : Window
     private ClearBuildStats _clearStats = ClearBuildStats.Empty;
     private CompletedTopUnitTracker _completedTopUnits = null!;
     private IInventoryRecognizer _recognizer = null!;
-    private readonly Dictionary<string, IInventoryRecognizer> _recognizers = new(StringComparer.OrdinalIgnoreCase);
     private OverlayWindow _overlay = null!;
     private bool _initialized;
     private bool _scanInProgress;
@@ -71,11 +69,7 @@ public partial class MainWindow : Window
             _specialAdvisor = new SpecialDismantleAdvisor(_catalog);
             _combinePlanner = new AutoCombinePlanner(_catalog, _combineHotkeys);
             _completedTopUnits = new CompletedTopUnitTracker(_catalog);
-            _recognizers["Screen"] = new ScreenRecognitionService(_catalog);
-            _recognizers["Memory"] = new TmoAssistedMemoryRecognitionService(_catalog);
-            var initialSource = RecognitionPolicy.NormalizeSource(_settings.RecognitionSource);
-            _settings.RecognitionSource = initialSource;
-            _recognizer = _recognizers[initialSource];
+            _recognizer = new WarcraftMemoryRecognitionService(_catalog);
         }
         catch (Exception exception)
         {
@@ -85,27 +79,13 @@ public partial class MainWindow : Window
         }
 
         RepopulateGoalChoices(_settings.GoalUnitId);
-        // 수동 보정은 인식 실패를 사람이 메꾸는 경로다 — 데모 13종이 아니라
-        // 카탈로그 전체에서 고를 수 있어야 한다.
-        ManualUnitCombo.ItemsSource = _catalog.AllUnits
-            .Where(unit => unit.Rawcodes.Count > 0)
-            .OrderBy(unit => unit.Tier, StringComparer.CurrentCulture)
-            .ThenBy(unit => unit.Name, StringComparer.CurrentCulture)
-            .ToList();
         RepopulateNavigationChoices();
         RepopulateBuildVariants();
         GoroseiCombo.ItemsSource = GoroseiEffects.Options;
         var selectedGorosei = GoroseiEffects.Parse(_settings.GoroseiMode);
         GoroseiCombo.SelectedItem = GoroseiEffects.Options.First(option => option.Mode == selectedGorosei);
         GoroseiSummaryText.Text = GoroseiEffects.Options.First(option => option.Mode == selectedGorosei).Summary;
-        ManualUnitCombo.SelectedIndex = 0;
-        RegionText.Text = string.Join(", ", new[]
-        {
-            _settings.InventoryRegion.X, _settings.InventoryRegion.Y,
-            _settings.InventoryRegion.Width, _settings.InventoryRegion.Height
-        }.Select(x => x.ToString("0.###", CultureInfo.InvariantCulture)));
         ClickThroughCheck.IsChecked = _settings.ClickThroughOverlay;
-        RecognitionSourceCombo.SelectedIndex = _settings.RecognitionSource == "Screen" ? 1 : 0;
         AutoScanCheck.IsChecked = _settings.AutoScanEnabled;
         ClearDataRefreshCheck.IsChecked = _settings.ClearDataAutoRefresh;
         AutoStartCheck.IsChecked = _settings.AutoStartGoal;
@@ -122,11 +102,7 @@ public partial class MainWindow : Window
         _overlay.SettlementRequested += ShowSettlement;
         _overlay.Show();
         _overlay.SetClickThrough(_settings.ClickThroughOverlay);
-        // 스캔 주기 기본값을 0.8초로 내렸다(조합 반영 체감 개선) — 옛 기본값(1.2초)을
-        // 그대로 쓰던 기존 설정 파일은 새 기본값으로 함께 옮긴다.
-        if (Math.Abs(_settings.CaptureIntervalSeconds - 1.2) < 0.0005)
-            _settings.CaptureIntervalSeconds = 0.8;
-        _timer.Interval = TimeSpan.FromSeconds(Math.Clamp(_settings.CaptureIntervalSeconds, 0.5, 10));
+        _timer.Interval = TimeSpan.FromSeconds(0.8);
         _timer.Tick += async (_, _) => await ScanAsync();
         Closed += (_, _) =>
         {
@@ -139,7 +115,7 @@ public partial class MainWindow : Window
             SettingsStore.Save(_settings);
         };
         _initialized = true;
-        RefreshAll("티모지지 실시간 패 연동을 준비하는 중입니다.");
+        RefreshAll("워크 메모리 인식을 준비하는 중입니다.");
         if (_settings.AutoScanEnabled)
         {
             _timer.Start();
@@ -666,13 +642,9 @@ public partial class MainWindow : Window
 
     private IReadOnlyList<InventoryEntry> CombinedInventory(bool includeAutomatic = true)
     {
-        IEnumerable<InventoryEntry> automatic = includeAutomatic
-            ? _automatic.Values
-            : Enumerable.Empty<InventoryEntry>();
-        return InventoryMerge.ApplyCorrections(automatic, _manual.Values,
-                id => _catalog.Unit(id).Tags.Contains("greenblood", StringComparer.OrdinalIgnoreCase))
-            .OrderByDescending(x => _manual.ContainsKey(x.UnitId))
-            .ThenBy(x => _catalog.Unit(x.UnitId).Name)
+        var automatic = includeAutomatic ? _automatic.Values : Enumerable.Empty<InventoryEntry>();
+        return automatic.Where(x => x.Count > 0)
+            .OrderBy(x => _catalog.Unit(x.UnitId).Name)
             .ToList();
     }
 
@@ -721,12 +693,8 @@ public partial class MainWindow : Window
 
         InventoryList.Items.Clear();
         foreach (var item in inventory)
-        {
-            var origin = _manual.ContainsKey(item.UnitId)
-                ? "수동"
-                : "자동" + (_automaticStale ? " · 이전 스냅샷" : "");
-            InventoryList.Items.Add($"{_catalog.Unit(item.UnitId).Name}  ×{item.Count}   {origin}");
-        }
+            InventoryList.Items.Add($"{_catalog.Unit(item.UnitId).Name}  ×{item.Count}" +
+                                    (_automaticStale ? "   이전 스냅샷" : ""));
         if (inventory.Count == 0) InventoryList.Items.Add("보유 패 없음");
 
         // 자동 시작 단계(첫 희귀함 전): 상위 카드 대신, 현재 패로 가장 빨리 완성되는
@@ -1310,7 +1278,6 @@ public partial class MainWindow : Window
             else if (result.ShouldClearAutomaticInventory)
             {
                 _automatic.Clear();
-                if (RecognitionPolicy.IsConfirmedOutOfGame(result) && _liveSessionActive) _manual.Clear();
                 _automaticStale = false;
                 _automaticDisconnected = true;
                 if (RecognitionPolicy.IsConfirmedOutOfGame(result))
@@ -1357,29 +1324,6 @@ public partial class MainWindow : Window
             cancellation.Dispose();
             _scanInProgress = false;
         }
-    }
-
-    private void AddUnit_OnClick(object sender, RoutedEventArgs e)
-    {
-        if (ManualUnitCombo.SelectedItem is not UnitDefinition unit) return;
-        if (_manual.TryGetValue(unit.Id, out var entry)) entry.Count++;
-        else _manual[unit.Id] = new InventoryEntry { UnitId = unit.Id, Count = 1, IsManual = true };
-        if (_manual[unit.Id].Count == 0) _manual.Remove(unit.Id);
-        RefreshAll($"{unit.Name} 패를 수동으로 추가했습니다.");
-    }
-
-    private void RemoveUnit_OnClick(object sender, RoutedEventArgs e)
-    {
-        if (ManualUnitCombo.SelectedItem is not UnitDefinition unit) return;
-        if (!InventoryMerge.CanDecrement(CombinedInventory(), unit.Id))
-        {
-            RefreshAll($"{unit.Name} 수량은 이미 0이라 더 제거하지 않았습니다.");
-            return;
-        }
-        if (_manual.TryGetValue(unit.Id, out var entry)) entry.Count--;
-        else _manual[unit.Id] = new InventoryEntry { UnitId = unit.Id, Count = -1, IsManual = true };
-        if (_manual[unit.Id].Count == 0) _manual.Remove(unit.Id);
-        RefreshAll($"{unit.Name} 패를 제거했습니다.");
     }
 
     private void GoalCombo_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -1486,25 +1430,6 @@ public partial class MainWindow : Window
         var changed = _settings.ClearDataAutoRefresh != enabled;
         _settings.ClearDataAutoRefresh = enabled;
         if (changed && enabled) _ = RefreshClearDataAsync();
-    }
-
-    private void RecognitionSource_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (!_initialized || RecognitionSourceCombo.SelectedItem is not ComboBoxItem item || item.Tag is not string source) return;
-        if (!_recognizers.TryGetValue(source, out var recognizer)) return;
-        _scanGeneration++;
-        _scanCancellation?.Cancel();
-        _settings.RecognitionSource = source;
-        _recognizer = recognizer;
-        _automatic.Clear();
-        _automaticStale = false;
-        _automaticDisconnected = false;
-        _liveSessionActive = false;
-        _completedTopUnits.Reset();
-        RecognitionStatus.Text = source == "Memory" ? "메모리 대기" : "화면 대기";
-        RefreshAll(source == "Memory"
-            ? "읽기 전용 워크 메모리 프로필을 사용합니다. 지원하지 않는 버전은 자동으로 차단됩니다."
-            : "화면 아이콘 템플릿 인식으로 전환했습니다.");
     }
 
     private void ClickThrough_OnChanged(object sender, RoutedEventArgs e)
@@ -1648,28 +1573,4 @@ public partial class MainWindow : Window
         return IntPtr.Zero;
     }
 
-    private void ApplyRegion_OnClick(object sender, RoutedEventArgs e)
-    {
-        var parts = RegionText.Text.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length != 4 || parts.Any(x => !double.TryParse(x, NumberStyles.Float, CultureInfo.InvariantCulture, out _)))
-        {
-            FooterStatus.Text = "영역은 0.64, 0.58, 0.34, 0.36 형식으로 입력하세요.";
-            return;
-        }
-        var values = parts.Select(x => double.Parse(x, CultureInfo.InvariantCulture)).ToArray();
-        if (values.Any(x => x < 0 || x > 1) || values[0] + values[2] > 1 || values[1] + values[3] > 1)
-        {
-            FooterStatus.Text = "모든 값은 0~1이고 가로 위치+너비, 세로 위치+높이는 1 이하여야 합니다.";
-            return;
-        }
-        _settings.InventoryRegion = new NormalizedRect(values[0], values[1], values[2], values[3]);
-        SettingsStore.Save(_settings);
-        FooterStatus.Text = "해상도 독립 인벤토리 영역을 저장했습니다.";
-    }
-
-    private void CopyTemplatePath_OnClick(object sender, RoutedEventArgs e)
-    {
-        Clipboard.SetText(AppPaths.TemplateDirectory);
-        FooterStatus.Text = $"템플릿 폴더 경로를 복사했습니다: {AppPaths.TemplateDirectory}";
-    }
 }

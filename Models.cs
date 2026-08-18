@@ -266,19 +266,15 @@ public sealed class RecognitionDiagnostics
 
 public sealed class AppSettings
 {
+    // 설정 마이그레이션 버전. 1=레거시(화면 인식 키 존재), 2=메모리 단일 경로 고정 이후.
+    public int SettingsSchemaVersion { get; set; } = LegacySettingsMigration.CurrentSchemaVersion;
     public string GoalUnitId { get; set; } = "yamato_transcendent";
     // 첫 희귀함이 잡히면 그 희귀함이 들어가는 학습 상위로 목표를 자동 전환(자동 시작).
     public bool AutoStartGoal { get; set; } = true;
     public string NavigationMode { get; set; } = "PathOfKings.BountyHunter";
-    public double CaptureIntervalSeconds { get; set; } = 0.8;
-    public double MatchThreshold { get; set; } = 0.86;
-    public NormalizedRect InventoryRegion { get; set; } = new(0.64, 0.58, 0.34, 0.36);
-    public int GridColumns { get; set; } = 6;
-    public int GridRows { get; set; } = 4;
     public bool ClickThroughOverlay { get; set; }
     public double? OverlayLeft { get; set; }
     public double? OverlayTop { get; set; }
-    public string RecognitionSource { get; set; } = "Memory";
     public bool AutoScanEnabled { get; set; } = true;
     public bool ClearDataAutoRefresh { get; set; } = true;
     // 워크 기본 단축키(Alt·Ctrl+숫자·F9~F12 등)와 겹치지 않는 키. WPF Key 이름.
@@ -497,9 +493,6 @@ public static class NavigationProfiles
 
 public static class RecognitionPolicy
 {
-    public static string NormalizeSource(string? source) =>
-        source?.Equals("Screen", StringComparison.OrdinalIgnoreCase) == true ? "Screen" : "Memory";
-
     // A short in-match snapshot race may keep the last recommendation stable. A disconnected,
     // loading, unsupported, or misconfigured source must never drive "current" recommendations.
     public static bool MayUseLastGoodForRecommendations(RecognitionState state) =>
@@ -594,4 +587,9 @@ public static class OverlayPositionPolicy
         var safeTop = double.IsFinite(top) ? Math.Clamp(top, virtualTop, maximumTop) : virtualTop;
         return new OverlayPosition(safeLeft, safeTop);
     }
+}
+
+public interface IInventoryRecognizer
+{
+    Task<RecognitionResult> RecognizeAsync(AppSettings settings, CancellationToken cancellationToken);
 }

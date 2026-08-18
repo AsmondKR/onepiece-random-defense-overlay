@@ -1,3 +1,5 @@
+﻿using System.Security.Cryptography;
+using System.Text.Json;
 using OrandOverlay;
 
 var catalog = new DataCatalog();
@@ -5,7 +7,7 @@ catalog.Load();
 
 if (args.Any(x => x.Equals("--watch", StringComparison.OrdinalIgnoreCase)))
 {
-    var recognizer = new TmoAssistedMemoryRecognitionService(catalog);
+    var recognizer = new WarcraftMemoryRecognitionService(catalog);
     string? lastSignature = null;
     Console.WriteLine("WATCH started · state/Luffy/Yamato changes only · Ctrl+C to stop");
     while (true)
@@ -41,7 +43,7 @@ if (args.Any(x => x.Equals("--watch", StringComparison.OrdinalIgnoreCase)))
 
 if (args.Any(x => x.Equals("--live", StringComparison.OrdinalIgnoreCase)))
 {
-    var live = await new TmoAssistedMemoryRecognitionService(catalog)
+    var live = await new WarcraftMemoryRecognitionService(catalog)
         .RecognizeAsync(new AppSettings(), CancellationToken.None);
     Console.WriteLine($"LIVE state={live.State} entries={live.Entries.Sum(x => x.Count)} status={live.Status}");
     Console.WriteLine(live.Diagnostics.DisplayText);
@@ -577,6 +579,59 @@ var unverifiedProfile = ValidMemoryProfile(enabled: true, verified: false);
 Assert(!MemoryProfileValidator.CanActivate(unverifiedProfile, out _), "미검증 프로필 차단");
 Assert(!MemoryProfileValidator.CanActivate(ValidMemoryProfile(true, true, -0.1), out _),
     "잘못된 rawcode 일치율 프로필 차단");
+
+// 실측 빌드에 핀된 번들 메모리 프로필 고정(Data/memory-profiles.json).
+// 오프셋 출처: work/war3_objects_findings.md — GetUnitPool은 worldFrame+0xB98(count)/+0xBA0(pool),
+// CUnit rawcode는 +0x178, owner 바이트는 +0x1C0. sha256은 설치된 Warcraft III.exe 실측값.
+const string PinnedWarcraftSha256 = "682C12552CA05E43C5FED2340EA132D3B06FE068E676DB7D1F5623D8D4633229";
+var bundledProfilePath = Path.Combine(AppContext.BaseDirectory, "Data", "memory-profiles.json");
+Assert(File.Exists(bundledProfilePath), "번들 메모리 프로필 파일이 배포본에 포함됨");
+var bundledProfiles = JsonSerializer.Deserialize<List<MemoryProfile>>(File.ReadAllText(bundledProfilePath),
+    new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? [];
+Assert(bundledProfiles.Count == 1, "번들 프로필은 실측된 빌드 1개만 핀");
+var pinnedProfile = bundledProfiles[0];
+Assert(pinnedProfile.FileVersion == "2.0.4.23745" && pinnedProfile.ModuleName == "Warcraft III.exe",
+    "핀된 프로필이 실측 Warcraft III 빌드를 가리킴");
+Assert(string.Equals(pinnedProfile.ExecutableSha256, PinnedWarcraftSha256, StringComparison.OrdinalIgnoreCase),
+    "핀된 프로필 sha256이 실측 해시와 일치");
+Assert(string.Equals(pinnedProfile.Sha256, PinnedWarcraftSha256, StringComparison.OrdinalIgnoreCase),
+    "핀된 프로필이 정식 sha256 필드로 빌드 해시를 보관");
+Assert(File.ReadAllText(bundledProfilePath).Contains("\"sha256\"", StringComparison.Ordinal),
+    "번들 프로필 JSON이 sha256 필드명을 사용");
+Assert(string.Equals(JsonSerializer.Deserialize<MemoryProfile>(
+        $"{{\"executableSha256\":\"{PinnedWarcraftSha256}\"}}",
+        new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!.ExecutableSha256,
+    PinnedWarcraftSha256, StringComparison.OrdinalIgnoreCase),
+    "구 스키마 executableSha256 별칭도 실효 해시로 해석됨");
+Assert(!MemoryProfileValidator.CanActivate(ValidMemoryProfile(true, true, sha256: ""), out _),
+    "sha256이 비어 있으면 프로필 활성화를 하드 차단");
+// verified=true는 사용자의 실전 1판 라이브 검증 통과 후에만 플립된다(시드 제약) — 번들 상태는 검증 대기.
+Assert(pinnedProfile.Enabled && !pinnedProfile.Verified, "핀된 프로필이 enabled=true, verified=false(라이브 검증 대기)");
+Assert(!MemoryProfileValidator.CanActivate(pinnedProfile, out _),
+    "미검증 프로필은 하드 게이트에 막혀 활성화되지 않음(fail-closed)");
+var pinnedNode = System.Text.Json.Nodes.JsonNode.Parse(JsonSerializer.Serialize(pinnedProfile))!.AsObject();
+pinnedNode[pinnedNode.ContainsKey("verified") ? "verified" : "Verified"] = true;
+var pinnedVerifiedCopy = JsonSerializer.Deserialize<MemoryProfile>(
+    pinnedNode.ToJsonString(),
+    new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
+Assert(MemoryProfileValidator.CanActivate(pinnedVerifiedCopy, out var pinnedErrors) && pinnedErrors.Count == 0,
+    "라이브 검증 후 verified=true가 되면 하드 게이트를 통과해 단독 인식에 활성화됨");
+Assert(pinnedProfile.CountOffset == 0xB98 && pinnedProfile.EntriesPointerOffset == 0xBA0,
+    "실측 유닛 풀 오프셋 worldFrame+0xB98/+0xBA0 유지");
+Assert(pinnedProfile.RawcodeOffset == 0x178 && pinnedProfile.OwnerOffset == 0x1C0,
+    "실측 CUnit rawcode+0x178 / owner+0x1C0 오프셋 유지");
+Assert(pinnedProfile.EntriesContainPointers && !pinnedProfile.EntriesAreInline && pinnedProfile.EntryStride == 8,
+    "실측 8바이트 포인터 배열 순회 형태 유지");
+Assert(pinnedProfile.MaximumUnits == 5000 && pinnedProfile.RequireNonEmptyInventory &&
+       Math.Abs(pinnedProfile.MinimumCatalogMatchRatio - 0.6) < 1e-9,
+    "핀된 프로필이 fail-closed 가드값을 그대로 유지");
+var installedWarcraftPath = Path.Combine(
+    Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+    "Warcraft III", "_retail_", "x86_64", "Warcraft III.exe");
+Assert(!File.Exists(installedWarcraftPath) || string.Equals(
+        Convert.ToHexString(SHA256.HashData(File.OpenRead(installedWarcraftPath))),
+        pinnedProfile.ExecutableSha256, StringComparison.OrdinalIgnoreCase),
+    "설치된 Warcraft III.exe가 있으면 핀된 sha256과 실제 해시가 일치");
 Assert(new RecognitionResult { State = RecognitionState.Ready }.ShouldReplaceInventory,
     "검증된 0장 Ready는 마지막 패를 지움");
 Assert(!new RecognitionResult { State = RecognitionState.TransientReadError }.ShouldReplaceInventory,
@@ -588,10 +643,10 @@ Assert(new RecognitionResult { State = RecognitionState.Waiting }.ShouldClearAut
     "Waiting은 현재 자동 패를 비우고 일시 race는 보존");
 Assert(new AppSettings().AutoScanEnabled, "첫 실행은 메모리 자동 인식을 바로 시작");
 Assert(!new AppSettings().ClickThroughOverlay, "첫 실행 오버레이는 즉시 드래그 가능");
-Assert(RecognitionPolicy.NormalizeSource("Screen") == "Screen" &&
-       RecognitionPolicy.NormalizeSource("screen") == "Screen" &&
-       RecognitionPolicy.NormalizeSource("unknown") == "Memory",
-    "저장된 인식원을 재시작 시 실제 recognizer와 동일하게 복원");
+string[] screenCaptureSettingMarkers = ["Recognition" + "Source", "Inventory" + "Region", "Capture" + "Interval"];
+Assert(typeof(AppSettings).GetProperties().All(p =>
+           !screenCaptureSettingMarkers.Any(m => p.Name.Contains(m, StringComparison.Ordinal))),
+    "화면 인식용 설정(인식 소스 선택·캡처 영역·캡처 주기)이 AppSettings에 남아 있지 않음");
 Assert(RecognitionPolicy.MayUseLastGoodForRecommendations(RecognitionState.TransientReadError) &&
        !RecognitionPolicy.MayUseLastGoodForRecommendations(RecognitionState.Waiting),
     "일시 race만 이전 추천을 유지하고 게임 종료 상태는 추천에서 제외");
@@ -601,7 +656,20 @@ Assert(RecognitionPolicy.IsConfirmedOutOfGame(new RecognitionResult
            ConfirmsSessionBoundary = true
        }) &&
        !RecognitionPolicy.IsConfirmedOutOfGame(new RecognitionResult { State = RecognitionState.Waiting }),
-    "확인된 게임 경계만 수동 보정을 지우고 TMO 재연결 대기는 보존");
+    "확인된 게임 경계만 수동 보정을 지우고 일시 읽기 오류는 보존");
+// 실패 클래스별 상태 전이: fail-closed(추천 중단) vs fail-soft(마지막 정상 유지).
+// 게임 미실행(Waiting)은 위 줄(ShouldReplaceInventory·ShouldClearAutomaticInventory·MayUseLastGoodForRecommendations)에서 이미 커버.
+Assert(!RecognitionPolicy.MayUseLastGoodForRecommendations(RecognitionState.UnverifiedProfile) &&
+       !RecognitionPolicy.MayUseLastGoodForRecommendations(RecognitionState.Unsupported),
+    "미검증 프로필·미지원 빌드는 fail-closed: 마지막 정상 추천을 유지하지 않음");
+Assert(!new RecognitionResult { State = RecognitionState.UnverifiedProfile }.ShouldReplaceInventory &&
+       !new RecognitionResult { State = RecognitionState.UnverifiedProfile }.ShouldClearAutomaticInventory,
+    "미검증 프로필은 기존 패를 덮지 않고 자동 패 초기화도 하지 않음(배너만 표시)");
+// 스테일 루트(WC3 재시작·로비 재진입 뒤 루트 주소 무효화)는 TransientReadError로 분류된다.
+// LocatorCache가 무효화된 뒤 ReadConsistentSnapshot 재시도가 실패하면 이 상태로 전이한다.
+Assert(RecognitionPolicy.MayUseLastGoodForRecommendations(RecognitionState.TransientReadError) &&
+       !new RecognitionResult { State = RecognitionState.TransientReadError }.ShouldClearAutomaticInventory,
+    "스테일 루트·일시 읽기 오류는 TransientReadError로 분류되어 마지막 정상 패와 추천을 유지");
 var correctedInventory = InventoryMerge.ApplyCorrections(
     [new InventoryEntry { UnitId = "luffy_common", Count = 2, Confidence = 1 }],
     [new InventoryEntry { UnitId = "luffy_common", Count = -1, IsManual = true }]);
@@ -624,8 +692,8 @@ var singletonInventory = InventoryMerge.ApplyCorrections(
     [new InventoryEntry { UnitId = "item_greenblood", Count = 1, IsManual = true }],
     id => id == "item_greenblood");
 Assert(singletonInventory.Single().Count == 1, "그린블러드 자동/수동 중복을 1개 상태로 병합");
-Assert(TmoInventoryHandle.IsEmpty(0) && TmoInventoryHandle.IsEmpty(ulong.MaxValue) &&
-       !TmoInventoryHandle.IsEmpty(0x0000000100000001),
+Assert(WarcraftInventoryHandle.IsEmpty(0) && WarcraftInventoryHandle.IsEmpty(ulong.MaxValue) &&
+       !WarcraftInventoryHandle.IsEmpty(0x0000000100000001),
     "Reforged 인벤토리 빈 슬롯 0/-1 센티널 구분");
 var fixture64 = new Dictionary<ulong, ulong>
 {
@@ -643,45 +711,45 @@ var fixture32 = new Dictionary<ulong, uint>
     [0x300024] = 1,
     [0x310024] = 2
 };
-Assert(TmoHandleResolver.TryResolve(address => fixture64[address], address => fixture32[address],
+Assert(WarcraftHandleResolver.TryResolve(address => fixture64[address], address => fixture32[address],
            0x100000, 0x0000000100000001, out var lowResolved) && lowResolved == 0x300000 &&
-       TmoHandleResolver.TryResolve(address => fixture64[address], address => fixture32[address],
+       WarcraftHandleResolver.TryResolve(address => fixture64[address], address => fixture32[address],
            0x100000, 0x0000000280000001, out var highResolved) && highResolved == 0x310000,
     "Reforged low/high handle table과 generation fixture 해석");
-Assert(TmoGreenBloodProbe.Evaluate(new Dictionary<uint, uint>()) == GreenBloodProbeState.Unknown &&
-       TmoGreenBloodProbe.Evaluate(new Dictionary<uint, uint>
+Assert(WarcraftGreenBloodProbe.Evaluate(new Dictionary<uint, uint>()) == GreenBloodProbeState.Unknown &&
+       WarcraftGreenBloodProbe.Evaluate(new Dictionary<uint, uint>
        {
-           [TmoGreenBloodProbe.ControllerBaselineAbility] = 3
+           [WarcraftGreenBloodProbe.ControllerBaselineAbility] = 3
        }) == GreenBloodProbeState.Absent,
     "컨트롤러 기본 능력으로 그린블러드 상태 신뢰성 gate");
-Assert(TmoGreenBloodProbe.Evaluate(new Dictionary<uint, uint>
+Assert(WarcraftGreenBloodProbe.Evaluate(new Dictionary<uint, uint>
        {
-           [TmoGreenBloodProbe.ControllerBaselineAbility] = 3,
-           [TmoGreenBloodProbe.HeldAbility] = 1
+           [WarcraftGreenBloodProbe.ControllerBaselineAbility] = 3,
+           [WarcraftGreenBloodProbe.HeldAbility] = 1
        }) == GreenBloodProbeState.Held,
     "A13A 능력을 미사용 그린블러드 보유로 판정");
-Assert(TmoGreenBloodProbe.Combine(GreenBloodProbeState.Held, GreenBloodProbeState.Held) ==
+Assert(WarcraftGreenBloodProbe.Combine(GreenBloodProbeState.Held, GreenBloodProbeState.Held) ==
            GreenBloodProbeState.Held &&
-       TmoGreenBloodProbe.Combine(GreenBloodProbeState.Absent, GreenBloodProbeState.Absent) ==
+       WarcraftGreenBloodProbe.Combine(GreenBloodProbeState.Absent, GreenBloodProbeState.Absent) ==
            GreenBloodProbeState.Absent &&
-       TmoGreenBloodProbe.Combine(GreenBloodProbeState.Held, GreenBloodProbeState.Unknown) ==
+       WarcraftGreenBloodProbe.Combine(GreenBloodProbeState.Held, GreenBloodProbeState.Unknown) ==
            GreenBloodProbeState.Unknown &&
-       TmoGreenBloodProbe.Combine(GreenBloodProbeState.Held, GreenBloodProbeState.Absent) ==
+       WarcraftGreenBloodProbe.Combine(GreenBloodProbeState.Held, GreenBloodProbeState.Absent) ==
            GreenBloodProbeState.Unknown,
     "그린블러드는 두 독립 탐색이 같을 때만 확정");
 
 var generatorBytes = Convert.FromHexString(
     "48897C2418488BFA488BD10F1F4400009080E7FF8AD248B900006AC0E1010000" +
     "0F1F80000000009080E2FF86ED488B413049B82C1B3D5D97A910554833024933C0488902");
-Assert(TmoWarcraftDecoder.TryParseGeneratedDecoder(generatorBytes, out var generator),
-    "TMO 생성 디코더 고정 서명 검증");
+Assert(WarcraftDecoder.TryParseGeneratedDecoder(generatorBytes, out var generator),
+    "워크 생성 디코더 고정 서명 검증");
 Assert(generator.StateAddress == 0x1E1C06A0000 && generator.XorMask == 0x5510A9975D3D1B2C,
-    "TMO 생성 디코더 state/xor 추출");
-var gameUiKeys = TmoWarcraftDecoder.DeriveKeys(TmoWarcraftDecoder.GameUiSeed1,
-    TmoWarcraftDecoder.GameUiSeed2, 0x1B9BB090000, generator.XorMask);
+    "워크 생성 디코더 state/xor 추출");
+var gameUiKeys = WarcraftDecoder.DeriveKeys(WarcraftDecoder.GameUiSeed1,
+    WarcraftDecoder.GameUiSeed2, 0x1B9BB090000, generator.XorMask);
 Assert(gameUiKeys == new DecoderKeys(0x4C071947016892B1, 0x7384073D3D981D6F),
-    "TMO GameUI 런타임 키 파생");
-Assert(TmoWarcraftDecoder.DecodeGameUi(_ => 0, 0, gameUiKeys) == 0xE95C522F3D981D6F,
+    "워크 GameUI 런타임 키 파생");
+Assert(WarcraftDecoder.DecodeGameUi(_ => 0, 0, gameUiKeys) == 0xE95C522F3D981D6F,
     "GameUI 복호 산술 고정 fixture");
 
 // --- 신+ 클리어 데이터 최적화 ---
@@ -1531,7 +1599,25 @@ Assert(Math.Abs(UiScale.FromScreen(2160, 1.5) - 1.0) < 0.001,
 Assert(Math.Abs(UiScale.FromScreen(4320, 1.0) - 3.0) < 0.001,
     "8K 100%는 배율 3.0");
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 264/264");
+// 레거시 설정 마이그레이션(settingsSchemaVersion 기반 1회 실행)
+var noVersionResult = LegacySettingsMigration.Run("{\"AutoScanEnabled\":true}");
+Assert(noVersionResult.Changed && noVersionResult.Json.Contains("SettingsSchemaVersion"),
+    "버전 없는 설정은 마이그레이션 후 SettingsSchemaVersion 추가됨");
+Assert(!LegacySettingsMigration.Run("{\"SettingsSchemaVersion\":2}").Changed,
+    "현재 스키마 버전 설정은 마이그레이션 건너뜀");
+Assert(LegacySettingsMigration.Run("{\"SettingsSchemaVersion\":1}").Changed,
+    "v1 설정은 마이그레이션 실행");
+var screenSourceMigration = LegacySettingsMigration.Run(
+    "{\"SettingsSchemaVersion\":1,\"RecognitionSource\":\"Screen\",\"AutoScanEnabled\":true}");
+Assert(screenSourceMigration.Changed &&
+       !screenSourceMigration.Json.Contains("RecognitionSource") &&
+       screenSourceMigration.Json.Contains("AutoScanEnabled"),
+    "RecognitionSource=Screen 레거시 설정이 마이그레이션으로 제거되고 AutoScanEnabled는 보존");
+
+// 라이브 검증(work/verification/live-verification.jsonl)은 사용자의 실전 1판에서만 생성된다.
+// 스모크가 자기 픽스처를 되읽는 순환 검증은 금지 — 존재 여부·내용 검증은 시드 AC의 verify_command가 담당한다.
+
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 289/289");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,
@@ -1580,7 +1666,8 @@ static void Assert(bool condition, string name)
     Console.WriteLine("OK: " + name);
 }
 
-static MemoryProfile ValidMemoryProfile(bool enabled, bool verified, double matchRatio = 0.6) => new()
+static MemoryProfile ValidMemoryProfile(bool enabled, bool verified, double matchRatio = 0.6,
+    string? sha256 = null) => new()
 {
     ProfileSchemaVersion = 1,
     ProfileId = "test-profile",
@@ -1589,7 +1676,7 @@ static MemoryProfile ValidMemoryProfile(bool enabled, bool verified, double matc
     ModuleName = "Warcraft III.exe",
     Enabled = enabled,
     Verified = verified,
-    ExecutableSha256 = new string('A', 64),
+    Sha256 = sha256 ?? new string('A', 64),
     LocatorKind = MemoryLocatorKind.ModuleOffset,
     ModuleOffset = 0x1234,
     PointerOffsets = [0],

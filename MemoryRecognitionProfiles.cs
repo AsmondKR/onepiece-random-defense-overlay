@@ -20,7 +20,17 @@ public sealed class MemoryProfile
     public string ModuleName { get; init; } = "Warcraft III.exe";
     public bool Enabled { get; init; }
     public bool Verified { get; init; }
-    public string ExecutableSha256 { get; init; } = "";
+    /// <summary>핀된 WC3 실행 파일 SHA-256. memory-profiles.json의 정식 필드명은 sha256이다.</summary>
+    [JsonPropertyName("sha256")]
+    public string Sha256 { get; init; } = "";
+
+    /// <summary>구 스키마 별칭. sha256이 비어 있을 때만 실효 해시로 사용한다.</summary>
+    [JsonPropertyName("executableSha256")]
+    public string LegacySha256 { get; init; } = "";
+
+    /// <summary>활성화 하드 게이트가 실행 파일 해시와 대조하는 실효 핀 값.</summary>
+    [JsonIgnore]
+    public string ExecutableSha256 => Sha256.Length > 0 ? Sha256 : LegacySha256;
     public MemoryLocatorKind LocatorKind { get; init; } = MemoryLocatorKind.SignatureRelative;
     public long ModuleOffset { get; init; }
     public string Signature { get; init; } = "";
@@ -54,7 +64,7 @@ public static class MemoryProfileValidator
         if (string.IsNullOrWhiteSpace(profile.FileVersion)) errors.Add("fileVersion이 비어 있습니다");
         if (string.IsNullOrWhiteSpace(profile.ModuleName)) errors.Add("moduleName이 비어 있습니다");
         if (profile.ExecutableSha256.Length != 64 || profile.ExecutableSha256.Any(x => !Uri.IsHexDigit(x)))
-            errors.Add("executableSha256은 64자리 SHA-256이어야 합니다");
+            errors.Add("sha256은 64자리 SHA-256이어야 합니다");
 
         if (profile.LocatorKind == MemoryLocatorKind.ModuleOffset)
         {
@@ -183,7 +193,7 @@ public static class RawcodeCodec
     {
         rawcode = 0;
         if (text.Length != 4 || text.Any(x => x is < (char)0x20 or > (char)0x7E)) return false;
-        // TMO copies the four raw bytes from Warcraft unchanged. A catalog key such as
+        // Warcraft III stores the four rawcode bytes unchanged. A catalog key such as
         // "300h" is therefore bytes 33 30 30 68 and ReadUInt32 == 0x68303033.
         rawcode = text[0] | ((uint)text[1] << 8) | ((uint)text[2] << 16) | ((uint)text[3] << 24);
         return true;
@@ -232,10 +242,10 @@ public sealed class RawcodeUnitMap
             else _known[code] = unit;
         }
         if (catalog.RawcodeCatalog.Count < 250)
-            errors.Add($"TMO 카드 카탈로그가 없거나 불완전합니다 ({catalog.RawcodeCatalog.Count}/250+).");
+            errors.Add($"카드 카탈로그가 없거나 불완전합니다 ({catalog.RawcodeCatalog.Count}/250+).");
         foreach (var required in new[] { "300h", "200h", "DB0H", "H00I" })
             if (!catalog.RawcodeCatalog.ContainsKey(required))
-                errors.Add($"TMO 카드 카탈로그 필수 rawcode가 없습니다: {required}");
+                errors.Add($"카드 카탈로그 필수 rawcode가 없습니다: {required}");
         // 키 기준으로 순회해야 별칭 rawcode(강화 폼)도 카드로 인정된다.
         // 항목의 Rawcode 필드는 대표 코드만 담고 있다.
         foreach (var (key, entry) in catalog.RawcodeCatalog)

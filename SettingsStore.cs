@@ -10,9 +10,11 @@ public static class SettingsStore
     {
         try
         {
-            return File.Exists(AppPaths.SettingsFile)
-                ? JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(AppPaths.SettingsFile), Options) ?? new()
-                : new();
+            if (!File.Exists(AppPaths.SettingsFile)) return new();
+            var raw = File.ReadAllText(AppPaths.SettingsFile);
+            var (migrated, changed) = LegacySettingsMigration.Run(raw);
+            if (changed) File.WriteAllText(AppPaths.SettingsFile, migrated);
+            return JsonSerializer.Deserialize<AppSettings>(migrated, Options) ?? new();
         }
         catch
         {

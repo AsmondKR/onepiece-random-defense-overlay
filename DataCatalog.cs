@@ -229,7 +229,7 @@ public sealed class DataCatalog
         if (!File.Exists(path))
             throw new InvalidDataException("티모지지 43747 기준 데이터가 없습니다.");
 
-        var document = JsonSerializer.Deserialize<TmoGuideOverrideDocument>(File.ReadAllText(path), JsonOptions)
+        var document = JsonSerializer.Deserialize<WarcraftGuideOverrideDocument>(File.ReadAllText(path), JsonOptions)
             ?? throw new InvalidDataException("티모지지 43747 기준 데이터를 읽을 수 없습니다.");
         if (document.SchemaVersion != 1 || document.GuideId != 43747 || document.UnitOverrides.Count < 200)
             throw new InvalidDataException("티모지지 43747 기준 데이터가 손상되었습니다.");
@@ -287,8 +287,6 @@ public static class KoreanLabels
     public static string RemoveLatin(string value)
     {
         value = value.Replace("Green Blood", "그린블러드", StringComparison.OrdinalIgnoreCase)
-            .Replace("TMO.GG", "티모지지", StringComparison.OrdinalIgnoreCase)
-            .Replace("TMO", "티모지지", StringComparison.OrdinalIgnoreCase)
             .Replace("rawcode", "유닛 코드", StringComparison.OrdinalIgnoreCase)
             .Replace("pool", "유닛 목록", StringComparison.OrdinalIgnoreCase);
         var filtered = new string(value.Where(character =>
@@ -321,16 +319,16 @@ public sealed class RawcodeRecipeEntry
     public int Count { get; init; }
 }
 
-public sealed class TmoGuideOverrideDocument
+public sealed class WarcraftGuideOverrideDocument
 {
     public int SchemaVersion { get; init; }
     public int GuideId { get; init; }
     public string Source { get; init; } = "";
     public string CapturedAt { get; init; } = "";
-    public List<TmoGuideUnitOverride> UnitOverrides { get; init; } = [];
+    public List<WarcraftGuideUnitOverride> UnitOverrides { get; init; } = [];
 }
 
-public sealed class TmoGuideUnitOverride
+public sealed class WarcraftGuideUnitOverride
 {
     public string Rawcode { get; init; } = "";
     public string GuideUnitId { get; init; } = "";

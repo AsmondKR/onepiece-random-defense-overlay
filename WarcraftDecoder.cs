@@ -3,10 +3,10 @@ using System.Numerics;
 namespace OrandOverlay;
 
 /// <summary>
-/// Pure arithmetic used by the verified TMO.GG 1.0.0.0 / Warcraft III 2.0.4.23745 bridge.
-/// This type never opens, writes to, injects into, or calls code in either process.
+/// Pure arithmetic for the Warcraft III 2.0.4.23745 memory layout.
+/// This type never opens, writes to, injects into, or calls code in any process.
 /// </summary>
-public static class TmoWarcraftDecoder
+public static class WarcraftDecoder
 {
     public const ulong GameUiSeed1 = 0x1917B0D05C55899DUL;
     public const ulong GameUiSeed2 = 0x2694AF13DBAC0643UL;
@@ -94,18 +94,18 @@ public static class TmoWarcraftDecoder
 public readonly record struct GeneratedDecoderMetadata(ulong StateAddress, ulong XorMask);
 public readonly record struct DecoderKeys(ulong Key1, ulong Key2);
 
-public static class TmoInventoryHandle
+public static class WarcraftInventoryHandle
 {
     public static bool IsEmpty(ulong handle) => handle is 0 or ulong.MaxValue;
 }
 
-public static class TmoHandleResolver
+public static class WarcraftHandleResolver
 {
     public static bool TryResolve(Func<ulong, ulong> readUInt64, Func<ulong, uint> readUInt32,
         ulong tableRoot, ulong handle, out ulong resolved)
     {
         resolved = 0;
-        if (TmoInventoryHandle.IsEmpty(handle) || !TmoWarcraftDecoder.IsPlausibleUserAddress(tableRoot))
+        if (WarcraftInventoryHandle.IsEmpty(handle) || !WarcraftDecoder.IsPlausibleUserAddress(tableRoot))
             return false;
         var rawIndex = (uint)handle;
         var generation = (uint)(handle >> 32);
@@ -113,12 +113,12 @@ public static class TmoHandleResolver
         var index = highTable ? rawIndex & 0x7FFF_FFFFU : rawIndex;
         var count = readUInt32(checked(tableRoot + (highTable ? 0x68UL : 0x30UL)));
         var entries = readUInt64(checked(tableRoot + (highTable ? 0x50UL : 0x18UL)));
-        if (index >= count || count > 0x1000000 || !TmoWarcraftDecoder.IsPlausibleUserAddress(entries))
+        if (index >= count || count > 0x1000000 || !WarcraftDecoder.IsPlausibleUserAddress(entries))
             return false;
         var slot = checked(entries + 16UL * index);
         if (readUInt32(slot) != 0xFFFF_FFFEU) return false;
         var candidate = readUInt64(checked(slot + 8));
-        if (!TmoWarcraftDecoder.IsPlausibleUserAddress(candidate) ||
+        if (!WarcraftDecoder.IsPlausibleUserAddress(candidate) ||
             readUInt32(checked(candidate + 0x24)) != generation)
             return false;
         resolved = candidate;
@@ -133,7 +133,7 @@ public enum GreenBloodProbeState
     Held
 }
 
-public static class TmoGreenBloodProbe
+public static class WarcraftGreenBloodProbe
 {
     public const uint ControllerBaselineAbility = 0x41304B38; // canonical A0K8
     public const uint HeldAbility = 0x41313341; // canonical A13A
