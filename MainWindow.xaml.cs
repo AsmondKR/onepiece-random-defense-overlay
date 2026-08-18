@@ -107,6 +107,8 @@ public partial class MainWindow : Window
         AutoStartCheck.IsChecked = _settings.AutoStartGoal;
         DataVersionText.Text = $"데이터 {_catalog.Data.DataVersion} · {_catalog.Data.Disclaimer}" +
                                ClearStatsSummary();
+        var appVersion = UpdateService.CurrentVersion;
+        VersionText.Text = $"v{appVersion.Major}.{appVersion.Minor}.{appVersion.Build}";
 
         _overlay = new OverlayWindow();
         _overlay.RestorePosition(_settings.OverlayLeft, _settings.OverlayTop);
