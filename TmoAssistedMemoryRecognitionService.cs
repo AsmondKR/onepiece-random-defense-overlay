@@ -115,7 +115,9 @@ public sealed class TmoAssistedMemoryRecognitionService : IInventoryRecognizer
             ReadOnlyProcessMemory? tmoMemoryFound = null;
             HashSet<int>? readerPids = null;
             var scannedTmoCount = 0;
+            var openFailureCount = 0;
             var throttled = false;
+            string? tmoExePathSeen = null;
             foreach (var candidate in tmoCandidates.OrderByDescending(item => item.Id == cachedTmoPid))
             {
                 token.ThrowIfCancellationRequested();
@@ -123,12 +125,19 @@ public sealed class TmoAssistedMemoryRecognitionService : IInventoryRecognizer
                 try { module = candidate.MainModule; }
                 catch (Exception exception) when (exception is Win32Exception or InvalidOperationException)
                 {
+                    // 상승된(관리자) 프로세스는 모듈 조회부터 막힌다 — 권한 문제로 집계.
+                    if (exception is Win32Exception) openFailureCount++;
                     continue;
                 }
                 if (module is null) continue;
+                tmoExePathSeen ??= module.FileName;
                 ReadOnlyProcessMemory memory;
                 try { memory = ReadOnlyProcessMemory.Open(candidate.Id); }
-                catch (Win32Exception) { continue; }
+                catch (Win32Exception)
+                {
+                    openFailureCount++;
+                    continue;
+                }
                 HashSet<int> pids;
                 if (candidate.Id == cachedTmoPid && cachedGamePid is { } knownGamePid)
                     pids = [knownGamePid];
@@ -162,13 +171,29 @@ public sealed class TmoAssistedMemoryRecognitionService : IInventoryRecognizer
             if (scannedTmoCount > 0 && readerPids is null)
                 _nextWrapperSearchUtc = DateTime.UtcNow.AddSeconds(2.5);
             if (tmoProcess is null || tmoModule is null || tmoMemoryFound is null || readerPids is null)
+            {
+                // 원인 구분이 다음 스크린샷 한 장으로 끝나도록, 티모지지 버전 불일치·권한
+                // 실패·미발견을 다른 문구로 보여준다(같은 "연동 대기"로 뭉치면 원격 진단 불가).
+                if (!throttled && scannedTmoCount > 0 &&
+                    TmoIdentityMismatch(tmoExePathSeen) is { } mismatch)
+                    return Failure(RecognitionState.Unsupported, "티모지지 버전 미지원 · 기존 패 유지",
+                        $"티모지지 실행 파일이 검증된 버전과 다릅니다({mismatch}) — 티모지지가 업데이트된 것으로" +
+                        " 보입니다. 오버레이가 새 티모지지 버전을 지원하도록 업데이트될 때까지 연동이 불가합니다.");
+                string waitingDetail;
+                if (throttled)
+                    waitingDetail = "리더 래퍼 재탐색 대기 중입니다.";
+                else if (openFailureCount > 0 && scannedTmoCount == 0)
+                    waitingDetail =
+                        $"TMO 프로세스 {tmoCandidates.Count}개 전부 메모리 열기 실패(권한 부족) — " +
+                        "티모지지나 워크가 관리자 권한으로 실행 중입니다. 이 앱도 관리자 권한으로 실행해야 연동됩니다.";
+                else
+                    waitingDetail =
+                        $"TMO 프로세스 {tmoCandidates.Count}개 조사(권한 실패 {openFailureCount}건) — 리더 래퍼 미발견. " +
+                        "원랜디 판에 들어가 게임 화면에 티모지지 자체 오버레이가 뜨는지 확인해 보세요. " +
+                        "안 뜨면 티모지지가 워크를 인식하지 못한 상태라 티모지지 재시작이 필요합니다.";
                 return Failure(RecognitionState.Waiting,
-                    "티모지지-워크 연동 대기 · 원랜디 입장 시 자동 연결",
-                    (throttled
-                        ? "리더 래퍼 재탐색 대기 중입니다."
-                        : $"TMO 프로세스 {tmoCandidates.Count}개 조사 — 리더 래퍼 미발견.") +
-                    " 원랜디 판에 입장해도 계속 뜨면: 게임 화면에 티모지지 오버레이가 뜨는지 확인하고," +
-                    " 워크를 관리자 권한으로 실행했다면 이 앱도 관리자 권한으로 실행해 보세요.");
+                    "티모지지-워크 연동 대기 · 원랜디 입장 시 자동 연결", waitingDetail);
+            }
             using var tmoMemory = tmoMemoryFound;
             var tmoVersion = tmoModule.FileVersionInfo.FileVersion ?? "unknown";
             var tmoBase = (ulong)tmoModule.BaseAddress.ToInt64();
@@ -925,6 +950,26 @@ public sealed class TmoAssistedMemoryRecognitionService : IInventoryRecognizer
         var actual = TmoExecutableHashCache.Sha256(path);
         if (!actual.Equals(expectedHash, StringComparison.OrdinalIgnoreCase))
             throw new ExecutableIdentityException($"{displayName} SHA-256 불일치: {actual[..12]}…");
+    }
+
+    /// <summary>리더 래퍼 미발견의 원인이 티모지지 버전 차이인지 확인한다(캐시된 해시 재사용).</summary>
+    private static string? TmoIdentityMismatch(string? path)
+    {
+        if (path is null) return null;
+        try
+        {
+            VerifyExecutable(path, SupportedTmoSha256, "TMO.GG.exe");
+            return null;
+        }
+        catch (ExecutableIdentityException exception)
+        {
+            return exception.Message;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException
+                                          or CryptographicException or Win32Exception)
+        {
+            return null;
+        }
     }
 
     private static RecognitionDiagnostics Diagnostics(int pid, string version, string detail) => new()
