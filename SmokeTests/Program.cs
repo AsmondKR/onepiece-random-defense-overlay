@@ -1168,6 +1168,34 @@ Assert(rareDrill.Legends is { Count: > 0 } specialGroups &&
         "드릴다운: 하위 단계도 자기 재료 목록을 갖는다");
 }
 
+// 드릴다운은 펼친 항목 자신의 조합법만 보여준다(유저 요청 "선택적 조합법 보기").
+// 전설을 펼치면 그 전설의 하위 조합이 안흔함부터, 그 안의 희귀함을 펼치면 다시 그
+// 희귀함의 조합이 안흔함부터. 다른 가지가 같은 재료를 먼저 썼다고 빠지면 안 된다.
+{
+    var scoped = engine.RecommendNearestCrafts("rawcode:780h", [], 1)[0];   // 아마츠키 토키
+    var (scopedGroups, _) = BuildDrilldown.Build(scoped);
+    var rare = scopedGroups.FirstOrDefault(node => node.Step.Name == "키자루");
+    var zoro = scopedGroups.FirstOrDefault(node => node.Step.Name == "조로");
+    Assert(rare is not null && zoro is not null,
+        "선택적 드릴다운: 목표 바로 아래 단계(키자루·조로 희귀함)가 최상위로 나온다");
+
+    var rareChildren = rare!.Children.Select(child => child.Step.Name).ToList();
+    Assert(rareChildren.Contains("헤르메포") && rareChildren.Contains("트라팔가 로우"),
+        "선택적 드릴다운: 희귀함을 펼치면 그 희귀함의 재료가 나온다");
+    Assert(!rareChildren.Contains("겟코모리아") && !rareChildren.Contains("스모커"),
+        "선택적 드릴다운: 다른 가지(조로 희귀함) 재료는 섞이지 않는다");
+    Assert(BuildDrilldown.TierOrder(rare.Children[0].Step.Tier) <=
+           BuildDrilldown.TierOrder(rare.Children[^1].Step.Tier),
+        "선택적 드릴다운: 안흔함부터 오름차순으로 나열");
+
+    // 같은 재료가 두 갈래에 필요하면 각 갈래에서 각각 보인다(중복 제거로 사라지지 않음).
+    Assert(zoro!.Children.Any(child => child.Step.Name == "겟코모리아"),
+        "선택적 드릴다운: 각 갈래가 자기 재료를 온전히 갖는다");
+    var special = rare.Children.First(child => child.Step.Name == "트라팔가 로우");
+    Assert(special.Children.Any(child => child.Step.Name is "베포" or "타시기"),
+        "선택적 드릴다운: 특별함을 펼치면 그 아래 안흔함 조합까지 이어진다");
+}
+
 // 세라핌 기물 추천: 그린블러드 1개 레시피로 편입, 목표별 채용률 최고 세라핌 포함.
 // 세라핌 포함은 클리어 프로필이 있어야 작동하므로 학습 엔진으로 검증한다.
 var seraphimEngine = new RecommendationEngine(catalog, bundledStats);
@@ -1899,7 +1927,7 @@ if (Environment.GetEnvironmentVariable("ORAND_DIAG") == "drill")
     return;
 }
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 351/351");
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 357/357");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,

@@ -10,7 +10,7 @@
     <RootNamespace>OrandOverlay</RootNamespace>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <!-- 자동 업데이트가 릴리스 태그(v0.2.0)와 비교하는 버전 — 릴리스마다 올린다. -->
-    <Version>0.6.1</Version>
+    <Version>0.6.2</Version>
   </PropertyGroup>
   <ItemGroup>
     <Content Include="Data\**\*">
