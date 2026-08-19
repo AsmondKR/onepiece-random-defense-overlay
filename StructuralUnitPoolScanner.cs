@@ -58,7 +58,9 @@ internal static class StructuralUnitPoolScanner
         if (unitVftables.Count == 0)
             throw new InvalidOperationException($"{profile.UnitClassName} vftable을 찾지 못했습니다.");
 
-        var candidates = new List<ulong>();
+        // 같은 유닛 배열을 가리키는 구조체는 여럿일 수 있다(래퍼·사본). 모호함의 기준은
+        // "서로 다른 배열이 후보로 잡혔는가"이지 "구조체가 몇 개인가"가 아니다.
+        var candidates = new List<PoolCandidate>();
         foreach (var (chunkBase, buffer) in memory.ReadChunks(memory.ReadableRegions()))
         {
             token.ThrowIfCancellationRequested();
@@ -69,21 +71,40 @@ internal static class StructuralUnitPoolScanner
                 if (count < profile.MinimumUnitObjects || count > profile.MaximumUnits) continue;
                 var entries = BitConverter.ToUInt64(buffer, offset + profile.EntriesPointerOffset);
                 if (!ReadOnlyProcessMemory.IsPlausibleUserAddress(entries)) continue;
-                if (!LooksLikeUnitPool(memory, entries, count, profile, unitVftables)) continue;
-
-                var candidate = chunkBase + (ulong)offset;
-                if (candidates.Contains(candidate)) continue;
-                candidates.Add(candidate);
-                if (candidates.Count > MaximumCandidates) break;
+                var (units, owners) = InspectPool(memory, entries, count, profile, unitVftables);
+                if (units < profile.MinimumUnitObjects) continue;
+                candidates.Add(new PoolCandidate(chunkBase + (ulong)offset, entries, count, units, owners));
             }
-            if (candidates.Count > MaximumCandidates) break;
         }
 
         if (candidates.Count == 0)
             throw new InvalidOperationException("유닛 풀 구조를 찾지 못했습니다(대전 중이 아닐 수 있습니다).");
-        if (candidates.Count > 1)
-            throw new InvalidOperationException($"유닛 풀 후보가 {candidates.Count}개여서 프로필을 차단했습니다.");
-        return candidates[0];
+
+        // 게임에는 구역별·소유자별 유닛 목록이 여럿 있다. 우리가 원하는 것은 모든 소유자의 유닛이
+        // 함께 담기는 전역 풀이므로, 소유자 종류가 가장 많고 유닛이 가장 많은 배열을 고른다.
+        var ranked = candidates
+            .GroupBy(x => x.Entries)
+            .Select(group => group.OrderByDescending(x => x.UnitObjects).ThenByDescending(x => x.Count).First())
+            .OrderByDescending(x => x.Owners)
+            .ThenByDescending(x => x.UnitObjects)
+            .ToList();
+        var best = ranked[0];
+        if (ranked.Count > 1)
+        {
+            var runnerUp = ranked[1];
+            if (best.Owners == runnerUp.Owners && best.UnitObjects == runnerUp.UnitObjects)
+                throw new InvalidOperationException(
+                    $"구분되지 않는 유닛 배열이 {ranked.Count}개여서 프로필을 차단했습니다.");
+        }
+
+        // 개수 필드가 배열 유효 길이를 넘는 사본은 배제한다.
+        var prefix = ValidPrefixLength(memory, best.Entries, profile);
+        var usable = candidates
+            .Where(x => x.Entries == best.Entries && x.Count <= prefix)
+            .OrderByDescending(x => x.UnitObjects).ThenByDescending(x => x.Count).ToList();
+        if (usable.Count == 0)
+            throw new InvalidOperationException($"유닛 배열 유효 길이({prefix})와 맞는 개수 필드를 찾지 못했습니다.");
+        return usable[0].Address;
     }
 
     /// <summary>프로필에 앵커가 있으면 로컬 플레이어 슬롯을 실측한다. 실패하면 null.</summary>
@@ -125,26 +146,58 @@ internal static class StructuralUnitPoolScanner
         return read >= 0x1000 ? image : [];
     }
 
-    private static bool LooksLikeUnitPool(ReadOnlyProcessMemory memory, ulong entries, int count,
+    /// <summary>
+    /// 배열 전 구간에서 표본을 뽑아 유닛 객체 수를 센다.
+    /// 풀에는 유닛이 아닌 객체도 섞이므로 "유닛이 충분히 많은가"만 본다.
+    /// </summary>
+    private static (int Units, int Owners) InspectPool(ReadOnlyProcessMemory memory, ulong entries, int count,
         MemoryProfile profile, IReadOnlyCollection<ulong> unitVftables)
     {
-        var sample = Math.Min(count, SampleEntries);
-        var pointerBytes = memory.ReadAvailable(entries, sample * profile.EntryStride);
-        if (pointerBytes.Length < profile.EntryStride) return false;
-
-        var sampled = pointerBytes.Length / profile.EntryStride;
+        var stride = Math.Max(1, count / SampleEntries);
         var unitObjects = 0;
-        for (var index = 0; index < sampled; index++)
+        var owners = new HashSet<byte>();
+        for (var index = 0; index < count; index += stride)
         {
-            var value = BitConverter.ToUInt64(pointerBytes, index * profile.EntryStride + profile.EntryPointerOffset);
-            if (value == 0) continue;
-            if (!ReadOnlyProcessMemory.IsPlausibleUserAddress(value)) return false;
-            var head = memory.ReadAvailable(value, sizeof(ulong));
-            if (head.Length < sizeof(ulong)) continue;
-            if (unitVftables.Contains(BitConverter.ToUInt64(head, 0))) unitObjects++;
+            var unit = TryReadUnitObject(memory, entries, index, profile, unitVftables);
+            if (unit is not { } address) continue;
+            unitObjects++;
+            var owner = memory.ReadAvailable(AddressMath.Add(address, profile.OwnerOffset), 1);
+            if (owner.Length == 1) owners.Add(owner[0]);
         }
-        return unitObjects >= Math.Min(profile.MinimumUnitObjects, sampled);
+        return (unitObjects, owners.Count);
     }
+
+    /// <summary>
+    /// 배열에서 "null이거나 그럴듯한 객체 포인터"가 이어지는 선두 길이.
+    /// 개수 필드가 부풀려진 후보를 거르는 상한으로 쓴다.
+    /// </summary>
+    private static int ValidPrefixLength(ReadOnlyProcessMemory memory, ulong entries, MemoryProfile profile)
+    {
+        var maxScan = Math.Min(profile.MaximumUnits, 8192);
+        var bytes = memory.ReadAvailable(entries, maxScan * profile.EntryStride);
+        var slots = bytes.Length / profile.EntryStride;
+        for (var index = 0; index < slots; index++)
+        {
+            var value = BitConverter.ToUInt64(bytes, index * profile.EntryStride + profile.EntryPointerOffset);
+            if (value == 0) continue;
+            if (!ReadOnlyProcessMemory.IsPlausibleUserAddress(value)) return index;
+        }
+        return slots;
+    }
+
+    private static ulong? TryReadUnitObject(ReadOnlyProcessMemory memory, ulong entries, int index,
+        MemoryProfile profile, IReadOnlyCollection<ulong> unitVftables)
+    {
+        var slot = memory.ReadAvailable(
+            AddressMath.Add(entries, (long)index * profile.EntryStride + profile.EntryPointerOffset), sizeof(ulong));
+        if (slot.Length < sizeof(ulong)) return null;
+        var value = BitConverter.ToUInt64(slot, 0);
+        if (value == 0 || !ReadOnlyProcessMemory.IsPlausibleUserAddress(value)) return null;
+        var head = memory.ReadAvailable(value, sizeof(ulong));
+        return head.Length >= sizeof(ulong) && unitVftables.Contains(BitConverter.ToUInt64(head, 0)) ? value : null;
+    }
+
+    private readonly record struct PoolCandidate(ulong Address, ulong Entries, int Count, int UnitObjects, int Owners);
 
     /// <summary>모듈 이미지에서 MSVC RTTI 클래스명에 해당하는 vftable 주소를 모두 찾는다.</summary>
     private static List<ulong> FindClassVftables(byte[] image, ulong moduleBase, string className)
