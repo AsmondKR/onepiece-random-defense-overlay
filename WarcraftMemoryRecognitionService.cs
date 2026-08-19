@@ -94,16 +94,27 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
             MemoryUnitSnapshot snapshot;
             try
             {
-                snapshot = ReadConsistentSnapshot(memory, listAddress, profile, localSlot, token);
+                snapshot = ReadConsistentSnapshot(memory, listAddress, profile, localSlot, _unitMap.IsGrowthUnit, token);
             }
             catch (SnapshotChangedException)
             {
                 token.ThrowIfCancellationRequested();
                 listAddress = FollowPointerPath(memory, locatorAddress, profile.PointerOffsets);
-                snapshot = ReadConsistentSnapshot(memory, listAddress, profile, localSlot, token);
+                snapshot = ReadConsistentSnapshot(memory, listAddress, profile, localSlot, _unitMap.IsGrowthUnit, token);
             }
 
-            var mapped = _unitMap.Map(snapshot.RawcodeCounts);
+            // 성장 중인 특별함 유닛이 판 전체에 하나뿐이면 그것은 로컬 플레이어 것이다.
+            // 여럿이면 어느 플레이어 것인지 가릴 수단이 없으므로 아무것도 넣지 않는다(오귀속 방지).
+            var counts = snapshot.RawcodeCounts;
+            var growthTotal = snapshot.NeutralGrowthCounts.Values.Sum();
+            var adoptedGrowth = growthTotal == 1;
+            if (adoptedGrowth)
+            {
+                counts = new Dictionary<uint, int>(counts);
+                foreach (var pair in snapshot.NeutralGrowthCounts)
+                    counts[pair.Key] = counts.GetValueOrDefault(pair.Key) + pair.Value;
+            }
+            var mapped = _unitMap.Map(counts);
             var diagnostics = new RecognitionDiagnostics
             {
                 Source = baseDiagnostics.Source,
@@ -113,12 +124,14 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
                 ProfileRevision = profile.ProfileRevision,
                 ProfileSource = loaded.Source,
                 ResolvedListAddress = $"0x{listAddress:X}",
-                ObservedObjects = snapshot.OwnedObjects,
+                ObservedObjects = snapshot.OwnedObjects + (adoptedGrowth ? 1 : 0),
                 MappedObjects = mapped.KnownCount + mapped.CatalogNamedCount,
                 UnknownObjects = mapped.UnknownCount,
                 UnknownRawcodes = mapped.UnknownRawcodes,
                 Detail = $"목록 슬롯 {snapshot.ListCount} · 추천 데이터 연결 {mapped.KnownCount} · " +
                          $"이름 카탈로그 연결 {mapped.CatalogNamedCount} · 중복 포인터 {snapshot.DuplicatePointers}" +
+                         (adoptedGrowth ? " · 중앙 성장형 1기 포함" :
+                             growthTotal > 1 ? $" · 중앙 성장형 {growthTotal}기(귀속 불가로 제외)" : "") +
                          (profile.LocatorKind == MemoryLocatorKind.StructuralScan
                              ? $" · 구조 탐색 {StructuralUnitPoolScanner.LastScanMilliseconds}ms"
                              : "")
@@ -235,7 +248,7 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
     }
 
     private static MemoryUnitSnapshot ReadConsistentSnapshot(ReadOnlyProcessMemory memory, ulong listAddress,
-        MemoryProfile profile, byte localPlayerSlot, CancellationToken token)
+        MemoryProfile profile, byte localPlayerSlot, Func<uint, bool> isGrowthUnit, CancellationToken token)
     {
         var countAddress = AddressMath.Add(listAddress, profile.CountOffset);
         var entriesAddress = AddressMath.Add(listAddress, profile.EntriesPointerOffset);
@@ -247,6 +260,7 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
             throw new InvalidDataException($"유닛 배열 주소가 비정상입니다: 0x{entriesBefore:X}");
 
         var counts = new Dictionary<uint, int>();
+        var neutralGrowth = new Dictionary<uint, int>();
         var seenPointers = new HashSet<ulong>();
         var duplicatePointers = 0;
         var ownedObjects = 0;
@@ -272,9 +286,18 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
 
             var ownerAddress = FollowObjectFieldPath(memory, unit, profile.OwnerPointerOffsets, profile.OwnerOffset);
             var owner = memory.ReadByte(ownerAddress);
-            if (owner != localPlayerSlot) continue;
+            var neutral = owner == profile.NeutralPlayerSlot;
+            if (owner != localPlayerSlot && !neutral) continue;
             var rawcodeAddress = FollowObjectFieldPath(memory, unit, profile.RawcodePointerOffsets, profile.RawcodeOffset);
             var rawcode = memory.ReadUInt32(rawcodeAddress);
+            if (neutral)
+            {
+                // 중앙에서 성장 중인 특별함 유닛은 중립 소유다. 어느 플레이어 것인지 판별할 수단이 없으므로
+                // 후보로만 모아 두고, 판 전체에 하나뿐일 때만 로컬 패로 인정한다.
+                if (isGrowthUnit(rawcode))
+                    neutralGrowth[rawcode] = neutralGrowth.GetValueOrDefault(rawcode) + 1;
+                continue;
+            }
             ownedObjects++;
             counts[rawcode] = counts.GetValueOrDefault(rawcode) + 1;
         }
@@ -283,7 +306,7 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
         var entriesAfter = profile.EntriesAreInline ? entriesAddress : memory.ReadUInt64(entriesAddress);
         if (countAfter != countBefore || entriesAfter != entriesBefore)
             throw new SnapshotChangedException();
-        return new MemoryUnitSnapshot(countBefore, ownedObjects, duplicatePointers, counts);
+        return new MemoryUnitSnapshot(countBefore, ownedObjects, duplicatePointers, counts, neutralGrowth);
     }
 
     private static ulong FollowObjectFieldPath(ReadOnlyProcessMemory memory, ulong objectAddress,
@@ -353,7 +376,7 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
     private sealed record LocatorCacheKey(int ProcessId, long Started, ulong ModuleBase, string ProfileId,
         int Revision, long ProfileGeneration);
     private sealed record MemoryUnitSnapshot(int ListCount, int OwnedObjects, int DuplicatePointers,
-        Dictionary<uint, int> RawcodeCounts);
+        Dictionary<uint, int> RawcodeCounts, Dictionary<uint, int> NeutralGrowthCounts);
     private sealed class SnapshotChangedException : InvalidOperationException;
 }
 

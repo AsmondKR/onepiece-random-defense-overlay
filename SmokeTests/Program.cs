@@ -417,6 +417,18 @@ Assert(mappedRawcodes.Entries.All(x => !x.UnitId.Contains("ZZZZ", StringComparis
     "미등록 rawcode는 패 목록에 표시되지 않음");
 Assert(mappedRawcodes.UnknownCount == 1 && mappedRawcodes.UnknownRawcodes.Contains("ZZZZ"),
     "미등록 rawcode는 진단에 남아 별칭 등록 근거가 됨");
+
+// 중앙에서 성장 중인 특별함 유닛은 중립 소유라 로컬 필터에 걸러진다.
+// 티어로 후보를 가려내고, 판에 하나뿐일 때만 로컬 패로 인정한다(오귀속 방지).
+var growthMap = new RawcodeUnitMap(catalog);
+RawcodeCodec.TryParse("510h", out var buggyMagitan);
+RawcodeCodec.TryParse("710h", out var kumaSpecial);
+Assert(growthMap.IsGrowthUnit(buggyMagitan) && growthMap.IsGrowthUnit(kumaSpecial),
+    "특별함 티어 유닛을 성장형 후보로 인식(버기 마기탄·바솔로뮤 쿠마)");
+Assert(!growthMap.IsGrowthUnit(zoroRawcode) && !growthMap.IsGrowthUnit(luffyRawcode),
+    "흔함 유닛은 성장형 후보가 아님");
+RawcodeCodec.TryParse("060h", out var pirateShip);
+Assert(!growthMap.IsGrowthUnit(pirateShip), "중립 획득물(해적선)은 성장형 후보가 아님");
 Assert(mappedRawcodes.Entries.Any(x => x.UnitId == "luffy_common" && x.Count == 2), "추천 유닛 ID로 rawcode 연결");
 Assert(mappedRawcodes.Entries.Any(x => x.UnitId == "rawcode:200h" && x.Count == 7), "이름 카탈로그 유닛을 동적 ID로 보존");
 Assert(mappedRawcodes.CatalogNamedCount == 7 && mappedRawcodes.UnknownCount == 1, "이름 매핑과 완전 미등록 rawcode 구분");
@@ -1680,7 +1692,7 @@ Assert(screenSourceMigration.Changed &&
     Directory.Delete(verifyDir, true);
 }
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 305/305");
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 308/308");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,

@@ -56,6 +56,9 @@ public sealed class MemoryProfile
     public int RawcodeOffset { get; init; }
     public byte LocalPlayerSlot { get; init; }
 
+    /// <summary>중립 슬롯. 중앙에서 성장 중인 특별함 유닛은 이 슬롯 소유로 나타난다.</summary>
+    public byte NeutralPlayerSlot { get; init; } = 27;
+
     /// <summary>구조 스캔이 유닛 객체를 판별할 MSVC RTTI 클래스명.</summary>
     public string UnitClassName { get; init; } = ".?AVCUnit@@";
 
@@ -269,6 +272,13 @@ public sealed class RawcodeUnitMap
     public bool IsRecognizedCard(uint rawcode) =>
         _known.ContainsKey(rawcode) || _catalogNamed.Contains(rawcode);
 
+    private readonly HashSet<uint> _growthTier = [];
+
+    /// <summary>
+    /// 중앙에서 경험치를 채우는 성장형(특별함) 유닛인지. 성장 중에는 중립 소유라 로컬 필터에 걸러진다.
+    /// </summary>
+    public bool IsGrowthUnit(uint rawcode) => _growthTier.Contains(rawcode);
+
     public RawcodeUnitMap(DataCatalog catalog)
     {
         var errors = new List<string>();
@@ -290,7 +300,10 @@ public sealed class RawcodeUnitMap
         foreach (var (key, entry) in catalog.RawcodeCatalog)
             if (!entry.Tier.Equals("자원", StringComparison.OrdinalIgnoreCase) &&
                 RawcodeCodec.TryParse(key, out var code))
+            {
                 _catalogNamed.Add(code);
+                if (entry.Tier.Equals("특별함", StringComparison.Ordinal)) _growthTier.Add(code);
+            }
         if (errors.Count > 0) Error = string.Join("; ", errors);
     }
 
