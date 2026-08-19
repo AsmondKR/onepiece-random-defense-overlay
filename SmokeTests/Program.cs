@@ -410,7 +410,13 @@ var mappedRawcodes = new RawcodeUnitMap(catalog).Map(new Dictionary<uint, int>
     [zoroRawcode] = 7,
     [unknownRawcode] = 1
 });
-Assert(mappedRawcodes.Entries.Sum(x => x.Count) == 10, "rawcode 수량을 하나도 버리지 않음");
+// 맵 컨트롤러·헬퍼 CUnit도 로컬 소유로 풀에 들어 있으므로, 어느 데이터에도 없는 rawcode는
+// 패에서 빼고 진단으로만 남긴다. 카탈로그에 이름이 있는 카드는 그대로 패에 들어간다.
+Assert(mappedRawcodes.Entries.Sum(x => x.Count) == 9, "미등록 rawcode는 패 수량에서 제외");
+Assert(mappedRawcodes.Entries.All(x => !x.UnitId.Contains("ZZZZ", StringComparison.OrdinalIgnoreCase)),
+    "미등록 rawcode는 패 목록에 표시되지 않음");
+Assert(mappedRawcodes.UnknownCount == 1 && mappedRawcodes.UnknownRawcodes.Contains("ZZZZ"),
+    "미등록 rawcode는 진단에 남아 별칭 등록 근거가 됨");
 Assert(mappedRawcodes.Entries.Any(x => x.UnitId == "luffy_common" && x.Count == 2), "추천 유닛 ID로 rawcode 연결");
 Assert(mappedRawcodes.Entries.Any(x => x.UnitId == "rawcode:200h" && x.Count == 7), "이름 카탈로그 유닛을 동적 ID로 보존");
 Assert(mappedRawcodes.CatalogNamedCount == 7 && mappedRawcodes.UnknownCount == 1, "이름 매핑과 완전 미등록 rawcode 구분");
@@ -1674,7 +1680,7 @@ Assert(screenSourceMigration.Changed &&
     Directory.Delete(verifyDir, true);
 }
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 303/303");
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 305/305");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,

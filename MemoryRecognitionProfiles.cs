@@ -308,16 +308,17 @@ public sealed class RawcodeUnitMap
                 entries.Add(new InventoryEntry { UnitId = unit.Id, Count = pair.Value, Confidence = 1 });
                 knownCount += pair.Value;
             }
+            else if (_catalogNamed.Contains(pair.Key))
+            {
+                entries.Add(new InventoryEntry { UnitId = RawcodeCodec.DynamicUnitId(pair.Key), Count = pair.Value, Confidence = 1 });
+                catalogNamedCount += pair.Value;
+            }
             else
             {
-                var formatted = RawcodeCodec.Format(pair.Key);
-                entries.Add(new InventoryEntry { UnitId = RawcodeCodec.DynamicUnitId(pair.Key), Count = pair.Value, Confidence = 1 });
-                if (_catalogNamed.Contains(pair.Key)) catalogNamedCount += pair.Value;
-                else
-                {
-                    unknown.Add(formatted);
-                    unknownCount += pair.Value;
-                }
+                // 맵 컨트롤러·헬퍼 CUnit도 로컬 플레이어 소유로 풀에 들어 있다.
+                // 어느 데이터 소스에도 없는 rawcode는 패가 아니므로 진단에만 남긴다.
+                unknown.Add(RawcodeCodec.Format(pair.Key));
+                unknownCount += pair.Value;
             }
         }
         return new RawcodeMappingResult(entries, knownCount, catalogNamedCount, unknownCount, unknown);
