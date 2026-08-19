@@ -83,8 +83,12 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
             var processStarted = process.StartTime.ToUniversalTime().Ticks;
             var moduleBase = (ulong)module.BaseAddress.ToInt64();
             // 로컬 슬롯은 실측 앵커가 있으면 실제 값을, 없으면 프로필 고정값을 쓴다.
-            var localSlot = StructuralUnitPoolScanner.TryReadLocalPlayerSlot(memory, moduleBase, profile)
-                            ?? profile.LocalPlayerSlot;
+            var measuredSlot = StructuralUnitPoolScanner.TryReadLocalPlayerSlot(memory, moduleBase, profile);
+            // 앵커가 있는데 로컬 플레이어가 없으면 대전 중이 아니다. 비싼 구조 스캔을 돌리지 않는다.
+            if (profile.HasLocalPlayerAnchor && measuredSlot is null)
+                return Failure(RecognitionState.Waiting, "대전 대기 중 · 기존 패 유지",
+                    "게임에 입장하면 인식을 시작합니다.", baseDiagnostics);
+            var localSlot = measuredSlot ?? profile.LocalPlayerSlot;
             var locatorAddress = GetLocatorAddress(memory, process, processStarted, module, profile, loaded.Generation, token);
             var listAddress = FollowPointerPath(memory, locatorAddress, profile.PointerOffsets);
             MemoryUnitSnapshot snapshot;

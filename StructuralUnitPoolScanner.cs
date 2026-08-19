@@ -17,8 +17,34 @@ internal static class StructuralUnitPoolScanner
 {
     private const int SampleEntries = 48;
     private const int MaximumCandidates = 4;
+    private static readonly TimeSpan FailureCooldown = TimeSpan.FromSeconds(5);
+    private static readonly object Gate = new();
+    private static DateTime _lastFailureUtc = DateTime.MinValue;
+    private static string _lastFailure = "";
 
     public static ulong Resolve(ReadOnlyProcessMemory memory, ProcessModule module, MemoryProfile profile,
+        CancellationToken token)
+    {
+        // 전체 메모리 스캔은 비싸다. 직전 실패 직후에는 같은 사유로 즉시 되돌려 매 틱 재스캔을 막는다.
+        lock (Gate)
+            if (DateTime.UtcNow - _lastFailureUtc < FailureCooldown)
+                throw new InvalidOperationException(_lastFailure);
+        try
+        {
+            return ResolveCore(memory, module, profile, token);
+        }
+        catch (InvalidOperationException exception)
+        {
+            lock (Gate)
+            {
+                _lastFailureUtc = DateTime.UtcNow;
+                _lastFailure = exception.Message;
+            }
+            throw;
+        }
+    }
+
+    private static ulong ResolveCore(ReadOnlyProcessMemory memory, ProcessModule module, MemoryProfile profile,
         CancellationToken token)
     {
         var moduleBase = (ulong)module.BaseAddress.ToInt64();
@@ -26,7 +52,7 @@ internal static class StructuralUnitPoolScanner
         if (moduleSize <= 0 || moduleSize > 512 * 1024 * 1024)
             throw new InvalidDataException($"비정상 모듈 크기: {moduleSize}");
 
-        var image = memory.ReadAvailable(moduleBase, moduleSize);
+        var image = ReadImage(memory, moduleBase, moduleSize);
         if (image.Length < 0x1000) throw new InvalidDataException("모듈 이미지를 읽지 못했습니다.");
         var unitVftables = FindClassVftables(image, moduleBase, profile.UnitClassName);
         if (unitVftables.Count == 0)
@@ -77,6 +103,26 @@ internal static class StructuralUnitPoolScanner
         {
             return null;
         }
+    }
+
+    /// <summary>
+    /// 모듈 이미지를 조각내어 한 버퍼로 읽는다(단일 읽기 상한보다 이미지가 클 수 있다).
+    /// 못 읽은 페이지는 0으로 남고 RVA 대응은 그대로 유지된다.
+    /// </summary>
+    private static byte[] ReadImage(ReadOnlyProcessMemory memory, ulong moduleBase, int moduleSize)
+    {
+        const int chunk = 16 * 1024 * 1024;
+        var image = new byte[moduleSize];
+        var read = 0;
+        for (var position = 0; position < moduleSize; position += chunk)
+        {
+            var length = Math.Min(chunk, moduleSize - position);
+            var part = memory.ReadAvailable(moduleBase + (ulong)position, length);
+            if (part.Length == 0) continue;
+            part.CopyTo(image, position);
+            read += part.Length;
+        }
+        return read >= 0x1000 ? image : [];
     }
 
     private static bool LooksLikeUnitPool(ReadOnlyProcessMemory memory, ulong entries, int count,
