@@ -1262,6 +1262,8 @@ public partial class MainWindow : Window
         _scanCancellation = cancellation;
         try
         {
+            // 첫 인식은 메모리 구조 탐색이 필요해 몇 초 걸린다. 그동안 초기 문구가 남아 있지 않게 한다.
+            if (RecognitionStatus.Text == "수동 모드") RecognitionStatus.Text = "메모리 구조 탐색 중…";
             var result = await recognizer.RecognizeAsync(_settings, cancellation.Token);
             if (generation != _scanGeneration || !ReferenceEquals(recognizer, _recognizer)) return;
             LogUnknownRawcodes(result);
