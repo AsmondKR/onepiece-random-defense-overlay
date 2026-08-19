@@ -14,6 +14,11 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
     private readonly object _cacheGate = new();
     private LocatorCache? _locatorCache;
 
+    /// <summary>라운드 읽기는 힙 전체 훑기라 비싸다 — 이 간격으로만 갱신한다.</summary>
+    private static readonly TimeSpan RoundReadInterval = TimeSpan.FromSeconds(45);
+    private DateTimeOffset _lastRoundReadAt = DateTimeOffset.MinValue;
+    private int? _lastRound;
+
     public WarcraftMemoryRecognitionService(DataCatalog catalog) => _unitMap = new RawcodeUnitMap(catalog);
 
     public Task<RecognitionResult> RecognizeAsync(AppSettings settings, CancellationToken cancellationToken) =>
@@ -126,6 +131,7 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
                 ResolvedListAddress = $"0x{listAddress:X}",
                 ObservedObjects = snapshot.OwnedObjects + (adoptedGrowth ? 1 : 0),
                 ForeignObjects = snapshot.ForeignObjects,
+                CurrentRound = ReadRoundThrottled(memory, token),
                 MappedObjects = mapped.KnownCount + mapped.CatalogNamedCount,
                 UnknownObjects = mapped.UnknownCount,
                 UnknownRawcodes = mapped.UnknownRawcodes,
@@ -355,6 +361,23 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
         foreach (var process in processes)
             if (!ReferenceEquals(process, selected)) process.Dispose();
         return selected;
+    }
+
+    /// <summary>정해진 간격마다만 라운드를 새로 읽고, 사이에는 마지막 값을 돌려준다.</summary>
+    private int? ReadRoundThrottled(ReadOnlyProcessMemory memory, CancellationToken token)
+    {
+        var now = DateTimeOffset.UtcNow;
+        if (_lastRound is not null && now - _lastRoundReadAt < RoundReadInterval) return _lastRound;
+        _lastRoundReadAt = now;
+        try
+        {
+            _lastRound = RoundReader.TryReadCurrentRound(memory, token) ?? _lastRound;
+        }
+        catch (Exception) when (!token.IsCancellationRequested)
+        {
+            // 라운드는 부가 정보다 — 못 읽어도 패 인식을 실패시키지 않는다.
+        }
+        return _lastRound;
     }
 
     private static RecognitionResult Failure(RecognitionState state, string status, string detail,

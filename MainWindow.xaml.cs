@@ -1324,7 +1324,10 @@ public partial class MainWindow : Window
                 _automaticDisconnected = !RecognitionPolicy.MayUseLastGoodForRecommendations(result.State);
             }
             if (result.ShouldReplaceInventory || result.State == RecognitionState.Waiting)
+            {
                 _outcome.Observe(result.Diagnostics.ObservedObjects, result.Diagnostics.ForeignObjects);
+                if (result.Diagnostics.CurrentRound is { } round) _outcome.ObserveRound(round);
+            }
             _liveVerification.Observe(result);
             UpdateLiveVerifyUi();
             RecognitionStatus.Text = KoreanLabels.RemoveLatin(result.Status);

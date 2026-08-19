@@ -221,6 +221,9 @@ public sealed class RecognitionDiagnostics
     public int UnknownObjects { get; init; }
     /// <summary>풀에 있는 다른 소유자(적·중립·도감존)의 유닛 수. 패배 판정에 쓴다.</summary>
     public int ForeignObjects { get; init; }
+
+    /// <summary>메모리에서 읽은 현재 라운드. 비용 때문에 가끔만 읽으므로 대개 null이다.</summary>
+    public int? CurrentRound { get; init; }
     public List<string> UnknownRawcodes { get; init; } = [];
     public string Detail { get; init; } = "";
 

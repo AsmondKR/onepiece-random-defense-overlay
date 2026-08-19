@@ -1887,6 +1887,55 @@ Assert(TelemetryUploader.DefaultEndpoint.StartsWith("https://") &&
     Assert(ended.Outcome == "unknown", "패배 판정: 세션 경계에서 초기화");
 }
 
+// 라운드 파싱: 맵이 만든 "현재 라운드|r : N" 조합 문자열에서 숫자를 읽는다.
+{
+    static byte[] Utf8(string text) => System.Text.Encoding.UTF8.GetBytes(text);
+    Assert(RoundReader.ScanBuffer(Utf8("현재 라운드|r : 7")) == 7, "라운드 파싱: 한 자리");
+    Assert(RoundReader.ScanBuffer(Utf8("현재 라운드|r : 65|r")) == 65, "라운드 파싱: 뒤 색코드 무시");
+    Assert(RoundReader.ScanBuffer(Utf8("가현재 라운드|r : 23나")) == 23, "라운드 파싱: 앞뒤 잡음 무시");
+    Assert(RoundReader.ScanBuffer(Utf8("현재 라운드|r : 8 현재 라운드|r : 41")) == 41,
+        "라운드 파싱: 여러 사본 중 최댓값");
+    Assert(RoundReader.ScanBuffer(Utf8("현재 라운드 : 7")) == 0, "라운드 파싱: 형식이 다르면 무시");
+    Assert(RoundReader.ScanBuffer(Utf8("현재 라운드|r : 999")) == 0, "라운드 파싱: 범위 밖 값은 버린다");
+    Assert(RoundReader.ScanBuffer(Utf8("현재 라운드|r : ")) == 0, "라운드 파싱: 숫자가 없으면 무시");
+    Assert(RoundReader.ScanBuffer([]) == 0, "라운드 파싱: 빈 버퍼");
+}
+
+// 클리어 판정(유저 규칙): 65라운드까지 가서 패배하지 않았으면 클리어.
+// 라운드는 메모리에 남은 옛 사본 때문에 최댓값만으로는 못 믿는다 — 세션 시작 시점을
+// 기준으로 충분히 진행을 지켜봤을 때만 확정한다.
+{
+    var run = new MatchOutcomeDetector();
+    run.ObserveRound(1);
+    run.Observe(localUnits: 8, foreignUnits: 300);
+    run.ObserveRound(40);
+    Assert(run.Outcome == "unknown", "클리어 판정: 65라운드 전에는 unknown");
+    run.ObserveRound(65);
+    Assert(run.Outcome == "clear", "클리어 판정: 65라운드 도달 + 패배 없음이면 클리어");
+
+    // 패배가 먼저 확정되면 라운드와 무관하게 패배다.
+    var lost = new MatchOutcomeDetector();
+    lost.ObserveRound(1);
+    lost.Observe(localUnits: 8, foreignUnits: 300);
+    lost.Observe(localUnits: 0, foreignUnits: 300);
+    lost.Observe(localUnits: 0, foreignUnits: 300);
+    lost.ObserveRound(65);
+    Assert(lost.Outcome == "fail", "클리어 판정: 패배가 먼저면 클리어로 뒤집히지 않는다");
+
+    // 이전 판의 잔여 값으로 시작하면(중간 합류처럼 보이면) 판정하지 않는다.
+    var stale = new MatchOutcomeDetector();
+    stale.ObserveRound(65);
+    stale.Observe(localUnits: 8, foreignUnits: 300);
+    stale.ObserveRound(65);
+    Assert(stale.Outcome == "unknown", "클리어 판정: 시작부터 65면 옛 사본일 수 있어 보류");
+    Assert(stale.OutcomeSource == "none", "클리어 판정: 보류 상태의 근거는 none");
+
+    var cleared = new MatchOutcomeDetector();
+    cleared.ObserveRound(2);
+    cleared.ObserveRound(65);
+    Assert(cleared.OutcomeSource == "roundProgress", "클리어 판정: 근거를 roundProgress로 표기");
+}
+
 // 업데이트 시점 정책: 유저 클라이언트는 판이 끝난 뒤에 교체한다(재시작이 판을 끊으므로).
 // 개발 PC는 즉시 교체해야 검증이 빠르므로 예외.
 {
