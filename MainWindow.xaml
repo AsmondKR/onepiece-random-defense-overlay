@@ -81,6 +81,23 @@
                   ToolTip="누른 뒤 오버레이 상단을 끌어 옮깁니다"/>
         </StackPanel>
       </Border>
+
+      <Border Background="{StaticResource PanelBrush}" CornerRadius="12" Padding="14" Margin="0,12,0,0">
+        <StackPanel>
+          <TextBlock Text="라이브 검증 (실전 1판)" FontSize="14" FontWeight="SemiBold"/>
+          <CheckBox x:Name="LiveVerifyCheck" Content="검증 모드" Margin="3,10,0,5"
+                    Checked="LiveVerify_OnChanged" Unchecked="LiveVerify_OnChanged"
+                    ToolTip="패 변화(추가·판매·조합·재진입)를 감지해 화면 대조를 요청하고, 판정을 JSONL로 기록합니다"/>
+          <TextBlock x:Name="LiveVerifyStatus" Style="{StaticResource FieldHint}" Margin="3,0,3,8" TextWrapping="Wrap"
+                     Text="검증 모드를 켜면 패 변화를 감지해 게임 화면과의 대조를 요청합니다."/>
+          <StackPanel Orientation="Horizontal">
+            <Button x:Name="LiveVerifyMatchBtn" Content="일치" Click="LiveVerifyMatch_OnClick" Margin="0,0,8,0" IsEnabled="False"
+                    ToolTip="오버레이 패가 게임 화면과 일치함을 기록 (대기 이벤트가 없으면 수시대조로 기록)"/>
+            <Button x:Name="LiveVerifyMismatchBtn" Content="불일치" Click="LiveVerifyMismatch_OnClick" IsEnabled="False"
+                    ToolTip="불일치를 기록하고 재현용 스냅샷을 저장"/>
+          </StackPanel>
+        </StackPanel>
+      </Border>
     </StackPanel>
     </ScrollViewer>
 

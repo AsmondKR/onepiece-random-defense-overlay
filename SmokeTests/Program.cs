@@ -1616,8 +1616,59 @@ Assert(screenSourceMigration.Changed &&
 
 // 라이브 검증(work/verification/live-verification.jsonl)은 사용자의 실전 1판에서만 생성된다.
 // 스모크가 자기 픽스처를 되읽는 순환 검증은 금지 — 존재 여부·내용 검증은 시드 AC의 verify_command가 담당한다.
+// 여기서는 레코더의 분류·기록 로직만 임시 디렉터리에서 검증한다(사용자 판정 없이는 아무것도 기록하지 않는 계약 포함).
+{
+    var verifyDir = Path.Combine(Path.GetTempPath(), "orand-live-verify-" + Guid.NewGuid().ToString("N"));
+    var recorder = new LiveVerificationRecorder(verifyDir,
+        () => new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero)) { Enabled = true };
+    static RecognitionResult ReadyResult(params (string Id, int Count)[] units) => new()
+    {
+        State = RecognitionState.Ready,
+        Entries = units.Select(u => new InventoryEntry { UnitId = u.Id, Count = u.Count }).ToList(),
+        Diagnostics = new RecognitionDiagnostics { ProfileId = "war3-test", ProcessVersion = "2.0.4.23745" }
+    };
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 289/289");
+    recorder.Observe(ReadyResult(("a", 1)));
+    Assert(recorder.Pending is null, "라이브 검증: 첫 관찰은 기준선 — 이벤트 없음");
+    recorder.Observe(ReadyResult(("a", 2)));
+    Assert(recorder.Pending?.EventTag == LiveVerificationRecorder.EventUnitAdded, "라이브 검증: 총량 증가는 unit_added");
+    Assert(recorder.Confirm(true) is not null, "라이브 검증: 일치 판정이 JSONL 경로 반환");
+    recorder.Observe(ReadyResult(("a", 1)));
+    Assert(recorder.Pending?.EventTag == LiveVerificationRecorder.EventUnitSold, "라이브 검증: 새 유닛 없는 감소는 unit_sold");
+    recorder.Confirm(true);
+    recorder.Observe(ReadyResult(("b", 1)));
+    Assert(recorder.Pending?.EventTag == LiveVerificationRecorder.EventCombineCompleted,
+        "라이브 검증: 새 유닛 등장+재료 소실은 combine_completed");
+    recorder.Confirm(false);
+    recorder.Observe(new RecognitionResult { State = RecognitionState.Waiting, ConfirmsSessionBoundary = true });
+    recorder.Observe(ReadyResult(("b", 1)));
+    Assert(recorder.Pending?.EventTag == LiveVerificationRecorder.EventSessionReentry,
+        "라이브 검증: 세션 경계 후 첫 Ready는 session_reentry");
+    recorder.Confirm(true);
+    Assert(recorder.Confirm(true) is not null, "라이브 검증: 대기 이벤트 없으면 수시대조로 기록");
+    Assert(recorder.ConfirmedRows == 5 && recorder.MismatchCount == 1, "라이브 검증: 확정 5건·불일치 1건 집계");
+
+    var verifyRows = File.ReadAllLines(recorder.LogFilePath)
+        .Where(line => !string.IsNullOrWhiteSpace(line))
+        .Select(line => JsonDocument.Parse(line).RootElement).ToList();
+    Assert(verifyRows.Count == 5, "라이브 검증: JSONL 5행 기록");
+    Assert(verifyRows.Select(r => r.GetProperty("event").GetString()).SequenceEqual(
+        [LiveVerificationRecorder.EventUnitAdded, LiveVerificationRecorder.EventUnitSold,
+         LiveVerificationRecorder.EventCombineCompleted, LiveVerificationRecorder.EventSessionReentry,
+         LiveVerificationRecorder.EventSpotCheck]), "라이브 검증: 이벤트 태그 순서 기록");
+    Assert(verifyRows.Count(r => !r.GetProperty("match").GetBoolean()) == 1, "라이브 검증: 불일치 1건 기록");
+    Assert(Directory.GetFiles(verifyDir, "mismatch-*.json").Length == 1, "라이브 검증: 불일치 스냅샷 1개 저장");
+
+    var idleRecorder = new LiveVerificationRecorder(verifyDir) { Enabled = true };
+    Assert(idleRecorder.Confirm(true) is null, "라이브 검증: 관찰 전에는 아무것도 기록하지 않음");
+    var disabledRecorder = new LiveVerificationRecorder(verifyDir);
+    disabledRecorder.Observe(ReadyResult(("a", 1)));
+    disabledRecorder.Observe(ReadyResult(("a", 2)));
+    Assert(disabledRecorder.Pending is null, "라이브 검증: 모드 꺼짐이면 이벤트 감지 안 함");
+    Directory.Delete(verifyDir, true);
+}
+
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 301/301");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,

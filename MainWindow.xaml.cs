@@ -32,6 +32,7 @@ public partial class MainWindow : Window
     private AutoCombinePlanner _combinePlanner = null!;
     private ClearBuildStats _clearStats = ClearBuildStats.Empty;
     private CompletedTopUnitTracker _completedTopUnits = null!;
+    private readonly LiveVerificationRecorder _liveVerification = new();
     private IInventoryRecognizer _recognizer = null!;
     private OverlayWindow _overlay = null!;
     private bool _initialized;
@@ -1293,6 +1294,8 @@ public partial class MainWindow : Window
                 _automaticStale = _automatic.Count > 0;
                 _automaticDisconnected = !RecognitionPolicy.MayUseLastGoodForRecommendations(result.State);
             }
+            _liveVerification.Observe(result);
+            UpdateLiveVerifyUi();
             RecognitionStatus.Text = KoreanLabels.RemoveLatin(result.Status);
             RecognitionStatus.Foreground = result.State switch
             {
@@ -1438,6 +1441,50 @@ public partial class MainWindow : Window
         _settings.ClickThroughOverlay = ClickThroughCheck.IsChecked == true;
         _overlay.SetClickThrough(_settings.ClickThroughOverlay);
         SettingsStore.Save(_settings);
+    }
+
+    private void LiveVerify_OnChanged(object sender, RoutedEventArgs e)
+    {
+        _liveVerification.Enabled = LiveVerifyCheck.IsChecked == true;
+        UpdateLiveVerifyUi();
+    }
+
+    private void LiveVerifyMatch_OnClick(object sender, RoutedEventArgs e) => ConfirmLiveVerification(true);
+
+    private void LiveVerifyMismatch_OnClick(object sender, RoutedEventArgs e) => ConfirmLiveVerification(false);
+
+    private void ConfirmLiveVerification(bool match)
+    {
+        try
+        {
+            var path = _liveVerification.Confirm(match);
+            if (path is null)
+            {
+                LiveVerifyStatus.Text = "아직 기록할 인식 결과가 없습니다. 게임에서 패가 잡힌 뒤 판정하세요.";
+                return;
+            }
+        }
+        catch (Exception exception)
+        {
+            LiveVerifyStatus.Text = $"기록 실패: {exception.Message}";
+            return;
+        }
+        UpdateLiveVerifyUi();
+    }
+
+    private void UpdateLiveVerifyUi()
+    {
+        var enabled = _liveVerification.Enabled;
+        LiveVerifyMatchBtn.IsEnabled = enabled;
+        LiveVerifyMismatchBtn.IsEnabled = enabled;
+        if (!enabled)
+        {
+            LiveVerifyStatus.Text = "검증 모드를 켜면 패 변화를 감지해 게임 화면과의 대조를 요청합니다.";
+            return;
+        }
+        LiveVerifyStatus.Text = _liveVerification.Pending is { } pending
+            ? $"⚠ {pending.Description}\n{_liveVerification.ChecklistSummary}"
+            : $"{_liveVerification.ChecklistSummary} · 변화 대기 중 (기록: {_liveVerification.LogFilePath})";
     }
 
     private void EnableOverlayMove_OnClick(object sender, RoutedEventArgs e)
