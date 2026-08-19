@@ -1150,6 +1150,24 @@ Assert(rareDrill.Legends is { Count: > 0 } specialGroups &&
        specialGroups.Any(group => group.Step.Tier.Split('[', 2)[0].Trim() == "특별함"),
     "희귀함 카드 드릴다운에도 특별함 단계가 나온다");
 
+// 드릴다운은 각 단계의 조합을 그 자리에서 보여준다(유저 보고: 희귀함을 펼쳤는데
+// 하위 조합이 비어 있었다 — 같은 유닛이 다른 가지에 먼저 나왔다고 건너뛴 탓).
+// 조합 가능한 재료를 가진 단계는 펼쳤을 때 반드시 하위 단계가 나와야 한다.
+{
+    var tokiDrill = engine.RecommendNearestCrafts("rawcode:780h", [], 1)[0];
+    var (tokiGroups, _) = BuildDrilldown.Build(tokiDrill);
+    var allNodes = FlattenDrill(tokiGroups).ToList();
+    Assert(allNodes.Count > 0, "드릴다운: 토키 목표에 조합 단계가 있다");
+    var rare = allNodes.FirstOrDefault(node => node.Step.Name == "키자루");
+    Assert(rare is not null, "드릴다운: 희귀함 키자루 단계가 트리에 나온다");
+    Assert(rare!.Children.Count > 0,
+        "드릴다운: 희귀함을 펼치면 그 조합 단계(특별함 재료)가 나온다");
+    Assert(rare.Children.Any(child => child.Step.Name is "헤르메포" or "트라팔가 로우"),
+        "드릴다운: 하위 조합에 실제 재료 유닛이 담긴다");
+    Assert(rare.Children.All(child => child.Step.Ingredients.Count > 0),
+        "드릴다운: 하위 단계도 자기 재료 목록을 갖는다");
+}
+
 // 세라핌 기물 추천: 그린블러드 1개 레시피로 편입, 목표별 채용률 최고 세라핌 포함.
 // 세라핌 포함은 클리어 프로필이 있어야 작동하므로 학습 엔진으로 검증한다.
 var seraphimEngine = new RecommendationEngine(catalog, bundledStats);
@@ -1841,7 +1859,18 @@ Assert(TelemetryUploader.DefaultEndpoint.StartsWith("https://") &&
     Assert(ended.Outcome == "unknown", "패배 판정: 세션 경계에서 초기화");
 }
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 343/343");
+// 업데이트 시점 정책: 유저 클라이언트는 판이 끝난 뒤에 교체한다(재시작이 판을 끊으므로).
+// 개발 PC는 즉시 교체해야 검증이 빠르므로 예외.
+{
+    Assert(UpdatePolicy.ShouldInstallNow(liveSessionActive: false, developerMachine: false),
+        "업데이트 정책: 게임 중이 아니면 바로 교체");
+    Assert(!UpdatePolicy.ShouldInstallNow(liveSessionActive: true, developerMachine: false),
+        "업데이트 정책: 유저 클라이언트는 게임 중 교체하지 않음");
+    Assert(UpdatePolicy.ShouldInstallNow(liveSessionActive: true, developerMachine: true),
+        "업데이트 정책: 개발 PC는 게임 중에도 즉시 교체");
+}
+
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 351/351");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,

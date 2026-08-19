@@ -163,12 +163,13 @@ public partial class MainWindow : Window
     }
 
     // 새 릴리스가 있으면 확인 없이 내려받아 교체하고 자동 재시작한다(유저 지시).
-    // 게임 중이어도 미루지 않고 즉시 교체한다(유저 지시 — 재시작 후 스캔이 바로
-    // 패를 다시 읽으므로 손실은 이번 판의 수동 보정 정도다).
+    // 다만 교체는 재시작을 동반하므로 판 도중에는 미룬다(유저 지시) — 다음 확인
+    // 주기에 다시 시도한다. 개발 PC(ORAND_DEV)는 검증을 위해 즉시 교체한다.
     // 같은 태그를 이미 시도했다면(버전 미상승 등) 반복하지 않는다.
     private async Task CheckForUpdateAsync()
     {
         if (_updateBusy) return;
+        if (!UpdatePolicy.ShouldInstallNow(_liveSessionActive, UpdatePolicy.IsDeveloperMachine)) return;
         var service = new UpdateService();
         var update = await service.CheckAsync();
         if (update is null) return;

@@ -129,7 +129,8 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
                 MappedObjects = mapped.KnownCount + mapped.CatalogNamedCount,
                 UnknownObjects = mapped.UnknownCount,
                 UnknownRawcodes = mapped.UnknownRawcodes,
-                Detail = $"목록 슬롯 {snapshot.ListCount} · 추천 데이터 연결 {mapped.KnownCount} · " +
+                Detail = $"목록 슬롯 {snapshot.ListCount} · 타 소유 {snapshot.ForeignObjects} · " +
+                         $"추천 데이터 연결 {mapped.KnownCount} · " +
                          $"이름 카탈로그 연결 {mapped.CatalogNamedCount} · 중복 포인터 {snapshot.DuplicatePointers}" +
                          (adoptedGrowth ? " · 중앙 성장형 1기 포함" :
                              growthTotal > 1 ? $" · 중앙 성장형 {growthTotal}기(귀속 불가로 제외)" : "") +

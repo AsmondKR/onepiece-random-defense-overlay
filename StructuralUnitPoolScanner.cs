@@ -186,7 +186,12 @@ internal static class StructuralUnitPoolScanner
     private static ulong SelectPoolRoot(ReadOnlyProcessMemory memory, Dictionary<ulong, byte> units,
         List<PoolStruct> structs, MemoryProfile profile, CancellationToken token)
     {
-        var minimumDistinctUnits = Math.Max(profile.MinimumUnitObjects, units.Count / 2);
+        // 전역 풀은 살아 있는 유닛을 넉넉히 담지만 "과반"을 요구하면 안 된다 — 메모리에는
+        // 풀 밖의 CUnit(죽은 유닛·다른 구조체 소속)도 함께 잡히기 때문이다. 실제로 판이
+        // 길어져 유닛이 565개로 늘었을 때 과반 조건이 인식을 통째로 막았다.
+        // 순위 매기기(소유자 종류 → 유닛 수)가 진짜 풀을 골라 주므로 하한은 낮게 둔다.
+        var minimumDistinctUnits = Math.Max(profile.MinimumUnitObjects,
+            Math.Min(MinimumPoolSlots, units.Count / 4));
         var candidates = new List<(ulong Address, int Hits, int Owners, int Count, ulong Entries)>();
         var distinctUnits = new HashSet<ulong>();
         var owners = new HashSet<byte>();
