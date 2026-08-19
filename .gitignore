@@ -7,3 +7,4 @@ publish-single/
 *.suo
 .vs/
 publish-next/
+bin-publish/

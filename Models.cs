@@ -275,6 +275,9 @@ public sealed class AppSettings
     public bool ClickThroughOverlay { get; set; }
     public double? OverlayLeft { get; set; }
     public double? OverlayTop { get; set; }
+    // 패 상태 창은 추천 창과 따로 놓을 수 있어야 하므로 위치를 따로 기억한다.
+    public double? StatsOverlayLeft { get; set; }
+    public double? StatsOverlayTop { get; set; }
     public bool AutoScanEnabled { get; set; } = true;
     public bool ClearDataAutoRefresh { get; set; } = true;
     // 워크 기본 단축키(Alt·Ctrl+숫자·F9~F12 등)와 겹치지 않는 키. WPF Key 이름.

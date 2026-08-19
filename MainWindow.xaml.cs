@@ -97,11 +97,16 @@ public partial class MainWindow : Window
 
         _overlay = new OverlayWindow();
         _overlay.RestorePosition(_settings.OverlayLeft, _settings.OverlayTop);
+        _overlay.Stats.RestorePosition(_settings.StatsOverlayLeft, _settings.StatsOverlayTop);
         _overlay.PositionCommitted += Overlay_OnPositionCommitted;
+        _overlay.Stats.PositionCommitted += StatsOverlay_OnPositionCommitted;
         _overlay.HiddenByUser += () => OverlayButton.Content = "오버레이 보이기";
         _overlay.ReRecommendRequested += ShowReRecommendMenu;
         _overlay.SettlementRequested += ShowSettlement;
         _overlay.Show();
+        // 배율이 적용된 뒤라야 창 크기가 확정되므로 기본 배치는 로드 후에 잡는다.
+        _overlay.Dispatcher.BeginInvoke(new Action(ApplyDefaultOverlayLayout),
+            System.Windows.Threading.DispatcherPriority.Loaded);
         _overlay.SetClickThrough(_settings.ClickThroughOverlay);
         _timer.Interval = TimeSpan.FromSeconds(0.8);
         _timer.Tick += async (_, _) => await ScanAsync();
@@ -112,6 +117,7 @@ public partial class MainWindow : Window
             _scanCancellation?.Cancel();
             _scanCancellation?.Dispose();
             SaveOverlayPosition();
+            _overlay.Stats.CloseForApplication();
             _overlay.CloseForApplication();
             SettingsStore.Save(_settings);
         };
@@ -1501,9 +1507,10 @@ public partial class MainWindow : Window
             OverlayButton.Content = "오버레이 숨기기";
         }
         _overlay.EnsureVisible();
+        _overlay.Stats.EnsureVisible();
         _overlay.SetClickThrough(false);
         _overlay.Activate();
-        FooterStatus.Text = "오버레이 상단을 끌어 원하는 위치로 옮기세요.";
+        FooterStatus.Text = "두 오버레이 창(내 패 상태 · 추천)의 상단을 각각 끌어 옮기세요.";
     }
 
     private void Overlay_OnPositionCommitted(double left, double top)
@@ -1511,7 +1518,47 @@ public partial class MainWindow : Window
         _settings.OverlayLeft = left;
         _settings.OverlayTop = top;
         SettingsStore.Save(_settings);
-        FooterStatus.Text = $"오버레이 위치를 저장했습니다: 가로 {left:0}, 세로 {top:0}";
+        FooterStatus.Text = $"추천 창 위치를 저장했습니다: 가로 {left:0}, 세로 {top:0}";
+        if (!_relockAfterMove) return;
+        _relockAfterMove = false;
+        ClickThroughCheck.IsChecked = true;
+    }
+
+    /// <summary>
+    /// 위치를 한 번도 정하지 않았으면 패 상태 창은 화면 왼쪽 가장자리, 추천 창은 오른쪽 가장자리에
+    /// 세로 중앙으로 놓는다. 게임 화면 가운데를 비워 두기 위한 기본값이다.
+    /// </summary>
+    private void ApplyDefaultOverlayLayout()
+    {
+        if (System.Windows.Forms.Screen.PrimaryScreen is not { } screen) return;
+        var dpi = VisualTreeHelper.GetDpi(_overlay);
+        var scaleX = dpi.DpiScaleX > 0 ? dpi.DpiScaleX : 1;
+        var scaleY = dpi.DpiScaleY > 0 ? dpi.DpiScaleY : 1;
+        var work = screen.WorkingArea;
+        var left = work.Left / scaleX;
+        var right = work.Right / scaleX;
+        var top = work.Top / scaleY;
+        var height = work.Height / scaleY;
+        const double margin = 6;
+
+        if (_settings.StatsOverlayLeft is null)
+        {
+            _overlay.Stats.Left = left + margin;
+            _overlay.Stats.Top = top + Math.Max(0, (height - _overlay.Stats.Height) / 2);
+        }
+        if (_settings.OverlayLeft is null)
+        {
+            _overlay.Left = right - _overlay.Width - margin;
+            _overlay.Top = top + Math.Max(0, (height - _overlay.Height) / 2);
+        }
+    }
+
+    private void StatsOverlay_OnPositionCommitted(double left, double top)
+    {
+        _settings.StatsOverlayLeft = left;
+        _settings.StatsOverlayTop = top;
+        SettingsStore.Save(_settings);
+        FooterStatus.Text = $"패 상태 창 위치를 저장했습니다: 가로 {left:0}, 세로 {top:0}";
         if (!_relockAfterMove) return;
         _relockAfterMove = false;
         ClickThroughCheck.IsChecked = true;
@@ -1523,6 +1570,10 @@ public partial class MainWindow : Window
         var position = _overlay.CurrentPosition();
         _settings.OverlayLeft = position.Left;
         _settings.OverlayTop = position.Top;
+        if (!_overlay.Stats.IsLoaded) return;
+        var statsPosition = _overlay.Stats.CurrentPosition();
+        _settings.StatsOverlayLeft = statsPosition.Left;
+        _settings.StatsOverlayTop = statsPosition.Top;
     }
 
     private void ToggleOverlay_OnClick(object sender, RoutedEventArgs e) =>
@@ -1581,34 +1632,102 @@ public partial class MainWindow : Window
         _ = DwmSetWindowAttribute(handle, 34, ref border, sizeof(int));
     }
 
+    private IntPtr _hotkeyWindowHandle;
+    private bool _hotkeyRegistered;
+    private bool _capturingHotkey;
+
     protected override void OnSourceInitialized(EventArgs e)
     {
         base.OnSourceInitialized(e);
         if (!_initialized) return;
         var helper = new WindowInteropHelper(this);
         ApplyThemedTitleBar(helper.Handle);
+        _hotkeyWindowHandle = helper.Handle;
+        HwndSource.FromHwnd(helper.Handle)?.AddHook(OnWindowMessage);
+        Closed += (_, _) =>
+        {
+            if (_hotkeyRegistered) UnregisterHotKey(_hotkeyWindowHandle, OverlayHotkeyId);
+        };
         // 예전 기본값(Scroll Lock)은 키보드에 따라 입력이 안 들어와 Caps Lock으로 이전.
         if (string.IsNullOrWhiteSpace(_settings.OverlayToggleKey) ||
             _settings.OverlayToggleKey.Equals("Scroll", StringComparison.OrdinalIgnoreCase))
             _settings.OverlayToggleKey = "Capital";
+        ApplyOverlayHotkey();
+    }
+
+    /// <summary>설정된 키로 전역 단축키를 다시 등록하고 화면 문구를 갱신한다.</summary>
+    private void ApplyOverlayHotkey()
+    {
+        if (_hotkeyWindowHandle == IntPtr.Zero) return;
+        if (_hotkeyRegistered)
+        {
+            UnregisterHotKey(_hotkeyWindowHandle, OverlayHotkeyId);
+            _hotkeyRegistered = false;
+        }
         if (!Enum.TryParse<Key>(_settings.OverlayToggleKey, ignoreCase: true, out var key))
             key = Key.Capital;
+        var label = HotkeyLabel(key);
+        HotkeyBox.Text = label;
         var virtualKey = (uint)KeyInterop.VirtualKeyFromKey(key);
-        if (virtualKey == 0 || !RegisterHotKey(helper.Handle, OverlayHotkeyId, 0, virtualKey))
+        if (virtualKey == 0 || !RegisterHotKey(_hotkeyWindowHandle, OverlayHotkeyId, 0, virtualKey))
         {
-            FooterStatus.Text = $"오버레이 단축키({_settings.OverlayToggleKey}) 등록 실패 — 버튼으로 토글하세요.";
+            HotkeyHint.Text = $"{label} 키는 다른 프로그램이 쓰고 있어 등록하지 못했습니다. 다른 키로 바꿔 주세요.";
+            FooterStatus.Text = $"오버레이 단축키({label}) 등록 실패 — 버튼으로 토글하세요.";
+            OverlayButton.ToolTip = "전역 단축키 등록 실패";
             return;
         }
-        HwndSource.FromHwnd(helper.Handle)?.AddHook(OnWindowMessage);
-        Closed += (_, _) => UnregisterHotKey(helper.Handle, OverlayHotkeyId);
-        var keyLabel = key switch
+        _hotkeyRegistered = true;
+        HotkeyHint.Text = "게임 중에도 이 키로 오버레이를 켜고 끕니다.";
+        OverlayButton.ToolTip = $"전역 단축키: {label}";
+        FooterStatus.Text = $"오버레이 토글 단축키: {label} (게임 중에도 동작)";
+    }
+
+    private static string HotkeyLabel(Key key) => key switch
+    {
+        Key.Capital => "Caps Lock",
+        Key.Scroll => "Scroll Lock",
+        Key.Snapshot => "Print Screen",
+        Key.Pause => "Pause",
+        Key.OemTilde => "`",
+        _ => key.ToString()
+    };
+
+    private void HotkeyCapture_OnClick(object sender, RoutedEventArgs e)
+    {
+        _capturingHotkey = true;
+        HotkeyCaptureButton.Content = "입력 대기";
+        HotkeyBox.Text = "키를 누르세요";
+        HotkeyHint.Text = "쓸 키를 한 번 누르면 저장됩니다. Esc로 취소.";
+        HotkeyBox.Focus();
+    }
+
+    private void Hotkey_OnPreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (!_capturingHotkey) return;
+        e.Handled = true;
+        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+        // 조합키 단독은 단축키가 될 수 없다. 누르고 있는 동안 무시하고 다음 키를 기다린다.
+        if (key is Key.LeftCtrl or Key.RightCtrl or Key.LeftAlt or Key.RightAlt
+            or Key.LeftShift or Key.RightShift or Key.LWin or Key.RWin or Key.System)
+            return;
+        _capturingHotkey = false;
+        HotkeyCaptureButton.Content = "키 변경";
+        if (key == Key.Escape)
         {
-            Key.Capital => "Caps Lock",
-            Key.Scroll => "Scroll Lock",
-            _ => key.ToString()
-        };
-        OverlayButton.ToolTip = $"전역 단축키: {keyLabel}";
-        FooterStatus.Text = $"오버레이 토글 단축키: {keyLabel} (게임 중에도 동작)";
+            ApplyOverlayHotkey();
+            return;
+        }
+        _settings.OverlayToggleKey = key.ToString();
+        SettingsStore.Save(_settings);
+        ApplyOverlayHotkey();
+    }
+
+    private void Hotkey_OnLostFocus(object sender, RoutedEventArgs e)
+    {
+        if (!_capturingHotkey) return;
+        _capturingHotkey = false;
+        HotkeyCaptureButton.Content = "키 변경";
+        ApplyOverlayHotkey();
     }
 
     private IntPtr OnWindowMessage(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam,

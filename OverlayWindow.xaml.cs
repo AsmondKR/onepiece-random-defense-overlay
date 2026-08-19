@@ -10,20 +10,8 @@ using System.Windows.Media;
 
 namespace OrandOverlay;
 
-public partial class OverlayWindow : Window
+public partial class OverlayWindow : OverlayWindowBase
 {
-    private const int GwlExStyle = -20;
-    private const int WsExTransparent = 0x20;
-    private const int WsExToolWindow = 0x80;
-    private const int WmNcLButtonDown = 0x00A1;
-    private const int HtCaption = 2;
-    private const uint SwpNoSize = 0x0001;
-    private const uint SwpNoMove = 0x0002;
-    private const uint SwpNoZOrder = 0x0004;
-    private const uint SwpNoActivate = 0x0010;
-    private const uint SwpFrameChanged = 0x0020;
-    private bool _clickThrough;
-    private bool _allowClose;
     private readonly HashSet<string> _expandedRouteIds = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _expandedBuildNodes = new(StringComparer.OrdinalIgnoreCase);
     private string _lastRecommendationSignature = "";
@@ -35,24 +23,39 @@ public partial class OverlayWindow : Window
         InitializeComponent();
         var appVersion = UpdateService.CurrentVersion;
         OverlayVersionText.Text = $"v{appVersion.Major}.{appVersion.Minor}.{appVersion.Build}";
-        SourceInitialized += (_, _) => ApplyClickThroughStyle();
-        Loaded += (_, _) =>
+        // 패 상태 창은 추천 창과 함께 뜨고 함께 사라진다(위치만 각자 기억).
+        IsVisibleChanged += (_, e) =>
         {
-            ApplyResolutionScale();
-            ClampToVisibleMonitor();
+            if ((bool)e.NewValue) Stats.Show();
+            else Stats.Hide();
         };
-        DpiChanged += (_, _) => Dispatcher.BeginInvoke(new Action(() =>
-        {
-            ApplyResolutionScale();
-            ClampToVisibleMonitor();
-        }));
-        Closing += OverlayWindow_OnClosing;
-        Closed += (_, _) => SystemEvents.DisplaySettingsChanged -= DisplaySettingsChanged;
-        SystemEvents.DisplaySettingsChanged += DisplaySettingsChanged;
     }
 
-    public event Action<double, double>? PositionCommitted;
-    public event Action? HiddenByUser;
+    protected override double DesignWidth => 520;
+    protected override double DesignHeight => 700;
+    protected override UIElement? ClickThroughIndicator => ClickThroughBadge;
+
+    /// <summary>내 패 상태 창. 추천과 분리해 각자 배치할 수 있다.</summary>
+    public StatsOverlayWindow Stats { get; } = new();
+
+    public override void SetClickThrough(bool enabled)
+    {
+        base.SetClickThrough(enabled);
+        Stats.SetClickThrough(enabled);
+    }
+
+    // 렌더링 코드는 아래 패널들을 그대로 쓴다. 실제 표시는 패 상태 창이 맡는다.
+    private StackPanel CombinePanel => Stats.CombinePanel;
+    private TextBlock CombineHeader => Stats.CombineHeader;
+    private StackPanel EmergencyPanel => Stats.EmergencyPanel;
+    private TextBlock EmergencyHeader => Stats.EmergencyHeader;
+    private StackPanel CurrentStatsPanel => Stats.CurrentStatsPanel;
+    private StackPanel RareRerollPanel => Stats.RareRerollPanel;
+    private StackPanel SpecialPanel => Stats.SpecialPanel;
+    private TextBlock SpecialHeader => Stats.SpecialHeader;
+    private StackPanel GreenBloodPanel => Stats.GreenBloodPanel;
+    private TextBlock GreenBloodHeader => Stats.GreenBloodHeader;
+
     public event Action<FrameworkElement>? ReRecommendRequested;
     public event Action? SettlementRequested;
 
@@ -61,51 +64,6 @@ public partial class OverlayWindow : Window
 
     private void SettlementButton_OnClick(object sender, RoutedEventArgs e) =>
         SettlementRequested?.Invoke();
-
-    public void RestorePosition(double? left, double? top)
-    {
-        if (left is not double savedLeft || top is not double savedTop ||
-            !double.IsFinite(savedLeft) || !double.IsFinite(savedTop)) return;
-        WindowStartupLocation = WindowStartupLocation.Manual;
-        Left = savedLeft;
-        Top = savedTop;
-    }
-
-    public OverlayPosition CurrentPosition()
-    {
-        ClampToVisibleMonitor();
-        return new OverlayPosition(Left, Top);
-    }
-
-    public void EnsureVisible() => ClampToVisibleMonitor();
-
-    public void CloseForApplication()
-    {
-        _allowClose = true;
-        Close();
-    }
-
-    public void SetClickThrough(bool enabled)
-    {
-        _clickThrough = enabled;
-        ClickThroughBadge.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
-        ApplyClickThroughStyle();
-    }
-
-    private void ApplyClickThroughStyle()
-    {
-        var handle = new WindowInteropHelper(this).Handle;
-        if (handle == IntPtr.Zero) return;
-        var style = GetWindowLong(handle, GwlExStyle);
-        style = _clickThrough
-            ? style | WsExTransparent | WsExToolWindow
-            : (style & ~WsExTransparent) | WsExToolWindow;
-        SetWindowLong(handle, GwlExStyle, style);
-        // Extended hit-test styles can stay cached by the window manager. Refreshing the
-        // non-client state makes an overlay that was click-through immediately draggable.
-        SetWindowPos(handle, IntPtr.Zero, 0, 0, 0, 0,
-            SwpNoMove | SwpNoSize | SwpNoZOrder | SwpNoActivate | SwpFrameChanged);
-    }
 
     /// <summary>패 변화가 없는 스캔 틱에서 상태줄(시각)만 가볍게 갱신할 때 쓴다.</summary>
     public void UpdateStatus(string status) => StatusText.Text = status;
@@ -1109,90 +1067,4 @@ public partial class OverlayWindow : Window
         };
     }
 
-    private void DragArea_OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-    {
-        if (_clickThrough || e.LeftButton != MouseButtonState.Pressed) return;
-        e.Handled = true;
-
-        var startLeft = Left;
-        var startTop = Top;
-        var handle = new WindowInteropHelper(this).Handle;
-        if (handle != IntPtr.Zero)
-        {
-            // WPF DragMove can fail after WS_EX_TRANSPARENT was removed because the child
-            // element still owns mouse capture. Hand the press to the native caption move
-            // loop instead; SendMessage returns when the user releases the button.
-            ReleaseCapture();
-            SendMessage(handle, WmNcLButtonDown, (IntPtr)HtCaption, IntPtr.Zero);
-        }
-        else
-        {
-            try { DragMove(); }
-            catch (InvalidOperationException) { return; }
-        }
-
-        // Do not run the monitor clamp after a normal drag. On mixed-DPI desktops it can
-        // reinterpret the just-moved coordinates and visibly snap the overlay back. Restore
-        // and display-topology changes still use the safety clamp.
-        if (double.IsFinite(Left) && double.IsFinite(Top) &&
-            (Math.Abs(Left - startLeft) >= 0.5 || Math.Abs(Top - startTop) >= 0.5))
-        {
-            // 드래그로 다른 해상도의 모니터에 옮겨졌을 수 있으니 배율을 다시 잡는다.
-            ApplyResolutionScale();
-            PositionCommitted?.Invoke(Left, Top);
-        }
-    }
-
-    private void OverlayWindow_OnClosing(object? sender, CancelEventArgs e)
-    {
-        if (_allowClose) return;
-        e.Cancel = true;
-        Hide();
-        HiddenByUser?.Invoke();
-    }
-
-    private void DisplaySettingsChanged(object? sender, EventArgs e)
-    {
-        if (Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished) return;
-        Dispatcher.BeginInvoke(new Action(() =>
-        {
-            ApplyResolutionScale();
-            ClampToVisibleMonitor();
-            PositionCommitted?.Invoke(Left, Top);
-        }));
-    }
-
-    // 오버레이가 놓인 모니터 해상도(FHD~8K)에 맞춰 창 전체를 비례 확대한다.
-    private void ApplyResolutionScale() => UiScale.Apply(this, 720, 700);
-
-    private void ClampToVisibleMonitor()
-    {
-        var scale = VisualTreeHelper.GetDpi(this);
-        var scaleX = scale.DpiScaleX > 0 ? scale.DpiScaleX : 1;
-        var scaleY = scale.DpiScaleY > 0 ? scale.DpiScaleY : 1;
-        var width = (ActualWidth > 0 ? ActualWidth : Width) * scaleX;
-        var height = (ActualHeight > 0 ? ActualHeight : Height) * scaleY;
-        var workAreas = System.Windows.Forms.Screen.AllScreens
-            .Select(screen => screen.WorkingArea)
-            .Select(area => new OverlayBounds(area.Left, area.Top, area.Width, area.Height))
-            .ToList();
-        var position = OverlayPositionPolicy.ClampToNearestWorkArea(
-            Left * scaleX, Top * scaleY, width, height, workAreas);
-        Left = position.Left / scaleX;
-        Top = position.Top / scaleY;
-    }
-
-    [DllImport("user32.dll", EntryPoint = "GetWindowLongW")]
-    private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
-    [DllImport("user32.dll", EntryPoint = "SetWindowLongW")]
-    private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int value);
-    [DllImport("user32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y,
-        int width, int height, uint flags);
-    [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool ReleaseCapture();
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-    private static extern IntPtr SendMessage(IntPtr hWnd, int message, IntPtr wParam, IntPtr lParam);
 }
