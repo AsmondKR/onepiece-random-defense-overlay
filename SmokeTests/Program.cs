@@ -1887,53 +1887,114 @@ Assert(TelemetryUploader.DefaultEndpoint.StartsWith("https://") &&
     Assert(ended.Outcome == "unknown", "패배 판정: 세션 경계에서 초기화");
 }
 
-// 라운드 파싱: 맵이 만든 "현재 라운드|r : N" 조합 문자열에서 숫자를 읽는다.
+// 맵 상태 파싱: 런타임에 조합된 문자열만 신호다. war3map.j 원문(마커 뒤 따옴표)과
+// 고정 문구는 숫자가 붙지 않아 걸러진다.
 {
     static byte[] Utf8(string text) => System.Text.Encoding.UTF8.GetBytes(text);
-    Assert(RoundReader.ScanBuffer(Utf8("현재 라운드|r : 7")) == 7, "라운드 파싱: 한 자리");
-    Assert(RoundReader.ScanBuffer(Utf8("현재 라운드|r : 65|r")) == 65, "라운드 파싱: 뒤 색코드 무시");
-    Assert(RoundReader.ScanBuffer(Utf8("가현재 라운드|r : 23나")) == 23, "라운드 파싱: 앞뒤 잡음 무시");
-    Assert(RoundReader.ScanBuffer(Utf8("현재 라운드|r : 8 현재 라운드|r : 41")) == 41,
-        "라운드 파싱: 여러 사본 중 최댓값");
-    Assert(RoundReader.ScanBuffer(Utf8("현재 라운드 : 7")) == 0, "라운드 파싱: 형식이 다르면 무시");
-    Assert(RoundReader.ScanBuffer(Utf8("현재 라운드|r : 999")) == 0, "라운드 파싱: 범위 밖 값은 버린다");
-    Assert(RoundReader.ScanBuffer(Utf8("현재 라운드|r : ")) == 0, "라운드 파싱: 숫자가 없으면 무시");
-    Assert(RoundReader.ScanBuffer([]) == 0, "라운드 파싱: 빈 버퍼");
+    Assert(MapStateReader.ScanBuffer(Utf8("현재 라운드|r : 7")).MaxRound == 7, "맵 상태: 라운드 표기 A");
+    Assert(MapStateReader.ScanBuffer(Utf8("현재 라운드 : |r65|r")).MaxRound == 65, "맵 상태: 라운드 표기 B");
+    Assert(MapStateReader.ScanBuffer(Utf8("현재 라운드|r : 8 현재 라운드 : |r41")).MaxRound == 41,
+        "맵 상태: 여러 사본 중 최댓값");
+    Assert(MapStateReader.ScanBuffer(Utf8("현재 라운드|r : \"+I2S(OG)")).MaxRound == 0,
+        "맵 상태: 스크립트 원문은 숫자가 없어 무시");
+    Assert(MapStateReader.ScanBuffer(Utf8("현재 라운드|r : 999")).MaxRound == 0, "맵 상태: 범위 밖 라운드는 버린다");
+    Assert(MapStateReader.ScanBuffer([]).MaxRound == 0, "맵 상태: 빈 버퍼");
+
+    var settled = MapStateReader.ScanBuffer(Utf8("마지막 라운드 유닛 점수 : |cffffd7004250점|r"));
+    Assert(settled.SettlementCopies == 1, "맵 상태: 정산 문자열 1건 인식");
+    var two = MapStateReader.ScanBuffer(Utf8(
+        "마지막 라운드 유닛 점수 : |cffffd700100점 마지막 라운드 유닛 점수 : |cffffd7000점|r"));
+    Assert(two.SettlementCopies == 2, "맵 상태: 정산 사본 수를 센다");
+    Assert(MapStateReader.ScanBuffer(Utf8("마지막 라운드 유닛 점수 : |cffffd700\"+I2S(aQN)+\"점"))
+        .SettlementCopies == 0, "맵 상태: 정산도 스크립트 원문은 무시");
+    Assert(MapStateReader.ScanBuffer(Utf8("마지막 라운드 유닛 점수 : |cffffd700450골드"))
+        .SettlementCopies == 0, "맵 상태: 숫자 뒤 '점'이 없으면 정산이 아니다");
 }
 
-// 클리어 판정(유저 규칙): 65라운드까지 가서 패배하지 않았으면 클리어.
-// 라운드는 메모리에 남은 옛 사본 때문에 최댓값만으로는 못 믿는다 — 세션 시작 시점을
-// 기준으로 충분히 진행을 지켜봤을 때만 확정한다.
+// 클리어 판정: 맵의 65라운드 정산("마지막 라운드 유닛 점수")이 곧 클리어 판정이다.
+// 정산 문자열이 세션 기준선보다 늘고, 그 뒤에도 내 유닛이 살아 있어야 클리어 —
+// 65라운드 도달만으로는 아니다(그 시점 보스·유닛 카운트 실패가 남아 있다).
 {
+    var t0 = new DateTimeOffset(2026, 8, 19, 12, 0, 0, TimeSpan.Zero);
+
     var run = new MatchOutcomeDetector();
     run.ObserveRound(1);
-    run.Observe(localUnits: 8, foreignUnits: 300);
-    run.ObserveRound(40);
-    Assert(run.Outcome == "unknown", "클리어 판정: 65라운드 전에는 unknown");
+    run.ObserveSettlement(0, t0);
+    run.Observe(8, 300, t0);
     run.ObserveRound(65);
-    Assert(run.Outcome == "clear", "클리어 판정: 65라운드 도달 + 패배 없음이면 클리어");
+    run.Observe(8, 300, t0.AddMinutes(30));
+    Assert(run.Outcome == "unknown", "클리어 판정: 65라운드 도달만으로는 클리어가 아니다");
+    run.ObserveSettlement(4, t0.AddMinutes(31));
+    Assert(run.Outcome == "unknown", "클리어 판정: 정산 직후에는 아직 보류(탈락 처리 대비)");
+    run.Observe(8, 300, t0.AddMinutes(31).AddSeconds(10));
+    run.Observe(8, 300, t0.AddMinutes(31).AddSeconds(40));
+    Assert(run.Outcome == "clear", "클리어 판정: 정산 후 생존 확인되면 클리어");
+    Assert(run.OutcomeSource == "mapSettlement", "클리어 판정: 근거는 mapSettlement");
 
-    // 패배가 먼저 확정되면 라운드와 무관하게 패배다.
-    var lost = new MatchOutcomeDetector();
-    lost.ObserveRound(1);
-    lost.Observe(localUnits: 8, foreignUnits: 300);
-    lost.Observe(localUnits: 0, foreignUnits: 300);
-    lost.Observe(localUnits: 0, foreignUnits: 300);
-    lost.ObserveRound(65);
-    Assert(lost.Outcome == "fail", "클리어 판정: 패배가 먼저면 클리어로 뒤집히지 않는다");
+    // 65라운드 정산 순간 보스 실패/카운트 초과로 탈락하는 경우 — 정산 직후 전멸이 온다.
+    var bossFail = new MatchOutcomeDetector();
+    bossFail.ObserveRound(2);
+    bossFail.ObserveSettlement(0, t0);
+    bossFail.Observe(8, 300, t0);
+    bossFail.ObserveRound(65);
+    bossFail.ObserveSettlement(3, t0.AddMinutes(30));
+    bossFail.Observe(0, 300, t0.AddMinutes(30).AddSeconds(4));
+    bossFail.Observe(0, 300, t0.AddMinutes(30).AddSeconds(8));
+    Assert(bossFail.Outcome == "fail", "클리어 판정: 정산이 떠도 내가 전멸하면 패배");
 
-    // 이전 판의 잔여 값으로 시작하면(중간 합류처럼 보이면) 판정하지 않는다.
+    // 같은 프로세스의 이전 판 정산 사본이 남아 있으면 기준선으로 흡수한다.
     var stale = new MatchOutcomeDetector();
     stale.ObserveRound(65);
-    stale.Observe(localUnits: 8, foreignUnits: 300);
-    stale.ObserveRound(65);
-    Assert(stale.Outcome == "unknown", "클리어 판정: 시작부터 65면 옛 사본일 수 있어 보류");
+    stale.ObserveSettlement(8, t0);
+    stale.Observe(8, 300, t0);
+    stale.ObserveSettlement(8, t0.AddMinutes(30));
+    stale.Observe(8, 300, t0.AddMinutes(31));
+    Assert(stale.Outcome == "unknown", "클리어 판정: 잔여 정산 사본은 새 정산이 아니다");
     Assert(stale.OutcomeSource == "none", "클리어 판정: 보류 상태의 근거는 none");
 
-    var cleared = new MatchOutcomeDetector();
-    cleared.ObserveRound(2);
-    cleared.ObserveRound(65);
-    Assert(cleared.OutcomeSource == "roundProgress", "클리어 판정: 근거를 roundProgress로 표기");
+    // 잔여 사본이 해제되어 수가 줄면 기준선도 내려가, 이후 진짜 정산을 잡는다.
+    var ratchet = new MatchOutcomeDetector();
+    ratchet.ObserveRound(3);
+    ratchet.ObserveSettlement(8, t0);
+    ratchet.Observe(8, 300, t0);
+    ratchet.ObserveSettlement(0, t0.AddMinutes(5));
+    ratchet.ObserveRound(65);
+    ratchet.ObserveSettlement(4, t0.AddMinutes(40));
+    ratchet.Observe(8, 300, t0.AddMinutes(40).AddSeconds(10));
+    ratchet.Observe(8, 300, t0.AddMinutes(40).AddSeconds(40));
+    Assert(ratchet.Outcome == "clear", "클리어 판정: 기준선이 내려간 뒤의 새 정산을 인식");
+
+    // 정산 없이 라운드만 진행되면(중도 종료 등) 판정하지 않는다.
+    var noSettle = new MatchOutcomeDetector();
+    noSettle.ObserveRound(2);
+    noSettle.ObserveSettlement(0, t0);
+    noSettle.Observe(8, 300, t0);
+    noSettle.ObserveRound(65);
+    noSettle.Observe(8, 300, t0.AddMinutes(40));
+    Assert(noSettle.Outcome == "unknown", "클리어 판정: 정산 문자열 없이는 클리어가 아니다");
+
+    // 패배가 먼저 확정되면 이후 정산이 떠도 뒤집히지 않는다(남의 정산일 뿐이다).
+    var lostFirst = new MatchOutcomeDetector();
+    lostFirst.ObserveRound(10);
+    lostFirst.ObserveSettlement(0, t0);
+    lostFirst.Observe(8, 300, t0);
+    lostFirst.Observe(0, 300, t0.AddMinutes(10));
+    lostFirst.Observe(0, 300, t0.AddMinutes(10).AddSeconds(5));
+    lostFirst.ObserveRound(65);
+    lostFirst.ObserveSettlement(4, t0.AddMinutes(30));
+    lostFirst.Observe(5, 300, t0.AddMinutes(31));
+    Assert(lostFirst.Outcome == "fail", "클리어 판정: 내 패배 후 남의 정산은 클리어가 아니다");
+
+    var reset = new MatchOutcomeDetector();
+    reset.ObserveRound(2);
+    reset.ObserveSettlement(0, t0);
+    reset.ObserveRound(65);
+    reset.ObserveSettlement(4, t0.AddMinutes(30));
+    reset.Observe(8, 300, t0.AddMinutes(30).AddSeconds(10));
+    reset.Observe(8, 300, t0.AddMinutes(31));
+    reset.Reset();
+    reset.Observe(8, 300, t0.AddMinutes(32));
+    Assert(reset.Outcome == "unknown", "클리어 판정: 세션 경계에서 클리어 상태도 초기화");
 }
 
 // 업데이트 시점 정책: 유저 클라이언트는 판이 끝난 뒤에 교체한다(재시작이 판을 끊으므로).

@@ -1326,7 +1326,11 @@ public partial class MainWindow : Window
             if (result.ShouldReplaceInventory || result.State == RecognitionState.Waiting)
             {
                 _outcome.Observe(result.Diagnostics.ObservedObjects, result.Diagnostics.ForeignObjects);
-                if (result.Diagnostics.CurrentRound is { } round) _outcome.ObserveRound(round);
+                if (result.Diagnostics.MapState is { } mapState)
+                {
+                    _outcome.ObserveRound(mapState.MaxRound);
+                    _outcome.ObserveSettlement(mapState.SettlementCopies);
+                }
             }
             _liveVerification.Observe(result);
             UpdateLiveVerifyUi();

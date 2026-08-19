@@ -14,10 +14,12 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
     private readonly object _cacheGate = new();
     private LocatorCache? _locatorCache;
 
-    /// <summary>라운드 읽기는 힙 전체 훑기라 비싸다 — 이 간격으로만 갱신한다.</summary>
-    private static readonly TimeSpan RoundReadInterval = TimeSpan.FromSeconds(45);
-    private DateTimeOffset _lastRoundReadAt = DateTimeOffset.MinValue;
-    private int? _lastRound;
+    /// <summary>맵 상태 읽기는 힙 전체 훑기라 비싸다 — 이 간격으로만 갱신한다.
+    /// 60라운드부터는 정산 순간을 놓치지 않게 간격을 줄인다.</summary>
+    private static readonly TimeSpan MapStateInterval = TimeSpan.FromSeconds(45);
+    private static readonly TimeSpan MapStateEndgameInterval = TimeSpan.FromSeconds(15);
+    private DateTimeOffset _lastMapStateAt = DateTimeOffset.MinValue;
+    private MapStateSample? _lastMapState;
 
     public WarcraftMemoryRecognitionService(DataCatalog catalog) => _unitMap = new RawcodeUnitMap(catalog);
 
@@ -131,7 +133,7 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
                 ResolvedListAddress = $"0x{listAddress:X}",
                 ObservedObjects = snapshot.OwnedObjects + (adoptedGrowth ? 1 : 0),
                 ForeignObjects = snapshot.ForeignObjects,
-                CurrentRound = ReadRoundThrottled(memory, token),
+                MapState = ReadMapStateThrottled(memory, token),
                 MappedObjects = mapped.KnownCount + mapped.CatalogNamedCount,
                 UnknownObjects = mapped.UnknownCount,
                 UnknownRawcodes = mapped.UnknownRawcodes,
@@ -363,21 +365,22 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
         return selected;
     }
 
-    /// <summary>정해진 간격마다만 라운드를 새로 읽고, 사이에는 마지막 값을 돌려준다.</summary>
-    private int? ReadRoundThrottled(ReadOnlyProcessMemory memory, CancellationToken token)
+    /// <summary>정해진 간격마다만 맵 상태를 새로 읽고, 사이에는 마지막 값을 돌려준다.</summary>
+    private MapStateSample? ReadMapStateThrottled(ReadOnlyProcessMemory memory, CancellationToken token)
     {
         var now = DateTimeOffset.UtcNow;
-        if (_lastRound is not null && now - _lastRoundReadAt < RoundReadInterval) return _lastRound;
-        _lastRoundReadAt = now;
+        var interval = _lastMapState is { MaxRound: >= 60 } ? MapStateEndgameInterval : MapStateInterval;
+        if (_lastMapState is not null && now - _lastMapStateAt < interval) return _lastMapState;
+        _lastMapStateAt = now;
         try
         {
-            _lastRound = RoundReader.TryReadCurrentRound(memory, token) ?? _lastRound;
+            _lastMapState = MapStateReader.TryRead(memory, token) ?? _lastMapState;
         }
         catch (Exception) when (!token.IsCancellationRequested)
         {
-            // 라운드는 부가 정보다 — 못 읽어도 패 인식을 실패시키지 않는다.
+            // 맵 상태는 부가 정보다 — 못 읽어도 패 인식을 실패시키지 않는다.
         }
-        return _lastRound;
+        return _lastMapState;
     }
 
     private static RecognitionResult Failure(RecognitionState state, string status, string detail,
