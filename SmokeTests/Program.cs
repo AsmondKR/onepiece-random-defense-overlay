@@ -1763,7 +1763,24 @@ Assert(TelemetryUploader.DefaultEndpoint.StartsWith("https://") &&
        !TelemetryUploader.DefaultEndpoint.Contains("tmo.gg"),
     "텔레메트리: 기본 엔드포인트는 자체 Worker(HTTPS)이며 티모지지가 아님");
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 322/322");
+// 라이브 통계 스냅샷: 있으면 표기, 없거나 깨졌으면 조용히 무시(fail-silent).
+{
+    var statsPath = Path.Combine(Path.GetTempPath(), "orand-live-stats-" + Guid.NewGuid().ToString("N") + ".json");
+    File.WriteAllText(statsPath,
+        "{\"schemaVersion\":1,\"generatedAt\":\"2026-08-19T13:00:00Z\",\"totalRecords\":41,\"labeledRecords\":12," +
+        "\"goals\":{\"yamato_transcendent\":{\"plays\":30,\"labeled\":10,\"clears\":7,\"adherenceMean\":0.8,\"failHeavyUnits\":[]}}," +
+        "\"weights\":{}}");
+    var live = LiveStats.Load(statsPath);
+    Assert(live.TotalRecords == 41, "라이브 통계: 총 판수 파싱");
+    Assert(live.TryGetGoal("yamato_transcendent", out var liveGoalStats) && liveGoalStats.Plays == 30,
+        "라이브 통계: 목표별 판수");
+    Assert(liveGoalStats.ClearRateText == "클리어율 70%", "라이브 통계: 클리어율 표기(확정 라벨 기준)");
+    Assert(!live.TryGetGoal("없는목표", out _), "라이브 통계: 미수집 목표는 표기 없음");
+    Assert(LiveStats.Load(statsPath + ".missing").TotalRecords == 0, "라이브 통계: 파일 없으면 빈 통계");
+    File.Delete(statsPath);
+}
+
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 327/327");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,

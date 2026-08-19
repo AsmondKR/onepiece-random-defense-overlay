@@ -31,6 +31,7 @@ public partial class MainWindow : Window
     private CombineHotkeyCatalog _combineHotkeys = null!;
     private AutoCombinePlanner _combinePlanner = null!;
     private ClearBuildStats _clearStats = ClearBuildStats.Empty;
+    private LiveStats _liveStats = new();
     private CompletedTopUnitTracker _completedTopUnits = null!;
     private readonly LiveVerificationRecorder _liveVerification = new();
     private readonly TelemetryUploader _telemetry = new();
@@ -64,6 +65,7 @@ public partial class MainWindow : Window
         {
             _catalog.Load();
             _clearStats = ClearBuildStats.Load(ClearSamplePaths());
+            _liveStats = LiveStats.Load(Path.Combine(AppContext.BaseDirectory, "Data", "orand-live-stats.json"));
             _combineHotkeys = CombineHotkeyCatalog.Load(
                 Path.Combine(AppContext.BaseDirectory, "Data", "tmo-combine-hotkeys.json"));
             _engine = new RecommendationEngine(_catalog, _clearStats.HasData ? _clearStats : null,
@@ -315,7 +317,8 @@ public partial class MainWindow : Window
 
     private string ClearStatsSummary() => _clearStats.HasData
         ? $" · 신+ 클리어 {_clearStats.TotalGodPlusSamples:#,0}판 학습" +
-          $"({_clearStats.OldestSampleAt:MM.dd}~{_clearStats.NewestSampleAt:MM.dd})"
+          $"({_clearStats.OldestSampleAt:MM.dd}~{_clearStats.NewestSampleAt:MM.dd})" +
+          (_liveStats.TotalRecords > 0 ? $" · 실사용 {_liveStats.TotalRecords:#,0}판" : "")
         : " · 클리어 데이터 없음(수작업 우선순위 사용)";
 
     /// <summary>
@@ -698,6 +701,10 @@ public partial class MainWindow : Window
             navigationMode: navigation.Id, gorosei: gorosei, buildVariant: buildVariant,
             suppressSeraphim: _greenBloodUsage.Used);
         _telemetryLastTop = recommendations.Take(5).Select(x => x.Route.GoalUnitId).ToList();
+        GoalSelectLabel.Text = "목표 상위 유닛 · 학습된 유닛만" +
+            (_liveStats.TryGetGoal(goal.Id, out var liveGoal)
+                ? $" · 실사용 {liveGoal.Plays}판{(liveGoal.ClearRateText.Length == 0 ? "" : " · " + liveGoal.ClearRateText)}"
+                : "");
         var inventoryStats = _statsCalculator.Calculate(recommendationInventory);
         var rareRerolls = _rareRerollAdvisor.Evaluate(recommendationInventory, recommendations,
             goal, _clearStats.HasData ? _clearStats : null);

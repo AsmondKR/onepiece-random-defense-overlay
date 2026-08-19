@@ -16,7 +16,15 @@ public sealed class TelemetryUploader
     private const int MaxQueued = 50;
     private const int MaxAgeDays = 30;
     private const int MaxRejects = 3;
-    private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(5) };
+    private static readonly HttpClient Http = CreateClient();
+
+    private static HttpClient CreateClient()
+    {
+        // Cloudflare 봇 차단이 UA 없는 요청을 막을 수 있어 명시한다.
+        var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("OrandOverlay/1.0");
+        return client;
+    }
     private readonly string _endpoint;
     private readonly string _queueDirectory;
 
