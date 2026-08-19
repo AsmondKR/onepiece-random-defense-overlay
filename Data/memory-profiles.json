@@ -2,11 +2,11 @@
   {
     "profileSchemaVersion": 1,
     "profileId": "war3-2.0.4.23745",
-    "profileRevision": 4,
+    "profileRevision": 5,
     "fileVersion": "2.0.4.23745",
     "moduleName": "Warcraft III.exe",
     "enabled": true,
-    "verified": false,
+    "verified": true,
     "sha256": "682C12552CA05E43C5FED2340EA132D3B06FE068E676DB7D1F5623D8D4633229",
     "locatorKind": "StructuralScan",
     "moduleOffset": 0,

@@ -623,17 +623,17 @@ Assert(string.Equals(JsonSerializer.Deserialize<MemoryProfile>(
     "구 스키마 executableSha256 별칭도 실효 해시로 해석됨");
 Assert(!MemoryProfileValidator.CanActivate(ValidMemoryProfile(true, true, sha256: ""), out _),
     "sha256이 비어 있으면 프로필 활성화를 하드 차단");
-// verified=true는 사용자의 실전 1판 라이브 검증 통과 후에만 플립된다(시드 제약) — 번들 상태는 검증 대기.
-Assert(pinnedProfile.Enabled && !pinnedProfile.Verified, "핀된 프로필이 enabled=true, verified=false(라이브 검증 대기)");
-Assert(!MemoryProfileValidator.CanActivate(pinnedProfile, out _),
-    "미검증 프로필은 하드 게이트에 막혀 활성화되지 않음(fail-closed)");
+// verified=true는 실전 대조를 통과한 뒤에만 플립한다. 2026-08-19 라이브 세션에서 통과해 핀됨.
+Assert(pinnedProfile.Enabled && pinnedProfile.Verified, "핀된 프로필이 enabled=true, verified=true");
+Assert(MemoryProfileValidator.CanActivate(pinnedProfile, out var pinnedErrors) && pinnedErrors.Count == 0,
+    "검증된 프로필이 하드 게이트를 통과해 단독 인식에 활성화됨");
 var pinnedNode = System.Text.Json.Nodes.JsonNode.Parse(JsonSerializer.Serialize(pinnedProfile))!.AsObject();
-pinnedNode[pinnedNode.ContainsKey("verified") ? "verified" : "Verified"] = true;
-var pinnedVerifiedCopy = JsonSerializer.Deserialize<MemoryProfile>(
+pinnedNode[pinnedNode.ContainsKey("verified") ? "verified" : "Verified"] = false;
+var pinnedUnverifiedCopy = JsonSerializer.Deserialize<MemoryProfile>(
     pinnedNode.ToJsonString(),
     new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
-Assert(MemoryProfileValidator.CanActivate(pinnedVerifiedCopy, out var pinnedErrors) && pinnedErrors.Count == 0,
-    "라이브 검증 후 verified=true가 되면 하드 게이트를 통과해 단독 인식에 활성화됨");
+Assert(!MemoryProfileValidator.CanActivate(pinnedUnverifiedCopy, out _),
+    "미검증 상태로 되돌리면 하드 게이트에 막혀 활성화되지 않음(fail-closed 유지)");
 Assert(pinnedProfile.CountOffset == 0xB98 && pinnedProfile.EntriesPointerOffset == 0xBA0,
     "실측 유닛 풀 오프셋 worldFrame+0xB98/+0xBA0 유지");
 Assert(pinnedProfile.RawcodeOffset == 0x178 && pinnedProfile.OwnerOffset == 0x1C0,
