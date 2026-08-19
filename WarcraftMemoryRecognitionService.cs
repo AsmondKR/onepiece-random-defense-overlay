@@ -118,7 +118,10 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
                 UnknownObjects = mapped.UnknownCount,
                 UnknownRawcodes = mapped.UnknownRawcodes,
                 Detail = $"목록 슬롯 {snapshot.ListCount} · 추천 데이터 연결 {mapped.KnownCount} · " +
-                         $"이름 카탈로그 연결 {mapped.CatalogNamedCount} · 중복 포인터 {snapshot.DuplicatePointers}"
+                         $"이름 카탈로그 연결 {mapped.CatalogNamedCount} · 중복 포인터 {snapshot.DuplicatePointers}" +
+                         (profile.LocatorKind == MemoryLocatorKind.StructuralScan
+                             ? $" · 구조 탐색 {StructuralUnitPoolScanner.LastScanMilliseconds}ms"
+                             : "")
             };
             if (profile.RequireNonEmptyInventory && snapshot.OwnedObjects == 0)
                 return new RecognitionResult
@@ -161,6 +164,12 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
             };
         }
         catch (OperationCanceledException) { throw; }
+        catch (PoolNotReadyException exception)
+        {
+            // 맵 로딩·대전 준비 단계에는 유닛이 아직 없다. 오류가 아니라 대기 상태로 알린다.
+            lock (_cacheGate) _locatorCache = null;
+            return Failure(RecognitionState.Waiting, "대전 준비 중 · 기존 패 유지", exception.Message);
+        }
         catch (Exception exception) when (exception is Win32Exception or InvalidDataException or InvalidOperationException
                                           or OverflowException or IOException or UnauthorizedAccessException
                                           or ArgumentException or System.Security.Cryptography.CryptographicException)
@@ -419,31 +428,18 @@ internal sealed class ReadOnlyProcessMemory : IDisposable
         return bytes;
     }
 
-    /// <summary>커밋된 읽기 가능 영역 전부(구조 스캔용).</summary>
-    public IEnumerable<MemoryRegion> ReadableRegions()
-    {
-        ulong address = 0x10000;
-        while (address < 0x00007FFFFFFFFFFF)
-        {
-            if (VirtualQueryEx(_handle, (nint)address, out var info, (nuint)Marshal.SizeOf<MEMORY_BASIC_INFORMATION>()) == 0)
-                yield break;
-            var baseAddress = (ulong)info.BaseAddress.ToInt64();
-            var size = info.RegionSize.ToUInt64();
-            if (size == 0) yield break;
-            if (info.State == 0x1000 && IsReadable(info.Protect) && IsPlausibleUserAddress(baseAddress))
-                yield return new MemoryRegion(baseAddress, size);
-            var next = baseAddress + size;
-            if (next <= address) yield break;
-            address = next;
-        }
-    }
+    /// <summary>
+    /// 구조 스캔이 훑을 영역. 유닛 객체와 풀 배열은 모두 힙에 있으므로 전용(private) 커밋 영역만 본다.
+    /// 매핑된 이미지·데이터 파일을 빼면 훑을 양이 크게 줄어든다.
+    /// </summary>
+    public IEnumerable<MemoryRegion> ReadableRegions() => ReadablePrivateRegions();
 
     /// <summary>
     /// 영역을 겹침 있는 청크로 나눠 읽는다. 일부 페이지를 못 읽어도 영역 전체를 버리지 않는다.
     /// 겹침은 구조체가 청크 경계에 걸려 누락되는 것을 막는다.
     /// </summary>
     public IEnumerable<(ulong Base, byte[] Buffer)> ReadChunks(IEnumerable<MemoryRegion> regions,
-        int chunkBytes = 4 * 1024 * 1024, int overlap = 0x2000)
+        int chunkBytes = 16 * 1024 * 1024, int overlap = 0x2000)
     {
         foreach (var region in regions)
         {

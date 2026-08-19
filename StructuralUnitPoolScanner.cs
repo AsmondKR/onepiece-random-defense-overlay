@@ -11,19 +11,24 @@ namespace OrandOverlay;
 ///   (1) 유닛 객체는 MSVC RTTI 클래스명(기본 .?AVCUnit@@)을 가진 vftable을 헤드에 둔다.
 ///   (2) 풀 루트는 countOffset에 개수, entriesPointerOffset에 객체 포인터 배열 주소를 둔다.
 ///
-/// 메모리를 세 번 훑되 후보마다 개별 읽기를 하지 않는다(그러면 스캔이 수십 초로 늘어난다).
-///   1차: 유닛 객체 주소와 소유자 수집
-///   2차: 유닛 포인터가 밀집한 배열 구간 탐색
-///   3차: 그 배열을 entriesPointerOffset으로 가리키는 구조체(=풀 루트) 확정
+/// 힙(전용 커밋 영역)만 한 번 병렬로 훑어 유닛 객체와 구조체 후보를 함께 모은 뒤,
+/// 살아남은 후보의 배열만 읽어 판정한다(후보마다 메모리를 훑으면 스캔이 수십 초로 늘어난다).
 /// 전역 풀만 여러 소유자의 유닛을 함께 담으므로 그것으로 다른 목록과 구분한다.
 /// 구분되지 않으면 fail-closed.
 /// </summary>
 internal static class StructuralUnitPoolScanner
 {
+    /// <summary>전역 풀로 인정할 최소 슬롯 수. 훑는 도중 후보를 걸러 담기 위한 하한이다.</summary>
+    private const int MinimumPoolSlots = 64;
+
     private static readonly TimeSpan FailureCooldown = TimeSpan.FromSeconds(5);
     private static readonly object Gate = new();
     private static DateTime _lastFailureUtc = DateTime.MinValue;
     private static string _lastFailure = "";
+    private static bool _lastFailureWasNotReady;
+
+    /// <summary>마지막 구조 스캔에 걸린 시간. 진단 문구에 노출한다.</summary>
+    public static int LastScanMilliseconds { get; private set; }
 
     public static ulong Resolve(ReadOnlyProcessMemory memory, ProcessModule module, MemoryProfile profile,
         CancellationToken token)
@@ -31,10 +36,15 @@ internal static class StructuralUnitPoolScanner
         // 전체 메모리 스캔은 비싸다. 직전 실패 직후에는 같은 사유로 즉시 되돌려 매 틱 재스캔을 막는다.
         lock (Gate)
             if (DateTime.UtcNow - _lastFailureUtc < FailureCooldown)
-                throw new InvalidOperationException(_lastFailure);
+                throw _lastFailureWasNotReady
+                    ? new PoolNotReadyException(_lastFailure)
+                    : new InvalidOperationException(_lastFailure);
         try
         {
-            return ResolveCore(memory, module, profile, token);
+            var watch = Stopwatch.StartNew();
+            var root = ResolveCore(memory, module, profile, token);
+            LastScanMilliseconds = (int)watch.ElapsedMilliseconds;
+            return root;
         }
         catch (InvalidOperationException exception)
         {
@@ -42,6 +52,7 @@ internal static class StructuralUnitPoolScanner
             {
                 _lastFailureUtc = DateTime.UtcNow;
                 _lastFailure = exception.Message;
+                _lastFailureWasNotReady = exception is PoolNotReadyException;
             }
             throw;
         }
@@ -55,18 +66,14 @@ internal static class StructuralUnitPoolScanner
         if (moduleSize <= 0 || moduleSize > 512 * 1024 * 1024)
             throw new InvalidDataException($"비정상 모듈 크기: {moduleSize}");
 
-        var image = ReadImage(memory, moduleBase, moduleSize);
-        if (image.Length < 0x1000) throw new InvalidDataException("모듈 이미지를 읽지 못했습니다.");
-        var unitVftables = FindClassVftables(image, moduleBase, profile.UnitClassName).ToHashSet();
-        if (unitVftables.Count == 0)
-            throw new InvalidOperationException($"{profile.UnitClassName} vftable을 찾지 못했습니다.");
+        // vftable은 모듈이 같으면 변하지 않는다. 221MB 이미지 재독을 매번 하지 않도록 캐시한다.
+        var unitVftables = GetUnitVftables(memory, moduleBase, moduleSize, profile.UnitClassName);
 
-        var units = CollectUnits(memory, profile, unitVftables, token);
+        var (units, structs) = Sweep(memory, profile, unitVftables, token);
         if (units.Count < profile.MinimumUnitObjects)
-            throw new InvalidOperationException("유닛 객체가 충분하지 않습니다(대전 중이 아닐 수 있습니다).");
+            throw new PoolNotReadyException("대전 준비 중입니다(유닛이 아직 생성되지 않았습니다).");
 
-        var unitReferences = CollectUnitReferences(memory, units, token);
-        return FindPoolRoot(memory, units, unitReferences, profile, token);
+        return SelectPoolRoot(memory, units, structs, profile, token);
     }
 
     /// <summary>프로필에 앵커가 있으면 로컬 플레이어 슬롯을 실측한다. 실패하면 null.</summary>
@@ -88,120 +95,145 @@ internal static class StructuralUnitPoolScanner
         }
     }
 
-    /// <summary>1차 훑기: 유닛 객체 주소 → 소유자. 버퍼 안에서만 판정하므로 추가 읽기가 없다.</summary>
-    private static Dictionary<ulong, byte> CollectUnits(ReadOnlyProcessMemory memory, MemoryProfile profile,
-        HashSet<ulong> unitVftables, CancellationToken token)
+    /// <summary>
+    /// 힙을 한 번만 훑어 유닛 객체(주소→소유자)와 풀 구조체 후보를 함께 모은다.
+    /// 영역별로 병렬 처리하되 버퍼 안 비교만 하므로 후보당 추가 읽기가 없다.
+    /// </summary>
+    private static (Dictionary<ulong, byte> Units, List<PoolStruct> Structs) Sweep(ReadOnlyProcessMemory memory,
+        MemoryProfile profile, HashSet<ulong> unitVftables, CancellationToken token)
     {
         var units = new Dictionary<ulong, byte>();
-        foreach (var (chunkBase, buffer) in memory.ReadChunks(memory.ReadableRegions()))
-        {
-            token.ThrowIfCancellationRequested();
-            var limit = buffer.Length - profile.OwnerOffset - 1;
-            for (var offset = 0; offset <= limit; offset += 8)
+        var structs = new List<PoolStruct>();
+        var gate = new object();
+
+        Parallel.ForEach(memory.ReadableRegions(),
+            new ParallelOptions { MaxDegreeOfParallelism = Math.Min(8, Environment.ProcessorCount), CancellationToken = token },
+            () => (Units: new Dictionary<ulong, byte>(), Structs: new List<PoolStruct>()),
+            (region, _, local) =>
             {
-                if (!unitVftables.Contains(BitConverter.ToUInt64(buffer, offset))) continue;
-                units[chunkBase + (ulong)offset] = buffer[offset + profile.OwnerOffset];
-            }
-        }
-        return units;
+                foreach (var (chunkBase, buffer) in memory.ReadChunks([region]))
+                    ScanBuffer(chunkBase, buffer, profile, unitVftables, local.Units, local.Structs);
+                return local;
+            },
+            local =>
+            {
+                lock (gate)
+                {
+                    foreach (var pair in local.Units) units[pair.Key] = pair.Value;
+                    structs.AddRange(local.Structs);
+                }
+            });
+
+        return (units, structs);
     }
 
     /// <summary>
-    /// 2차 훑기: 유닛 포인터가 놓여 있는 주소를 모은다.
-    /// 이 집합만 있으면 이후 배열 판정을 추가 읽기 없이 조회로 끝낼 수 있다.
+    /// 버퍼 한 덩어리에서 유닛 객체와 풀 구조체 후보를 찾는다.
+    /// 오프셋이 모두 8의 배수라 qword 배열로 보고 훑는다 — 이 루프가 스캔 시간의 대부분이라
+    /// 바이트 단위 변환이나 해시 조회를 넣지 않는다.
     /// </summary>
-    private static Dictionary<ulong, ulong> CollectUnitReferences(ReadOnlyProcessMemory memory,
-        Dictionary<ulong, byte> units, CancellationToken token)
+    private static void ScanBuffer(ulong chunkBase, byte[] buffer, MemoryProfile profile,
+        HashSet<ulong> unitVftables, Dictionary<ulong, byte> units, List<PoolStruct> structs)
     {
-        var references = new Dictionary<ulong, ulong>();
-        foreach (var (chunkBase, buffer) in memory.ReadChunks(memory.ReadableRegions()))
+        var words = System.Runtime.InteropServices.MemoryMarshal.Cast<byte, ulong>(
+            buffer.AsSpan(0, buffer.Length & ~7));
+        var singleVftable = unitVftables.Count == 1 ? unitVftables.First() : 0;
+        var countWord = profile.CountOffset / 8;
+        var entriesWord = profile.EntriesPointerOffset / 8;
+        var alignedOffsets = profile.CountOffset % 8 == 0 && profile.EntriesPointerOffset % 8 == 0;
+        var unitWordLimit = (buffer.Length - profile.OwnerOffset - 1) / 8;
+
+        for (var index = 0; index < words.Length; index++)
         {
-            token.ThrowIfCancellationRequested();
-            for (var offset = 0; offset + 8 <= buffer.Length; offset += 8)
-            {
-                var value = BitConverter.ToUInt64(buffer, offset);
-                if (value != 0 && units.ContainsKey(value)) references[chunkBase + (ulong)offset] = value;
-            }
+            var value = words[index];
+            if (value != 0 && index <= unitWordLimit &&
+                (singleVftable != 0 ? value == singleVftable : unitVftables.Contains(value)))
+                units[chunkBase + (ulong)index * 8] = buffer[index * 8 + profile.OwnerOffset];
+
+            if (!alignedOffsets || index + entriesWord >= words.Length) continue;
+            var count = (int)(uint)words[index + countWord];
+            if (count < MinimumPoolSlots || count > profile.MaximumUnits) continue;
+            var entries = words[index + entriesWord];
+            if (!ReadOnlyProcessMemory.IsPlausibleUserAddress(entries) || (entries & 7) != 0) continue;
+            structs.Add(new PoolStruct(chunkBase + (ulong)index * 8, count, entries));
         }
-        return references;
+    }
+
+    private static readonly object VftableGate = new();
+    private static (ulong ModuleBase, string ClassName, HashSet<ulong> Vftables)? _vftableCache;
+
+    private static HashSet<ulong> GetUnitVftables(ReadOnlyProcessMemory memory, ulong moduleBase, int moduleSize,
+        string className)
+    {
+        lock (VftableGate)
+            if (_vftableCache is { } cached && cached.ModuleBase == moduleBase && cached.ClassName == className)
+                return cached.Vftables;
+
+        var image = ReadImage(memory, moduleBase, moduleSize);
+        if (image.Length < 0x1000) throw new InvalidDataException("모듈 이미지를 읽지 못했습니다.");
+        var vftables = FindClassVftables(image, moduleBase, className).ToHashSet();
+        if (vftables.Count == 0)
+            throw new InvalidOperationException($"{className} vftable을 찾지 못했습니다.");
+        lock (VftableGate) _vftableCache = (moduleBase, className, vftables);
+        return vftables;
     }
 
     /// <summary>
-    /// 3차 훑기: countOffset/entriesPointerOffset 규격을 만족하는 구조체를 훑으면서,
-    /// 그 배열이 실제로 유닛 포인터를 담고 있는지 참조 집합 조회만으로 판정한다.
-    /// 여러 소유자의 유닛을 함께 담는 전역 풀을 고르고, 1·2위가 구분되지 않으면 fail-closed.
+    /// 모아 둔 구조체 후보 중에서 실제 전역 풀을 고른다.
+    /// 전역 풀은 살아 있는 유닛을 중복 없이 한 번씩 담으므로, 배열을 한 번 읽어
+    /// 서로 다른 유닛 수와 소유자 종류로 판정한다. 구분되지 않으면 fail-closed.
     /// </summary>
-    private static ulong FindPoolRoot(ReadOnlyProcessMemory memory, Dictionary<ulong, byte> units,
-        Dictionary<ulong, ulong> unitReferences, MemoryProfile profile, CancellationToken token)
+    private static ulong SelectPoolRoot(ReadOnlyProcessMemory memory, Dictionary<ulong, byte> units,
+        List<PoolStruct> structs, MemoryProfile profile, CancellationToken token)
     {
-        var candidates = new List<(ulong Address, int Hits, int Owners, int Count, ulong Entries)>();
-        // 전역 풀이라면 살아 있는 유닛의 과반을 담고 있어야 한다.
         var minimumDistinctUnits = Math.Max(profile.MinimumUnitObjects, units.Count / 2);
+        var candidates = new List<(ulong Address, int Hits, int Owners, int Count, ulong Entries)>();
         var distinctUnits = new HashSet<ulong>();
         var owners = new HashSet<byte>();
-        foreach (var (chunkBase, buffer) in memory.ReadChunks(memory.ReadableRegions()))
+
+        foreach (var candidate in structs.Where(x => x.Count >= minimumDistinctUnits)
+                     .DistinctBy(x => (x.Entries, x.Count)))
         {
             token.ThrowIfCancellationRequested();
-            var limit = buffer.Length - profile.EntriesPointerOffset - sizeof(ulong);
-            for (var offset = 0; offset <= limit; offset += 8)
-            {
-                var count = BitConverter.ToInt32(buffer, offset + profile.CountOffset);
-                if (count < profile.MinimumUnitObjects || count > profile.MaximumUnits) continue;
-                var entries = BitConverter.ToUInt64(buffer, offset + profile.EntriesPointerOffset);
-                if (!ReadOnlyProcessMemory.IsPlausibleUserAddress(entries) || (entries & 7) != 0) continue;
+            var bytes = memory.ReadAvailable(candidate.Entries, candidate.Count * profile.EntryStride);
+            if (bytes.Length < candidate.Count * profile.EntryStride) continue;
 
-                // 전역 풀은 살아 있는 유닛을 중복 없이 한 번씩 담는다. 객체 힙을 우연히 훑은 창은
-                // 같은 유닛이 여러 번 나오거나 서로 다른 유닛 수가 적어 여기서 갈린다.
-                distinctUnits.Clear();
-                owners.Clear();
-                for (var index = 0; index < count; index++)
-                {
-                    var slot = entries + (ulong)((long)index * profile.EntryStride + profile.EntryPointerOffset);
-                    if (!unitReferences.TryGetValue(slot, out var unit)) continue;
-                    if (!distinctUnits.Add(unit)) continue;
-                    if (units.TryGetValue(unit, out var owner)) owners.Add(owner);
-                }
-                if (distinctUnits.Count < minimumDistinctUnits) continue;
-                candidates.Add((chunkBase + (ulong)offset, distinctUnits.Count, owners.Count, count, entries));
-            }
-        }
-
-        if (candidates.Count == 0)
-            throw new InvalidOperationException("유닛 풀 구조를 찾지 못했습니다(대전 중이 아닐 수 있습니다).");
-
-        // 겹침 청크 때문에 같은 구조체가 두 번 잡히므로 주소로 중복을 없앤다.
-        // 같은 배열을 가리키는 구조체는 하나로 묶고(유닛을 가장 많이 설명하되 개수가 가장 작은 것),
-        // 서로 다른 배열끼리만 모호성을 따진다.
-        var byArray = candidates
-            .DistinctBy(x => x.Address)
-            .GroupBy(x => x.Entries)
-            .Select(group => group.OrderByDescending(x => x.Hits).ThenBy(x => x.Count).First())
-            .OrderByDescending(x => x.Owners).ThenByDescending(x => x.Hits)
-            .ToList();
-
-        // 8바이트씩 훑다 보면 진짜 구조체 주변의 어긋난 위치도 그럴듯한 (개수, 배열) 쌍을 만든다.
-        // 같은 유닛 집합을 담는 후보 중에서는 슬롯이 가장 적은 것이 실제 풀이며,
-        // 마지막으로 배열을 끝까지 읽어 성한 포인터만 들어 있는지 확인하고 채택한다.
-        foreach (var candidate in byArray.OrderByDescending(x => x.Owners)
-                     .ThenByDescending(x => x.Hits).ThenBy(x => x.Count))
-        {
-            token.ThrowIfCancellationRequested();
-            var slots = memory.ReadAvailable(candidate.Entries, candidate.Count * profile.EntryStride);
-            if (slots.Length < candidate.Count * profile.EntryStride) continue;
+            distinctUnits.Clear();
+            owners.Clear();
             var sound = true;
             for (var index = 0; index < candidate.Count && sound; index++)
             {
-                var value = BitConverter.ToUInt64(slots, index * profile.EntryStride + profile.EntryPointerOffset);
-                if (value != 0 && !ReadOnlyProcessMemory.IsPlausibleUserAddress(value)) sound = false;
+                var value = BitConverter.ToUInt64(bytes, index * profile.EntryStride + profile.EntryPointerOffset);
+                if (value == 0) continue;
+                if (!ReadOnlyProcessMemory.IsPlausibleUserAddress(value)) { sound = false; break; }
+                if (!units.TryGetValue(value, out var owner) || !distinctUnits.Add(value)) continue;
+                owners.Add(owner);
             }
-            if (sound) return candidate.Address;
+            // 배열에 깨진 포인터가 섞여 있으면 풀이 아니다(진짜 풀은 끝까지 성한 포인터만 담는다).
+            if (!sound || distinctUnits.Count < minimumDistinctUnits) continue;
+            candidates.Add((candidate.Address, distinctUnits.Count, owners.Count, candidate.Count, candidate.Entries));
         }
 
-        var top = string.Join(" / ", byArray.Take(3).Select(x => $"소유자{x.Owners}·유닛{x.Hits}·슬롯{x.Count}"));
-        throw new InvalidOperationException($"풀 후보 {byArray.Count}개가 모두 검증에 실패했습니다 (상위: {top}).");
+        if (candidates.Count == 0)
+            throw new PoolNotReadyException("대전 준비 중입니다(유닛 풀이 아직 만들어지지 않았습니다).");
+
+        // 8바이트씩 훑다 보면 진짜 구조체 주변의 어긋난 위치도 그럴듯한 (개수, 배열) 쌍을 만든다.
+        // 같은 유닛 집합을 담는 후보 중에서는 슬롯이 가장 적은 것이 실제 풀이다.
+        var ranked = candidates
+            .GroupBy(x => x.Entries)
+            .Select(group => group.OrderByDescending(x => x.Hits).ThenBy(x => x.Count).First())
+            .OrderByDescending(x => x.Owners).ThenByDescending(x => x.Hits).ThenBy(x => x.Count)
+            .ToList();
+
+        if (ranked.Count > 1 && ranked[1].Owners == ranked[0].Owners && ranked[1].Hits == ranked[0].Hits)
+        {
+            var top = string.Join(" / ", ranked.Take(3).Select(x => $"소유자{x.Owners}·유닛{x.Hits}·슬롯{x.Count}"));
+            throw new InvalidOperationException($"구분되지 않는 유닛 배열이 {ranked.Count}개여서 프로필을 차단했습니다 (상위: {top}).");
+        }
+        return ranked[0].Address;
     }
 
-    /// <summary>배열에서 "null이거나 그럴듯한 객체 포인터"가 이어지는 선두 길이.</summary>
+    private readonly record struct PoolStruct(ulong Address, int Count, ulong Entries);
 
     /// <summary>
     /// 모듈 이미지를 조각내어 한 버퍼로 읽는다(단일 읽기 상한보다 이미지가 클 수 있다).
@@ -254,3 +286,9 @@ internal static class StructuralUnitPoolScanner
     }
 
 }
+
+/// <summary>
+/// 대전 준비/로딩 중이라 유닛이나 풀이 아직 없는 상태.
+/// 읽기 오류가 아니라 대기 상태로 표시해야 한다.
+/// </summary>
+internal sealed class PoolNotReadyException(string message) : InvalidOperationException(message);
