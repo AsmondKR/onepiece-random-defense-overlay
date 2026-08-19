@@ -125,6 +125,7 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
                 ProfileSource = loaded.Source,
                 ResolvedListAddress = $"0x{listAddress:X}",
                 ObservedObjects = snapshot.OwnedObjects + (adoptedGrowth ? 1 : 0),
+                ForeignObjects = snapshot.ForeignObjects,
                 MappedObjects = mapped.KnownCount + mapped.CatalogNamedCount,
                 UnknownObjects = mapped.UnknownCount,
                 UnknownRawcodes = mapped.UnknownRawcodes,
@@ -270,6 +271,7 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
 
         var counts = new Dictionary<uint, int>();
         var neutralGrowth = new Dictionary<uint, int>();
+        var foreignObjects = 0;
         var seenPointers = new HashSet<ulong>();
         var duplicatePointers = 0;
         var ownedObjects = 0;
@@ -296,6 +298,7 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
             var ownerAddress = FollowObjectFieldPath(memory, unit, profile.OwnerPointerOffsets, profile.OwnerOffset);
             var owner = memory.ReadByte(ownerAddress);
             var neutral = owner == profile.NeutralPlayerSlot;
+            if (owner != localPlayerSlot) foreignObjects++;
             if (owner != localPlayerSlot && !neutral) continue;
             var rawcodeAddress = FollowObjectFieldPath(memory, unit, profile.RawcodePointerOffsets, profile.RawcodeOffset);
             var rawcode = memory.ReadUInt32(rawcodeAddress);
@@ -315,7 +318,8 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
         var entriesAfter = profile.EntriesAreInline ? entriesAddress : memory.ReadUInt64(entriesAddress);
         if (countAfter != countBefore || entriesAfter != entriesBefore)
             throw new SnapshotChangedException();
-        return new MemoryUnitSnapshot(countBefore, ownedObjects, duplicatePointers, counts, neutralGrowth);
+        return new MemoryUnitSnapshot(countBefore, ownedObjects, duplicatePointers, counts, neutralGrowth,
+            foreignObjects);
     }
 
     private static ulong FollowObjectFieldPath(ReadOnlyProcessMemory memory, ulong objectAddress,
@@ -385,7 +389,7 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
     private sealed record LocatorCacheKey(int ProcessId, long Started, ulong ModuleBase, string ProfileId,
         int Revision, long ProfileGeneration);
     private sealed record MemoryUnitSnapshot(int ListCount, int OwnedObjects, int DuplicatePointers,
-        Dictionary<uint, int> RawcodeCounts, Dictionary<uint, int> NeutralGrowthCounts);
+        Dictionary<uint, int> RawcodeCounts, Dictionary<uint, int> NeutralGrowthCounts, int ForeignObjects);
     private sealed class SnapshotChangedException : InvalidOperationException;
 }
 

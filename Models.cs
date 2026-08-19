@@ -219,6 +219,8 @@ public sealed class RecognitionDiagnostics
     public int ObservedObjects { get; init; }
     public int MappedObjects { get; init; }
     public int UnknownObjects { get; init; }
+    /// <summary>풀에 있는 다른 소유자(적·중립·도감존)의 유닛 수. 패배 판정에 쓴다.</summary>
+    public int ForeignObjects { get; init; }
     public List<string> UnknownRawcodes { get; init; } = [];
     public string Detail { get; init; } = "";
 

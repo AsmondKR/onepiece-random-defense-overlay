@@ -35,6 +35,7 @@ public partial class MainWindow : Window
     private CompletedTopUnitTracker _completedTopUnits = null!;
     private readonly LiveVerificationRecorder _liveVerification = new();
     private readonly TelemetryUploader _telemetry = new();
+    private readonly MatchOutcomeDetector _outcome = new();
     private DateTimeOffset _telemetrySessionStart;
     private List<string> _telemetryLastTop = [];
     private string _lastWarcraftVersion = "";
@@ -1311,6 +1312,7 @@ public partial class MainWindow : Window
                 if (RecognitionPolicy.IsConfirmedOutOfGame(result))
                 {
                     SendMatchTelemetry(); // _automatic/_completedTopUnits 리셋 전에
+                    _outcome.Reset();
                     _liveSessionActive = false;
                     _autoStartApplied = false;
                     _completedTopUnits.Reset();
@@ -1322,6 +1324,8 @@ public partial class MainWindow : Window
                 _automaticStale = _automatic.Count > 0;
                 _automaticDisconnected = !RecognitionPolicy.MayUseLastGoodForRecommendations(result.State);
             }
+            if (result.ShouldReplaceInventory || result.State == RecognitionState.Waiting)
+                _outcome.Observe(result.Diagnostics.ObservedObjects, result.Diagnostics.ForeignObjects);
             _liveVerification.Observe(result);
             UpdateLiveVerifyUi();
             RecognitionStatus.Text = KoreanLabels.RemoveLatin(result.Status);
@@ -1492,7 +1496,8 @@ public partial class MainWindow : Window
                 "2.314", string.IsNullOrEmpty(_lastWarcraftVersion) ? "unknown" : _lastWarcraftVersion,
                 _settings.GoalUnitId, _settings.NavigationMode, _settings.GoroseiMode,
                 "auto", hand, completed, _telemetryLastTop,
-                _telemetrySessionStart, DateTimeOffset.UtcNow, hand.Sum(x => x.Count));
+                _telemetrySessionStart, DateTimeOffset.UtcNow, hand.Sum(x => x.Count),
+                _outcome.Outcome, _outcome.OutcomeSource);
             _ = _telemetry.EnqueueAndFlushAsync(record);
         }
         catch { /* fail-silent */ }

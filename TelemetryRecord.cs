@@ -43,7 +43,8 @@ public static class MatchTelemetryRecorder
         string warcraftVersion, string goalUnitId, string navigationMode, string goroseiMode,
         string buildVariant, IReadOnlyList<InventoryEntry> finalHand,
         IReadOnlyList<string> completedTops, IReadOnlyList<string> topRecommendations,
-        DateTimeOffset sessionStartedAt, DateTimeOffset sessionEndedAt, int lastObservedUnitCount) => new()
+        DateTimeOffset sessionStartedAt, DateTimeOffset sessionEndedAt, int lastObservedUnitCount,
+        string outcome = "unknown", string outcomeSource = "none") => new()
     {
         RecordId = Guid.NewGuid().ToString(),
         AnonId = anonId,
@@ -62,5 +63,7 @@ public static class MatchTelemetryRecorder
         SessionStartedAt = sessionStartedAt.UtcDateTime.ToString("o"),
         SessionEndedAt = sessionEndedAt.UtcDateTime.ToString("o"),
         LastObservedUnitCount = lastObservedUnitCount,
+        Outcome = outcome,
+        OutcomeSource = outcomeSource,
     };
 }

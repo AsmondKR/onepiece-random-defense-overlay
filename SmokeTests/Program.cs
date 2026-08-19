@@ -1797,7 +1797,51 @@ Assert(TelemetryUploader.DefaultEndpoint.StartsWith("https://") &&
     File.Delete(statsPath);
 }
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 333/333");
+// 패배 판정: 맵이 패배 시 그 플레이어의 모든 유닛을 RemoveUnit 한다(JASS 필터 mTN).
+// 따라서 "내 유닛이 있었는데 전멸했고 판은 계속 돌아간다"가 패배 신호다.
+{
+    var detector = new MatchOutcomeDetector();
+    Assert(detector.Outcome == "unknown", "패배 판정: 초기 상태는 unknown");
+
+    detector.Observe(localUnits: 0, foreignUnits: 300);
+    Assert(detector.Outcome == "unknown", "패배 판정: 뽑기 전 0개는 패배가 아님");
+
+    detector.Observe(localUnits: 6, foreignUnits: 300);
+    detector.Observe(localUnits: 9, foreignUnits: 300);
+    Assert(detector.Outcome == "unknown", "패배 판정: 플레이 중에는 unknown");
+
+    // 기본값은 연속 2회 관측을 요구한다(스캔 경합으로 한 틱 비는 경우 대비).
+    detector.Observe(localUnits: 0, foreignUnits: 300);
+    Assert(detector.Outcome == "unknown", "패배 판정: 전멸 1회 관측만으로는 확정하지 않음");
+    detector.Observe(localUnits: 0, foreignUnits: 300);
+    Assert(detector.Outcome == "fail", "패배 판정: 유닛 전멸 + 판 진행 중이면 패배");
+
+    detector.Observe(localUnits: 5, foreignUnits: 300);
+    Assert(detector.Outcome == "fail", "패배 판정: 한 번 확정되면 세션 내내 유지");
+
+    // 판 자체가 끝난 경우(풀 전체가 사라짐)는 패배로 단정하지 않는다.
+    var ended = new MatchOutcomeDetector();
+    ended.Observe(localUnits: 8, foreignUnits: 300);
+    ended.Observe(localUnits: 0, foreignUnits: 0);
+    Assert(ended.Outcome == "unknown", "패배 판정: 풀 전체 소멸(게임 종료·나가기)은 판정 보류");
+
+    // 순간적인 0은 무시한다(스캔 경합·리롤 사이 등).
+    // 0이 연속이 아니면(중간에 다시 잡히면) 카운터가 초기화된다.
+    var blip = new MatchOutcomeDetector();
+    blip.Observe(localUnits: 7, foreignUnits: 300);
+    blip.Observe(localUnits: 0, foreignUnits: 300);
+    blip.Observe(localUnits: 7, foreignUnits: 300);
+    blip.Observe(localUnits: 0, foreignUnits: 300);
+    Assert(blip.Outcome == "unknown", "패배 판정: 끊긴 0 관측은 누적되지 않음");
+    blip.Observe(localUnits: 0, foreignUnits: 300);
+    Assert(blip.Outcome == "fail" && blip.OutcomeSource == "unitWipe",
+        "패배 판정: 연속 관측으로 확정하고 근거를 unitWipe로 표기");
+
+    ended.Reset();
+    Assert(ended.Outcome == "unknown", "패배 판정: 세션 경계에서 초기화");
+}
+
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 343/343");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,
