@@ -1870,6 +1870,35 @@ Assert(TelemetryUploader.DefaultEndpoint.StartsWith("https://") &&
         "업데이트 정책: 개발 PC는 게임 중에도 즉시 교체");
 }
 
+// 드릴다운 재현 진단: 특정 패·목표로 조합 트리와 남은 단계를 그대로 출력한다.
+if (Environment.GetEnvironmentVariable("ORAND_DIAG") == "drill")
+{
+    // 패는 ORAND_DIAG_HAND에 "rawcode:Y00h*1,rawcode:I10h*2" 형식으로 넘긴다.
+    // 목표는 ORAND_DIAG_GOAL(기본 아마츠키 토키). 유저가 본 화면을 그대로 재현하기 위한 도구.
+    var handSpec = Environment.GetEnvironmentVariable("ORAND_DIAG_HAND") ?? "rawcode:Y00h*1";
+    var diagInv = handSpec.Split(',', StringSplitOptions.RemoveEmptyEntries)
+        .Select(part => part.Split('*', 2))
+        .Select(parts => new InventoryEntry
+        {
+            UnitId = parts[0].Trim(),
+            Count = parts.Length > 1 && int.TryParse(parts[1], out var count) ? count : 1
+        })
+        .ToList();
+    var diagGoal = Environment.GetEnvironmentVariable("ORAND_DIAG_GOAL") ?? "rawcode:780h";
+    var diagRec = engine.RecommendNearestCrafts(diagGoal, diagInv, 1)[0];
+    Console.WriteLine($"[진단] 목표 {diagRec.Route.Name} 완성률 {diagRec.RecipeProgress.CompletionRatio:P0}");
+    foreach (var step in diagRec.RemainingCraftSteps)
+        Console.WriteLine($"[진단] 단계 {step.Name}[{step.Tier}] 필요{step.RequiredCount} 보유{step.OwnedCount} " +
+                          $"부족{step.MissingCount} 재료=[{string.Join(",", step.Ingredients.Select(x => x.Name))}]");
+    void Dump(RecipeTreeNode node, int depth)
+    {
+        Console.WriteLine($"[트리] {new string(' ', depth * 2)}{node.Name}[{node.Tier}] 필요{node.RequiredCount} 보유{node.OwnedCount}");
+        foreach (var child in node.Children) Dump(child, depth + 1);
+    }
+    if (diagRec.RecipeTree is not null) Dump(diagRec.RecipeTree, 0);
+    return;
+}
+
 Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 351/351");
 return;
 
