@@ -51,7 +51,11 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
                     "이 빌드와 정확히 일치하는 프로필만 사용할 수 있습니다.", baseDiagnostics);
 
             baseDiagnostics = WithProfile(baseDiagnostics, profile);
-            if (!profile.Enabled || !profile.Verified)
+            // 검증 세션(ORAND_VERIFY_DIR 지정) 동안에만 미검증 프로필을 임시 활성한다.
+            // 실전 1판 검증을 통과해야 verified=true로 핀되므로, 일반 실행에서는 fail-closed 유지.
+            var verificationSession = !string.IsNullOrWhiteSpace(
+                Environment.GetEnvironmentVariable("ORAND_VERIFY_DIR"));
+            if (!profile.Enabled || (!profile.Verified && !verificationSession))
                 return Failure(RecognitionState.UnverifiedProfile, $"프로필 미검증 · {version} · 기존 패 유지",
                     "enabled와 verified가 모두 true인 검증 프로필이 필요합니다.", baseDiagnostics);
 
@@ -143,7 +147,8 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
             {
                 Entries = mapped.Entries,
                 State = RecognitionState.Ready,
-                Status = $"워크 메모리 {mapped.Entries.Sum(x => x.Count)}장{suffix} · {DateTime.Now:HH:mm:ss}",
+                Status = $"워크 메모리 {mapped.Entries.Sum(x => x.Count)}장{suffix}" +
+                         (profile.Verified ? "" : " · 검증 세션(임시 활성)") + $" · {DateTime.Now:HH:mm:ss}",
                 Diagnostics = diagnostics
             };
         }
