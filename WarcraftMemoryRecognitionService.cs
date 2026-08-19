@@ -140,11 +140,20 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
                 return new RecognitionResult
                 {
                     State = RecognitionState.Waiting,
-                    Status = "로컬 패 0개 감지 · 기존 패 유지",
+                    Status = "보유 패 없음 · 대기 중",
                     Diagnostics = diagnostics
                 };
             var catalogMatches = mapped.KnownCount + mapped.CatalogNamedCount;
-            var catalogRatio = snapshot.OwnedObjects == 0 ? 1 : (double)catalogMatches / snapshot.OwnedObjects;
+            // 뽑기 전에는 로컬 소유 객체가 맵 컨트롤러·헬퍼뿐이라 카드가 0장이다.
+            // 이것은 읽기 오류가 아니라 아직 패가 없는 상태다.
+            if (catalogMatches == 0)
+                return new RecognitionResult
+                {
+                    State = RecognitionState.Waiting,
+                    Status = "보유 패 없음 · 대기 중",
+                    Diagnostics = diagnostics
+                };
+            var catalogRatio = (double)catalogMatches / Math.Max(1, diagnostics.ObservedObjects);
             if (catalogRatio < profile.MinimumCatalogMatchRatio)
                 return new RecognitionResult
                 {
