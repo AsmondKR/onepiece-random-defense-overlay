@@ -12,7 +12,7 @@ namespace OrandOverlay;
 /// </summary>
 public sealed class TelemetryUploader
 {
-    public const string DefaultEndpoint = "TASK5_REPLACES_WITH_DEPLOYED_URL"; // Task 5에서 실제 workers.dev URL로 교체
+    public const string DefaultEndpoint = "https://orand-telemetry.epic42121.workers.dev/v1/records"; 
     private const int MaxQueued = 50;
     private const int MaxAgeDays = 30;
     private const int MaxRejects = 3;

@@ -1758,7 +1758,12 @@ Assert(screenSourceMigration.Changed &&
     Assert(again.TelemetryAnonId == ensured.TelemetryAnonId, "텔레메트리 설정: 이미 있으면 유지");
 }
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 321/321");
+Assert(TelemetryUploader.DefaultEndpoint.StartsWith("https://") &&
+       TelemetryUploader.DefaultEndpoint.EndsWith("/v1/records") &&
+       !TelemetryUploader.DefaultEndpoint.Contains("tmo.gg"),
+    "텔레메트리: 기본 엔드포인트는 자체 Worker(HTTPS)이며 티모지지가 아님");
+
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 322/322");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,
