@@ -1724,7 +1724,30 @@ Assert(screenSourceMigration.Changed &&
         "텔레메트리: 개인정보 필드 자체가 없음");
 }
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 314/314");
+// 텔레메트리 업로더: fail-silent 큐. 서버 없이도 게임에 지장이 없어야 한다.
+{
+    var queueDir = Path.Combine(Path.GetTempPath(), "orand-telemetry-" + Guid.NewGuid().ToString("N"));
+    // 닫힌 로컬 포트 → 즉시 연결 실패 → 큐에 남아야 한다.
+    var uploader = new TelemetryUploader("http://127.0.0.1:9/v1/records", queueDir);
+    var record = MatchTelemetryRecorder.Build(
+        "22222222-2222-2222-2222-222222222222", "0.6.0", "2.314", "2.0.4.23745",
+        "yamato_transcendent", "PathOfKings.BountyHunter", "None", "auto",
+        new List<InventoryEntry> { new() { UnitId = "luffy_common", Count = 1 } },
+        new List<string>(), new List<string> { "yamato_transcendent" },
+        DateTimeOffset.UtcNow.AddMinutes(-30), DateTimeOffset.UtcNow, 1);
+    uploader.EnqueueAndFlushAsync(record).GetAwaiter().GetResult();
+    Assert(uploader.PendingCount == 1, "텔레메트리 업로더: 전송 실패 시 큐에 보관");
+    uploader.FlushPendingAsync().GetAwaiter().GetResult();
+    Assert(uploader.PendingCount == 1, "텔레메트리 업로더: 재시도 실패해도 레코드 유지(네트워크 오류)");
+
+    for (var i = 0; i < 55; i++)
+        File.WriteAllText(Path.Combine(queueDir, $"{Guid.NewGuid()}.json"), "{}");
+    uploader.TrimQueue();
+    Assert(Directory.GetFiles(queueDir, "*.json").Length <= 50, "텔레메트리 업로더: 큐 50판 상한");
+    Directory.Delete(queueDir, true);
+}
+
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 317/317");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,
