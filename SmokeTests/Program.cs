@@ -1692,7 +1692,39 @@ Assert(screenSourceMigration.Changed &&
     Directory.Delete(verifyDir, true);
 }
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 308/308");
+// 텔레메트리 레코드: 판 종료 시 서버로 보내는 익명 플레이 기록.
+{
+    var record = MatchTelemetryRecorder.Build(
+        anonId: "11111111-1111-1111-1111-111111111111",
+        appVersion: "0.6.0", mapVersion: "2.314", warcraftVersion: "2.0.4.23745",
+        goalUnitId: "yamato_transcendent", navigationMode: "PathOfKings.BountyHunter",
+        goroseiMode: "Nasjuro", buildVariant: "auto",
+        finalHand: new List<InventoryEntry>
+        {
+            new() { UnitId = "luffy_common", Count = 2 },
+            new() { UnitId = "rawcode:200h", Count = 1 },
+        },
+        completedTops: new List<string> { "yamato_transcendent" },
+        topRecommendations: new List<string> { "yamato_transcendent", "rawcode:E90H" },
+        sessionStartedAt: new DateTimeOffset(2026, 8, 19, 10, 0, 0, TimeSpan.Zero),
+        sessionEndedAt: new DateTimeOffset(2026, 8, 19, 10, 40, 0, TimeSpan.Zero),
+        lastObservedUnitCount: 3);
+    Assert(record.SchemaVersion == 1 && record.Outcome == "unknown" && record.OutcomeSource == "none",
+        "텔레메트리: v1 레코드는 라벨 unknown/none으로 생성");
+    Assert(record.RecordId != Guid.Empty.ToString() && record.AnonId.StartsWith("1111"),
+        "텔레메트리: recordId 생성·anonId 보존");
+    Assert(record.FinalHand.Count == 2 && record.FinalHand[0].Count == 2,
+        "텔레메트리: 최종 패 rawcode+수량 보존");
+    var telemetryJson = System.Text.Json.JsonSerializer.Serialize(record);
+    Assert(telemetryJson.Contains("\"schemaVersion\":1") && telemetryJson.Contains("\"outcome\":\"unknown\""),
+        "텔레메트리: camelCase JSON 직렬화");
+    Assert(System.Text.Encoding.UTF8.GetByteCount(telemetryJson) < 4096,
+        "텔레메트리: 일반 레코드가 4KB 상한 안");
+    Assert(!telemetryJson.Contains("nickname") && !telemetryJson.Contains("battletag"),
+        "텔레메트리: 개인정보 필드 자체가 없음");
+}
+
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 314/314");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,
