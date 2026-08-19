@@ -2,20 +2,18 @@
   {
     "profileSchemaVersion": 1,
     "profileId": "war3-2.0.4.23745",
-    "profileRevision": 2,
+    "profileRevision": 3,
     "fileVersion": "2.0.4.23745",
     "moduleName": "Warcraft III.exe",
     "enabled": true,
     "verified": false,
     "sha256": "682C12552CA05E43C5FED2340EA132D3B06FE068E676DB7D1F5623D8D4633229",
-    "locatorKind": "SignatureRelative",
+    "locatorKind": "StructuralScan",
     "moduleOffset": 0,
-    "signature": "48 8B 05 ?? ?? ?? ?? 48 85 C0 74 ?? 48 8B 88 98 0B 00 00",
-    "relativeDisplacementOffset": 3,
-    "instructionLength": 7,
-    "pointerOffsets": [
-      0
-    ],
+    "signature": "",
+    "relativeDisplacementOffset": 0,
+    "instructionLength": 0,
+    "pointerOffsets": [],
     "countOffset": 2968,
     "entriesPointerOffset": 2976,
     "entriesAreInline": false,
@@ -27,8 +25,14 @@
     "rawcodePointerOffsets": [],
     "rawcodeOffset": 376,
     "localPlayerSlot": 0,
-    "maximumUnits": 5000,
+    "maximumUnits": 8191,
     "requireNonEmptyInventory": true,
-    "minimumCatalogMatchRatio": 0.6
+    "minimumCatalogMatchRatio": 0.6,
+    "unitClassName": ".?AVCUnit@@",
+    "minimumUnitObjects": 8,
+    "localPlayerRootOffsetA": 45455716,
+    "localPlayerRootOffsetB": 45972424,
+    "localPlayerRootXor": "363ABBFD3DEFAEC9",
+    "localPlayerIdOffset": 9828
   }
 ]

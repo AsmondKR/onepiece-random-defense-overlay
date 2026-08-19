@@ -622,9 +622,15 @@ Assert(pinnedProfile.RawcodeOffset == 0x178 && pinnedProfile.OwnerOffset == 0x1C
     "실측 CUnit rawcode+0x178 / owner+0x1C0 오프셋 유지");
 Assert(pinnedProfile.EntriesContainPointers && !pinnedProfile.EntriesAreInline && pinnedProfile.EntryStride == 8,
     "실측 8바이트 포인터 배열 순회 형태 유지");
-Assert(pinnedProfile.MaximumUnits == 5000 && pinnedProfile.RequireNonEmptyInventory &&
+// maximumUnits는 실측 풀 상한(0x1FFF)까지 허용한다 — 그 위는 검증 범위 밖으로 보고 차단.
+Assert(pinnedProfile.MaximumUnits == 0x1FFF && pinnedProfile.RequireNonEmptyInventory &&
        Math.Abs(pinnedProfile.MinimumCatalogMatchRatio - 0.6) < 1e-9,
     "핀된 프로필이 fail-closed 가드값을 그대로 유지");
+Assert(pinnedProfile.LocatorKind == MemoryLocatorKind.StructuralScan &&
+       pinnedProfile.UnitClassName == ".?AVCUnit@@" && pinnedProfile.PointerOffsets.Length == 0,
+    "핀된 프로필이 RTTI 기반 구조 스캔으로 루트를 찾음(추정 AOB 시그니처 없음)");
+Assert(pinnedProfile.HasLocalPlayerAnchor && pinnedProfile.LocalPlayerIdOffset == 0x2664,
+    "핀된 프로필이 로컬 플레이어 슬롯을 실측 앵커로 읽음");
 var installedWarcraftPath = Path.Combine(
     Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
     "Warcraft III", "_retail_", "x86_64", "Warcraft III.exe");
@@ -1668,7 +1674,7 @@ Assert(screenSourceMigration.Changed &&
     Directory.Delete(verifyDir, true);
 }
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 301/301");
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 303/303");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,

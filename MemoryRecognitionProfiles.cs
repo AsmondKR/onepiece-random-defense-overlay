@@ -8,7 +8,14 @@ namespace OrandOverlay;
 public enum MemoryLocatorKind
 {
     SignatureRelative,
-    ModuleOffset
+    ModuleOffset,
+    /// <summary>
+    /// 런타임 구조 스캔. RTTI로 확정한 유닛 클래스 vftable을 진리값으로 삼아,
+    /// countOffset/entriesPointerOffset 규격에 맞고 실제 유닛 객체를 담고 있는 구조체를 찾는다.
+    /// 고정 RVA·바이트 시그니처에 의존하지 않으므로 패치 후에도 자가 복구된다.
+    /// 후보가 0개거나 2개 이상이면 fail-closed.
+    /// </summary>
+    StructuralScan
 }
 
 public sealed class MemoryProfile
@@ -48,6 +55,28 @@ public sealed class MemoryProfile
     public int[] RawcodePointerOffsets { get; init; } = [];
     public int RawcodeOffset { get; init; }
     public byte LocalPlayerSlot { get; init; }
+
+    /// <summary>구조 스캔이 유닛 객체를 판별할 MSVC RTTI 클래스명.</summary>
+    public string UnitClassName { get; init; } = ".?AVCUnit@@";
+
+    /// <summary>구조 스캔 후보 1개를 인정하기 위한 최소 유닛 객체 수.</summary>
+    public int MinimumUnitObjects { get; init; } = 8;
+
+    /// <summary>
+    /// 로컬 플레이어 슬롯을 실측으로 읽기 위한 모듈 상대 앵커(선택).
+    /// root = [base+A] ^ xor ^ [base+B], slot = uint16 at root + idOffset.
+    /// 셋 중 하나라도 0이면 localPlayerSlot 고정값을 사용한다.
+    /// </summary>
+    public long LocalPlayerRootOffsetA { get; init; }
+    public long LocalPlayerRootOffsetB { get; init; }
+    [JsonPropertyName("localPlayerRootXor")]
+    public string LocalPlayerRootXorHex { get; init; } = "";
+    public int LocalPlayerIdOffset { get; init; }
+
+    [JsonIgnore]
+    public bool HasLocalPlayerAnchor =>
+        LocalPlayerRootOffsetA > 0 && LocalPlayerRootOffsetB > 0 && LocalPlayerRootXorHex.Length == 16;
+
     public int MaximumUnits { get; init; } = 5000;
     public bool RequireNonEmptyInventory { get; init; } = true;
     public double MinimumCatalogMatchRatio { get; init; } = 0.6;
@@ -69,6 +98,16 @@ public static class MemoryProfileValidator
         if (profile.LocatorKind == MemoryLocatorKind.ModuleOffset)
         {
             if (profile.ModuleOffset < 0) errors.Add("moduleOffset은 음수일 수 없습니다");
+        }
+        else if (profile.LocatorKind == MemoryLocatorKind.StructuralScan)
+        {
+            if (!profile.UnitClassName.StartsWith(".?AV", StringComparison.Ordinal))
+                errors.Add("unitClassName은 MSVC RTTI 클래스명(.?AV…)이어야 합니다");
+            if (profile.MinimumUnitObjects is < 1 or > 10000)
+                errors.Add("minimumUnitObjects는 1~10000이어야 합니다");
+            if (profile.LocalPlayerRootXorHex.Length is not (0 or 16) ||
+                profile.LocalPlayerRootXorHex.Any(x => !Uri.IsHexDigit(x)))
+                errors.Add("localPlayerRootXor는 비어 있거나 16자리 hex여야 합니다");
         }
         else
         {

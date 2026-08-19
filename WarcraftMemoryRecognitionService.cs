@@ -81,18 +81,22 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
 
             using var memory = ReadOnlyProcessMemory.Open(process.Id);
             var processStarted = process.StartTime.ToUniversalTime().Ticks;
+            var moduleBase = (ulong)module.BaseAddress.ToInt64();
+            // 로컬 슬롯은 실측 앵커가 있으면 실제 값을, 없으면 프로필 고정값을 쓴다.
+            var localSlot = StructuralUnitPoolScanner.TryReadLocalPlayerSlot(memory, moduleBase, profile)
+                            ?? profile.LocalPlayerSlot;
             var locatorAddress = GetLocatorAddress(memory, process, processStarted, module, profile, loaded.Generation, token);
             var listAddress = FollowPointerPath(memory, locatorAddress, profile.PointerOffsets);
             MemoryUnitSnapshot snapshot;
             try
             {
-                snapshot = ReadConsistentSnapshot(memory, listAddress, profile, token);
+                snapshot = ReadConsistentSnapshot(memory, listAddress, profile, localSlot, token);
             }
             catch (SnapshotChangedException)
             {
                 token.ThrowIfCancellationRequested();
                 listAddress = FollowPointerPath(memory, locatorAddress, profile.PointerOffsets);
-                snapshot = ReadConsistentSnapshot(memory, listAddress, profile, token);
+                snapshot = ReadConsistentSnapshot(memory, listAddress, profile, localSlot, token);
             }
 
             var mapped = _unitMap.Map(snapshot.RawcodeCounts);
@@ -186,6 +190,9 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
             return AddressMath.Add(moduleBase, profile.ModuleOffset);
         }
 
+        if (profile.LocatorKind == MemoryLocatorKind.StructuralScan)
+            return StructuralUnitPoolScanner.Resolve(memory, module, profile, token);
+
         var moduleSize = module.ModuleMemorySize;
         if (moduleSize <= 0 || moduleSize > 512 * 1024 * 1024)
             throw new InvalidDataException($"비정상 모듈 크기: {moduleSize}");
@@ -215,7 +222,7 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
     }
 
     private static MemoryUnitSnapshot ReadConsistentSnapshot(ReadOnlyProcessMemory memory, ulong listAddress,
-        MemoryProfile profile, CancellationToken token)
+        MemoryProfile profile, byte localPlayerSlot, CancellationToken token)
     {
         var countAddress = AddressMath.Add(listAddress, profile.CountOffset);
         var entriesAddress = AddressMath.Add(listAddress, profile.EntriesPointerOffset);
@@ -252,7 +259,7 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
 
             var ownerAddress = FollowObjectFieldPath(memory, unit, profile.OwnerPointerOffsets, profile.OwnerOffset);
             var owner = memory.ReadByte(ownerAddress);
-            if (owner != profile.LocalPlayerSlot) continue;
+            if (owner != localPlayerSlot) continue;
             var rawcodeAddress = FollowObjectFieldPath(memory, unit, profile.RawcodePointerOffsets, profile.RawcodeOffset);
             var rawcode = memory.ReadUInt32(rawcodeAddress);
             ownedObjects++;
@@ -406,6 +413,46 @@ internal sealed class ReadOnlyProcessMemory : IDisposable
         if (actual == count) return bytes;
         Array.Resize(ref bytes, (int)actual);
         return bytes;
+    }
+
+    /// <summary>커밋된 읽기 가능 영역 전부(구조 스캔용).</summary>
+    public IEnumerable<MemoryRegion> ReadableRegions()
+    {
+        ulong address = 0x10000;
+        while (address < 0x00007FFFFFFFFFFF)
+        {
+            if (VirtualQueryEx(_handle, (nint)address, out var info, (nuint)Marshal.SizeOf<MEMORY_BASIC_INFORMATION>()) == 0)
+                yield break;
+            var baseAddress = (ulong)info.BaseAddress.ToInt64();
+            var size = info.RegionSize.ToUInt64();
+            if (size == 0) yield break;
+            if (info.State == 0x1000 && IsReadable(info.Protect) && IsPlausibleUserAddress(baseAddress))
+                yield return new MemoryRegion(baseAddress, size);
+            var next = baseAddress + size;
+            if (next <= address) yield break;
+            address = next;
+        }
+    }
+
+    /// <summary>
+    /// 영역을 겹침 있는 청크로 나눠 읽는다. 일부 페이지를 못 읽어도 영역 전체를 버리지 않는다.
+    /// 겹침은 구조체가 청크 경계에 걸려 누락되는 것을 막는다.
+    /// </summary>
+    public IEnumerable<(ulong Base, byte[] Buffer)> ReadChunks(IEnumerable<MemoryRegion> regions,
+        int chunkBytes = 4 * 1024 * 1024, int overlap = 0x2000)
+    {
+        foreach (var region in regions)
+        {
+            ulong position = 0;
+            while (position < region.Size)
+            {
+                var length = (int)Math.Min((ulong)chunkBytes, region.Size - position);
+                var address = region.BaseAddress + position;
+                var buffer = ReadAvailable(address, length);
+                if (buffer.Length >= 0x1000) yield return (address, buffer);
+                position += (ulong)Math.Max(length - overlap, 0x1000);
+            }
+        }
     }
 
     public IEnumerable<MemoryRegion> ReadablePrivateRegions()
