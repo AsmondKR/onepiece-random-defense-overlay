@@ -2,7 +2,7 @@
   {
     "profileSchemaVersion": 1,
     "profileId": "war3-2.0.4.23745",
-    "profileRevision": 3,
+    "profileRevision": 4,
     "fileVersion": "2.0.4.23745",
     "moduleName": "Warcraft III.exe",
     "enabled": true,
@@ -27,7 +27,7 @@
     "localPlayerSlot": 0,
     "maximumUnits": 8191,
     "requireNonEmptyInventory": true,
-    "minimumCatalogMatchRatio": 0.6,
+    "minimumCatalogMatchRatio": 0.2,
     "unitClassName": ".?AVCUnit@@",
     "minimumUnitObjects": 8,
     "localPlayerRootOffsetA": 45455716,

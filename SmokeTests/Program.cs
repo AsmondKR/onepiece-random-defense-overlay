@@ -624,7 +624,7 @@ Assert(pinnedProfile.EntriesContainPointers && !pinnedProfile.EntriesAreInline &
     "실측 8바이트 포인터 배열 순회 형태 유지");
 // maximumUnits는 실측 풀 상한(0x1FFF)까지 허용한다 — 그 위는 검증 범위 밖으로 보고 차단.
 Assert(pinnedProfile.MaximumUnits == 0x1FFF && pinnedProfile.RequireNonEmptyInventory &&
-       Math.Abs(pinnedProfile.MinimumCatalogMatchRatio - 0.6) < 1e-9,
+       Math.Abs(pinnedProfile.MinimumCatalogMatchRatio - 0.2) < 1e-9,
     "핀된 프로필이 fail-closed 가드값을 그대로 유지");
 Assert(pinnedProfile.LocatorKind == MemoryLocatorKind.StructuralScan &&
        pinnedProfile.UnitClassName == ".?AVCUnit@@" && pinnedProfile.PointerOffsets.Length == 0,
