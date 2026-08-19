@@ -17,6 +17,10 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
     // 이번 추천 패스에서 쓸 클리어 프로필. 마딜 목표는 보유 앵커(이미 짠 취향 유닛)와
     // 같이 쓰인 클리어만 재집계한 조건부 프로필일 수 있다.
     private GoalClearProfile? _activeClearProfile;
+    private LiveStats _liveStats = new();
+
+    /// <summary>자체 수집 통계의 게이트 통과 가중을 화면 순서 점수에 반영하도록 연결한다.</summary>
+    public void SetLiveStats(LiveStats liveStats) => _liveStats = liveStats;
     private string? _activeAnchorLabel;
 
     private const double CompletionWeight = 34;
@@ -819,7 +823,8 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
                 .Select(code => _activeClearProfile.SupportShare.GetValueOrDefault(code))
                 .DefaultIfEmpty()
                 .Max() * 100, MidpointRounding.AwayFromZero);
-        if (clearScore is not null) return clearScore.Value;
+        if (clearScore is not null)
+            return LiveStats.ApplyWeight(clearScore.Value, _liveStats.WeightFor(candidate.Id));
 
         IReadOnlyDictionary<string, int>? priorities = null;
         if (goal.Id.Equals("yamato_transcendent", StringComparison.OrdinalIgnoreCase) ||

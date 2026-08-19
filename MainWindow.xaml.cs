@@ -70,6 +70,7 @@ public partial class MainWindow : Window
                 Path.Combine(AppContext.BaseDirectory, "Data", "tmo-combine-hotkeys.json"));
             _engine = new RecommendationEngine(_catalog, _clearStats.HasData ? _clearStats : null,
                 _combineHotkeys);
+            _engine.SetLiveStats(_liveStats);
             _statsCalculator = new InventoryStatsCalculator(_catalog);
             _rareRerollAdvisor = new RareRerollAdvisor(_catalog);
             _greenBloodAdvisor = new GreenBloodAdvisor(_catalog);

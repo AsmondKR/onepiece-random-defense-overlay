@@ -1780,7 +1780,24 @@ Assert(TelemetryUploader.DefaultEndpoint.StartsWith("https://") &&
     File.Delete(statsPath);
 }
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 327/327");
+// 게이트 통과 가중치: 스냅샷 weights를 읽어 채용률 점수에 ±10% 상한으로 반영.
+{
+    var statsPath = Path.Combine(Path.GetTempPath(), "orand-live-weights-" + Guid.NewGuid().ToString("N") + ".json");
+    File.WriteAllText(statsPath,
+        "{\"schemaVersion\":1,\"generatedAt\":\"2026-08-19T13:00:00Z\",\"totalRecords\":50,\"labeledRecords\":40," +
+        "\"goals\":{},\"weights\":{\"bad_unit\":-0.1,\"good_unit\":0.07,\"overflow\":-0.5}}");
+    var live = LiveStats.Load(statsPath);
+    Assert(Math.Abs(live.WeightFor("bad_unit") + 0.1) < 1e-9, "가중치: 하향 값 파싱");
+    Assert(Math.Abs(live.WeightFor("good_unit") - 0.07) < 1e-9, "가중치: 상향 값 파싱");
+    Assert(Math.Abs(live.WeightFor("overflow") + 0.1) < 1e-9, "가중치: 스냅샷이 상한을 넘겨도 ±10%로 캡");
+    Assert(live.WeightFor("없는유닛") == 0, "가중치: 미등재 유닛은 0");
+    Assert(LiveStats.ApplyWeight(40, -0.1) == 36 && LiveStats.ApplyWeight(40, 0.1) == 44,
+        "가중치: 점수 반영은 ±10% 곱");
+    Assert(LiveStats.ApplyWeight(40, 0) == 40, "가중치: 0이면 점수 불변");
+    File.Delete(statsPath);
+}
+
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 333/333");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,
