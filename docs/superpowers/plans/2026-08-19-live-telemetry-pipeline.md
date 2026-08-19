@@ -35,7 +35,7 @@
 **Interfaces:**
 - Produces: `TelemetryRecord`(camelCase JSON DTO), `TelemetryHandEntry`, `MatchTelemetryRecorder.Build(...)` — Task 3이 호출, Task 4 Worker·Task 6 수집기가 같은 스키마를 파싱.
 
-- [ ] **Step 1: 실패하는 테스트 작성** — SmokeTests에 추가:
+- [x] **Step 1: 실패하는 테스트 작성** — SmokeTests에 추가:
 
 ```csharp
 // 텔레메트리 레코드: 판 종료 시 서버로 보내는 익명 플레이 기록.
@@ -71,9 +71,9 @@
 }
 ```
 
-- [ ] **Step 2: 실패 확인** — `dotnet run --project SmokeTests/OrandOverlay.SmokeTests.csproj -c Debug` → `MatchTelemetryRecorder` 미정의 컴파일 오류가 정상.
+- [x] **Step 2: 실패 확인** — `dotnet run --project SmokeTests/OrandOverlay.SmokeTests.csproj -c Debug` → `MatchTelemetryRecorder` 미정의 컴파일 오류가 정상.
 
-- [ ] **Step 3: 최소 구현** — `TelemetryRecord.cs`:
+- [x] **Step 3: 최소 구현** — `TelemetryRecord.cs`:
 
 ```csharp
 using System.Text.Json.Serialization;
@@ -144,9 +144,9 @@ public static class MatchTelemetryRecorder
 }
 ```
 
-- [ ] **Step 4: 통과 확인** — 스모크 전체 그린 + PASS 카운트 라벨 갱신.
+- [x] **Step 4: 통과 확인** — 스모크 전체 그린 + PASS 카운트 라벨 갱신.
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 git add TelemetryRecord.cs SmokeTests/Program.cs
@@ -165,7 +165,7 @@ git commit -m "텔레메트리 레코드 모델과 빌더 추가"
 - Consumes: `TelemetryRecord`(Task 1).
 - Produces: `TelemetryUploader(string? endpoint = null, string? queueDirectory = null)` — `Task EnqueueAndFlushAsync(TelemetryRecord record)`, `Task FlushPendingAsync()`, `void TrimQueue()`, `int PendingCount`, `const string DefaultEndpoint`. Task 3이 사용. 큐 파일: `{recordId}.json` + 거절 카운터 `{recordId}.json.retry`.
 
-- [ ] **Step 1: 실패하는 테스트 작성** — SmokeTests에 추가:
+- [x] **Step 1: 실패하는 테스트 작성** — SmokeTests에 추가:
 
 ```csharp
 // 텔레메트리 업로더: fail-silent 큐. 서버 없이도 게임에 지장이 없어야 한다.
@@ -192,9 +192,9 @@ git commit -m "텔레메트리 레코드 모델과 빌더 추가"
 }
 ```
 
-- [ ] **Step 2: 실패 확인** — 컴파일 실패(`TelemetryUploader` 미정의).
+- [x] **Step 2: 실패 확인** — 컴파일 실패(`TelemetryUploader` 미정의).
 
-- [ ] **Step 3: 최소 구현** — `TelemetryUploader.cs`:
+- [x] **Step 3: 최소 구현** — `TelemetryUploader.cs`:
 
 ```csharp
 using System.IO;
@@ -302,9 +302,9 @@ public sealed class TelemetryUploader
 }
 ```
 
-- [ ] **Step 4: 통과 확인** — 스모크 그린(카운트 라벨 갱신 포함).
+- [x] **Step 4: 통과 확인** — 스모크 그린(카운트 라벨 갱신 포함).
 
-- [ ] **Step 5: 커밋** — `git add TelemetryUploader.cs SmokeTests/Program.cs && git commit -m "텔레메트리 로컬 큐·업로더 추가"`
+- [x] **Step 5: 커밋** — `git add TelemetryUploader.cs SmokeTests/Program.cs && git commit -m "텔레메트리 로컬 큐·업로더 추가"`
 
 ---
 
@@ -322,7 +322,7 @@ public sealed class TelemetryUploader
 - Consumes: `MatchTelemetryRecorder.Build`, `TelemetryUploader`(Task 1·2), 기존 세션 경계 분기(`MainWindow.xaml.cs` `IsConfirmedOutOfGame(result)` — 1290행 부근), `_automatic`(현재 자동 인식 패), `_completedTopUnits`, `RefreshAll`의 추천 목록.
 - Produces: `AppSettings.TelemetryEnabled`(bool, 기본 true), `AppSettings.TelemetryAnonId`(string), `SettingsStore.EnsureTelemetryAnonId(AppSettings)`, `CompletedTopUnitTracker.CompletedUnitIds`(IReadOnlyCollection<string>).
 
-- [ ] **Step 1: 실패하는 테스트** — SmokeTests에 추가:
+- [x] **Step 1: 실패하는 테스트** — SmokeTests에 추가:
 
 ```csharp
 // 텔레메트리 설정: 기본 켬, 익명 ID는 최초 1회 생성.
@@ -337,9 +337,9 @@ public sealed class TelemetryUploader
 }
 ```
 
-- [ ] **Step 2: 실패 확인** — 컴파일 실패.
+- [x] **Step 2: 실패 확인** — 컴파일 실패.
 
-- [ ] **Step 3: 구현**
+- [x] **Step 3: 구현**
 
 `Models.cs` `AppSettings`(LastAttemptedUpdateTag 아래):
 
@@ -425,8 +425,8 @@ public sealed class TelemetryUploader
 ```
 
   (`buildVariant`는 AppSettings에 저장 필드가 없으면 `"auto"` 고정 — BuildVariants 선택 저장 필드가 있으면 그 값을 사용.)
-- [ ] **Step 4: 통과 확인** — 스모크 그린 + `Stop-Process OrandOverlay` 후 `dotnet build -c Release -p:BaseOutputPath=bin-verify/` 경고 0.
-- [ ] **Step 5: 커밋** — `git commit -m "판 종료 시 익명 플레이 통계 전송(기본 켬, 옵트아웃 가능)"`
+- [x] **Step 4: 통과 확인** — 스모크 그린 + `Stop-Process OrandOverlay` 후 `dotnet build -c Release -p:BaseOutputPath=bin-verify/` 경고 0.
+- [x] **Step 5: 커밋** — `git commit -m "판 종료 시 익명 플레이 통계 전송(기본 켬, 옵트아웃 가능)"`
 
 ---
 
@@ -438,7 +438,7 @@ public sealed class TelemetryUploader
 **Interfaces:**
 - Produces: `POST /v1/records`(익명 업로드, 204/400/429/507), `GET /v1/records?since=<rowid>&limit=<n>`(`Authorization: Bearer <COLLECTOR_KEY>`, 403 미인증) — Task 5 클라 상수·Task 6 수집기가 사용. D1 `records(id, anon_id, received_at, app_version, map_version, outcome, payload)` + `rate(key, day, count)`.
 
-- [ ] **Step 1: 프로젝트 뼈대** — `package.json`:
+- [x] **Step 1: 프로젝트 뼈대** — `package.json`:
 
 ```json
 {
@@ -482,7 +482,7 @@ CREATE TABLE IF NOT EXISTS rate (
 );
 ```
 
-- [ ] **Step 2: 검증 함수 실패 테스트** — `test/validate.test.mjs`:
+- [x] **Step 2: 검증 함수 실패 테스트** — `test/validate.test.mjs`:
 
 ```js
 import test from "node:test";
@@ -516,9 +516,9 @@ test("UUID 형식 강제", () =>
 
 `test/good-record.json`에 위 `good` 객체를 JSON으로 저장(Step 7 curl용).
 
-- [ ] **Step 3: 실패 확인** — `npm test` → `validate.js` 없음으로 실패.
+- [x] **Step 3: 실패 확인** — `npm test` → `validate.js` 없음으로 실패.
 
-- [ ] **Step 4: 구현** — `src/validate.js`:
+- [x] **Step 4: 구현** — `src/validate.js`:
 
 ```js
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -614,8 +614,8 @@ async function handlePull(request, env, url) {
 }
 ```
 
-- [ ] **Step 5: 유닛 테스트 통과** — `npm test` 전부 PASS.
-- [ ] **Step 6: D1 생성·스키마·시크릿·배포** —
+- [x] **Step 5: 유닛 테스트 통과** — `npm test` 전부 PASS.
+- [x] **Step 6: D1 생성·스키마·시크릿·배포** —
 
 ```bash
 npx wrangler d1 create orand-telemetry     # 출력 database_id를 wrangler.toml에 기입
@@ -625,7 +625,7 @@ npx wrangler secret put COLLECTOR_KEY
 npx wrangler deploy                        # 출력 URL 기록: https://orand-telemetry.<account>.workers.dev
 ```
 
-- [ ] **Step 7: 실배포 왕복 검증** — 배포 URL 기준:
+- [x] **Step 7: 실배포 왕복 검증** — 배포 URL 기준:
 
 ```bash
 curl -s -o /dev/null -w "%{http_code}" -X POST <URL>/v1/records -d '{"bad":1}'                  # 기대 400
@@ -634,7 +634,7 @@ curl -s -o /dev/null -w "%{http_code}" "<URL>/v1/records?since=0"               
 curl -s -H "Authorization: Bearer <KEY>" "<URL>/v1/records?since=0" | head -c 200               # records 1건 확인
 ```
 
-- [ ] **Step 8: 키 보관** — 키를 `work/telemetry-worker/.collector-key`에 저장(수집기가 읽음). work는 저장소 밖이라 커밋 없음.
+- [x] **Step 8: 키 보관** — 키를 `work/telemetry-worker/.collector-key`에 저장(수집기가 읽음). work는 저장소 밖이라 커밋 없음.
 
 ---
 
@@ -644,8 +644,8 @@ curl -s -H "Authorization: Bearer <KEY>" "<URL>/v1/records?since=0" | head -c 20
 - Modify: `outputs/OrandOverlay/TelemetryUploader.cs` (`DefaultEndpoint`)
 - Modify: `outputs/OrandOverlay/SmokeTests/Program.cs`
 
-- [ ] **Step 1:** `DefaultEndpoint`를 Task 4 배포 URL + `/v1/records`로 교체.
-- [ ] **Step 2: 스모크에 상수 검증 추가**:
+- [x] **Step 1:** `DefaultEndpoint`를 Task 4 배포 URL + `/v1/records`로 교체.
+- [x] **Step 2: 스모크에 상수 검증 추가**:
 
 ```csharp
 Assert(TelemetryUploader.DefaultEndpoint.StartsWith("https://") &&
@@ -654,9 +654,9 @@ Assert(TelemetryUploader.DefaultEndpoint.StartsWith("https://") &&
     "텔레메트리: 기본 엔드포인트는 자체 Worker(HTTPS)이며 티모지지가 아님");
 ```
 
-- [ ] **Step 3:** 스모크 그린 확인.
-- [ ] **Step 4:** D1 적재 수 확인으로 왕복 갈음 — `npx wrangler d1 execute orand-telemetry --remote --command "SELECT COUNT(*) AS n FROM records"` (Task 4 Step 7의 204 업로드 1건 이상).
-- [ ] **Step 5: 커밋** — `git commit -m "텔레메트리 업로드 엔드포인트 연결"`
+- [x] **Step 3:** 스모크 그린 확인.
+- [x] **Step 4:** D1 적재 수 확인으로 왕복 갈음 — `npx wrangler d1 execute orand-telemetry --remote --command "SELECT COUNT(*) AS n FROM records"` (Task 4 Step 7의 204 업로드 1건 이상).
+- [x] **Step 5: 커밋** — `git commit -m "텔레메트리 업로드 엔드포인트 연결"`
 
 ---
 
@@ -687,7 +687,7 @@ Assert(TelemetryUploader.DefaultEndpoint.StartsWith("https://") &&
 }
 ```
 
-- [ ] **Step 1: 집계 셀프테스트 작성** — `collect_telemetry.py`에 `--selftest` 모드 내장(수집기 관례상 별도 러너 없음):
+- [x] **Step 1: 집계 셀프테스트 작성** — `collect_telemetry.py`에 `--selftest` 모드 내장(수집기 관례상 별도 러너 없음):
 
 ```python
 def selftest():
@@ -711,8 +711,8 @@ def selftest():
     print("selftest OK")
 ```
 
-- [ ] **Step 2: 실패 확인** — `python collect_telemetry.py --selftest` → `aggregate` 미정의로 실패.
-- [ ] **Step 3: 구현** — 파일 상단·핵심 함수:
+- [x] **Step 2: 실패 확인** — `python collect_telemetry.py --selftest` → `aggregate` 미정의로 실패.
+- [x] **Step 3: 구현** — 파일 상단·핵심 함수:
 
 ```python
 # -*- coding: utf-8 -*-
@@ -790,9 +790,9 @@ def aggregate(records):
 3. `RAW_DIR`의 모든 jsonl을 읽어 `aggregate` → `STATS`에 `json.dumps(..., ensure_ascii=True)` 기록
 4. 신규 0건이면 로그만 남기고 종료(커밋 없음). 신규 있으면 `run_git("pull","--rebase","--autostash")` → `add Data/orand-live-stats.json` → `commit -m "라이브 플레이 통계 갱신 +N판"` → `push`
 5. `STATE`에 새 cursor 저장. 모든 예외는 로그로만(`collect_clears.py`와 동일한 무인 실행 원칙).
-- [ ] **Step 4: selftest 통과** — `python collect_telemetry.py --selftest` → `selftest OK`.
-- [ ] **Step 5: 실왕복 1회** — `python collect_telemetry.py` 실행 → Task 4에서 넣은 테스트 레코드가 `Data/orand-live-stats.json`의 `totalRecords >= 1`로 잡히고 커밋·푸시됐는지 확인. (테스트 레코드가 통계를 오염시키므로 확인 후 D1에서 삭제: `npx wrangler d1 execute orand-telemetry --remote --command "DELETE FROM records WHERE anon_id = '3f2c8a1e-0000-4000-8000-000000000002'"` 후 수집기 재실행으로 스냅샷 재생성 — jsonl에서도 해당 anonId 줄 제거.)
-- [ ] **Step 6: 스케줄 등록** —
+- [x] **Step 4: selftest 통과** — `python collect_telemetry.py --selftest` → `selftest OK`.
+- [x] **Step 5: 실왕복 1회** — `python collect_telemetry.py` 실행 → Task 4에서 넣은 테스트 레코드가 `Data/orand-live-stats.json`의 `totalRecords >= 1`로 잡히고 커밋·푸시됐는지 확인. (테스트 레코드가 통계를 오염시키므로 확인 후 D1에서 삭제: `npx wrangler d1 execute orand-telemetry --remote --command "DELETE FROM records WHERE anon_id = '3f2c8a1e-0000-4000-8000-000000000002'"` 후 수집기 재실행으로 스냅샷 재생성 — jsonl에서도 해당 anonId 줄 제거.)
+- [x] **Step 6: 스케줄 등록** —
 
 ```powershell
 $a = New-ScheduledTaskAction -Execute "C:\Users\123\AppData\Local\Programs\Python\Python312\pythonw.exe" -Argument '"D:\OrandOverlay\work\collector\collect_telemetry.py"'
@@ -815,7 +815,7 @@ Register-ScheduledTask -TaskName "OrandOverlay Telemetry Collector" -Action $a -
 - Consumes: `Data/orand-live-stats.json`(Task 6 스키마).
 - Produces: `LiveStats.Load(string path)` → `LiveStats`(`TotalRecords`, `LabeledRecords`, `TryGetGoal(string, out LiveGoalStats)`), `LiveGoalStats(Plays, Labeled, Clears)` + `ClearRateText`.
 
-- [ ] **Step 1: 실패 테스트** — SmokeTests:
+- [x] **Step 1: 실패 테스트** — SmokeTests:
 
 ```csharp
 // 라이브 통계 스냅샷: 있으면 표기, 없거나 깨졌으면 조용히 무시(fail-silent).
@@ -836,8 +836,8 @@ Register-ScheduledTask -TaskName "OrandOverlay Telemetry Collector" -Action $a -
 }
 ```
 
-- [ ] **Step 2: 실패 확인** — 컴파일 실패.
-- [ ] **Step 3: 구현** — `LiveStats.cs`:
+- [x] **Step 2: 실패 확인** — 컴파일 실패.
+- [x] **Step 3: 구현** — `LiveStats.cs`:
 
 ```csharp
 using System.IO;
@@ -890,18 +890,18 @@ public sealed record LiveGoalStats(int Plays, int Labeled, int Clears)
 - 필드 `private LiveStats _liveStats = new();`, 카탈로그 로드 직후 `_liveStats = LiveStats.Load(Path.Combine(AppContext.BaseDirectory, "Data", "orand-live-stats.json"));`
 - 310행 데이터 라벨 문자열에 `(_liveStats.TotalRecords > 0 ? $" · 실사용 {_liveStats.TotalRecords:#,0}판" : "")` 덧붙임.
 - 목표 요약 텍스트(목표 콤보 선택 요약을 만드는 지점)에서 `_liveStats.TryGetGoal(_settings.GoalUnitId, out var g)`가 참이면 `$" · 실사용 {g.Plays}판{(g.ClearRateText.Length == 0 ? "" : " · " + g.ClearRateText)}"` 덧붙임.
-- [ ] **Step 4: 통과 확인** — 스모크 그린 + 빌드 경고 0 + PASS 카운트 갱신.
-- [ ] **Step 5: 커밋** — `git commit -m "추천 근거에 실사용 판수·클리어율 표기"`
+- [x] **Step 4: 통과 확인** — 스모크 그린 + 빌드 경고 0 + PASS 카운트 갱신.
+- [x] **Step 5: 커밋** — `git commit -m "추천 근거에 실사용 판수·클리어율 표기"`
 
 ---
 
 ### Task 8: 버전·패치노트·배포
 
-- [ ] **Step 1:** `OrandOverlay.csproj` `<Version>` → `0.6.0`.
-- [ ] **Step 2:** 전체 검증 — `Stop-Process OrandOverlay` 후 Release 빌드 경고 0 + 스모크 전체 그린.
-- [ ] **Step 3:** publish + 릴리스(상시 지시): `dotnet publish OrandOverlay.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:EnableCompressionInSingleFile=true -o publish-single -p:BaseOutputPath=bin-publish/` → `gh release create v0.6.0 publish-single/OrandOverlay.exe --title "v0.6.0 - 익명 플레이 통계" --notes-file <패치노트파일>` (자산명 OrandOverlay.exe 필수).
-- [ ] **Step 4:** 디스코드 패치노트를 사용자 문체(굵은 소제목 + 이유 설명)로 작성해 대화에 제시 — **수집 시작 사실·수집 항목·옵트아웃 방법을 반드시 포함**.
-- [ ] **Step 5:** 커밋·푸시 확인 후 완료 보고.
+- [x] **Step 1:** `OrandOverlay.csproj` `<Version>` → `0.6.0`.
+- [x] **Step 2:** 전체 검증 — `Stop-Process OrandOverlay` 후 Release 빌드 경고 0 + 스모크 전체 그린.
+- [x] **Step 3:** publish + 릴리스(상시 지시): `dotnet publish OrandOverlay.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true -p:EnableCompressionInSingleFile=true -o publish-single -p:BaseOutputPath=bin-publish/` → `gh release create v0.6.0 publish-single/OrandOverlay.exe --title "v0.6.0 - 익명 플레이 통계" --notes-file <패치노트파일>` (자산명 OrandOverlay.exe 필수).
+- [x] **Step 4:** 디스코드 패치노트를 사용자 문체(굵은 소제목 + 이유 설명)로 작성해 대화에 제시 — **수집 시작 사실·수집 항목·옵트아웃 방법을 반드시 포함**.
+- [x] **Step 5:** 커밋·푸시 확인 후 완료 보고.
 
 ## Self-Review 결과
 
