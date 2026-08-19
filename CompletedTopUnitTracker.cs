@@ -9,6 +9,9 @@ public sealed class CompletedTopUnitTracker(DataCatalog catalog)
 {
     private readonly HashSet<string> _completed = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>텔레메트리용: 이번 세션에서 완료 처리된 상위 유닛 ID 목록.</summary>
+    public IReadOnlyCollection<string> CompletedUnitIds => _completed.ToList();
+
     public void Observe(IEnumerable<InventoryEntry> inventory)
     {
         foreach (var entry in inventory.Where(entry => entry.Count > 0))

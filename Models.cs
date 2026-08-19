@@ -287,6 +287,9 @@ public sealed class AppSettings
     public string GoroseiMode { get; set; } = "None";
     // 자동 업데이트 무한 루프 방지: 같은 태그는 한 번만 시도한다.
     public string LastAttemptedUpdateTag { get; set; } = "";
+    // 익명 플레이 통계(판 종료 요약) 전송. 개인정보 없음 — 설계 문서 참조.
+    public bool TelemetryEnabled { get; set; } = true;
+    public string TelemetryAnonId { get; set; } = "";
 }
 
 /// <summary>긴급소집 와일드카드(특별함 선택) 사용처 한 건.</summary>

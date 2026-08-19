@@ -33,6 +33,10 @@ public partial class MainWindow : Window
     private ClearBuildStats _clearStats = ClearBuildStats.Empty;
     private CompletedTopUnitTracker _completedTopUnits = null!;
     private readonly LiveVerificationRecorder _liveVerification = new();
+    private readonly TelemetryUploader _telemetry = new();
+    private DateTimeOffset _telemetrySessionStart;
+    private List<string> _telemetryLastTop = [];
+    private string _lastWarcraftVersion = "";
     private IInventoryRecognizer _recognizer = null!;
     private OverlayWindow _overlay = null!;
     private bool _initialized;
@@ -55,6 +59,7 @@ public partial class MainWindow : Window
         Loaded += (_, _) => ApplyResolutionScale();
         DpiChanged += (_, _) => Dispatcher.BeginInvoke(new Action(ApplyResolutionScale));
         _settings = SettingsStore.Load();
+        SettingsStore.EnsureTelemetryAnonId(_settings);
         try
         {
             _catalog.Load();
@@ -89,6 +94,8 @@ public partial class MainWindow : Window
         ClickThroughCheck.IsChecked = _settings.ClickThroughOverlay;
         AutoScanCheck.IsChecked = _settings.AutoScanEnabled;
         ClearDataRefreshCheck.IsChecked = _settings.ClearDataAutoRefresh;
+        TelemetryCheck.IsChecked = _settings.TelemetryEnabled;
+        _ = _telemetry.FlushPendingAsync();
         AutoStartCheck.IsChecked = _settings.AutoStartGoal;
         DataVersionText.Text = $"데이터 {_catalog.Data.DataVersion} · {_catalog.Data.Disclaimer}" +
                                ClearStatsSummary();
@@ -690,6 +697,7 @@ public partial class MainWindow : Window
         var recommendations = _engine.RecommendNearestCrafts(goal.Id, recommendationInventory,
             navigationMode: navigation.Id, gorosei: gorosei, buildVariant: buildVariant,
             suppressSeraphim: _greenBloodUsage.Used);
+        _telemetryLastTop = recommendations.Take(5).Select(x => x.Route.GoalUnitId).ToList();
         var inventoryStats = _statsCalculator.Calculate(recommendationInventory);
         var rareRerolls = _rareRerollAdvisor.Evaluate(recommendationInventory, recommendations,
             goal, _clearStats.HasData ? _clearStats : null);
@@ -1273,8 +1281,11 @@ public partial class MainWindow : Window
             var result = await recognizer.RecognizeAsync(_settings, cancellation.Token);
             if (generation != _scanGeneration || !ReferenceEquals(recognizer, _recognizer)) return;
             LogUnknownRawcodes(result);
+            if (!string.IsNullOrWhiteSpace(result.Diagnostics.ProcessVersion))
+                _lastWarcraftVersion = result.Diagnostics.ProcessVersion;
             if (result.ShouldReplaceInventory)
             {
+                if (!_liveSessionActive) _telemetrySessionStart = DateTimeOffset.UtcNow;
                 _completedTopUnits.Observe(result.Entries);
                 _completedTopUnits.ObserveGoalCraft(_settings.GoalUnitId, result.Entries);
                 _greenBloodUsage.Observe(result.Entries);
@@ -1291,6 +1302,7 @@ public partial class MainWindow : Window
                 _automaticDisconnected = true;
                 if (RecognitionPolicy.IsConfirmedOutOfGame(result))
                 {
+                    SendMatchTelemetry(); // _automatic/_completedTopUnits 리셋 전에
                     _liveSessionActive = false;
                     _autoStartApplied = false;
                     _completedTopUnits.Reset();
@@ -1449,6 +1461,33 @@ public partial class MainWindow : Window
         _settings.ClickThroughOverlay = ClickThroughCheck.IsChecked == true;
         _overlay.SetClickThrough(_settings.ClickThroughOverlay);
         SettingsStore.Save(_settings);
+    }
+
+    private void Telemetry_OnChanged(object sender, RoutedEventArgs e)
+    {
+        if (!_initialized) return;
+        _settings.TelemetryEnabled = TelemetryCheck.IsChecked == true;
+        SettingsStore.Save(_settings);
+    }
+
+    /// <summary>세션 경계 확정 시점의 패·추천 상태로 익명 레코드를 만들어 전송한다. fail-silent.</summary>
+    private void SendMatchTelemetry()
+    {
+        try
+        {
+            if (!_settings.TelemetryEnabled || !_liveSessionActive) return;
+            var hand = _automatic.Values.Where(x => x.Count > 0).ToList();
+            var completed = _completedTopUnits.CompletedUnitIds.ToList();
+            if (hand.Count == 0 && completed.Count == 0) return; // 빈 판은 보내지 않음
+            var record = MatchTelemetryRecorder.Build(
+                _settings.TelemetryAnonId, UpdateService.CurrentVersion.ToString(3),
+                "2.314", string.IsNullOrEmpty(_lastWarcraftVersion) ? "unknown" : _lastWarcraftVersion,
+                _settings.GoalUnitId, _settings.NavigationMode, _settings.GoroseiMode,
+                "auto", hand, completed, _telemetryLastTop,
+                _telemetrySessionStart, DateTimeOffset.UtcNow, hand.Sum(x => x.Count));
+            _ = _telemetry.EnqueueAndFlushAsync(record);
+        }
+        catch { /* fail-silent */ }
     }
 
     private void LiveVerify_OnChanged(object sender, RoutedEventArgs e)

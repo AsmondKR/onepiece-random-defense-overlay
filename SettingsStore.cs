@@ -22,6 +22,15 @@ public static class SettingsStore
         }
     }
 
+    /// <summary>익명 텔레메트리 ID가 없으면 만들어 저장한다(설치 후 1회).</summary>
+    public static AppSettings EnsureTelemetryAnonId(AppSettings settings)
+    {
+        if (!string.IsNullOrWhiteSpace(settings.TelemetryAnonId)) return settings;
+        settings.TelemetryAnonId = Guid.NewGuid().ToString();
+        try { Save(settings); } catch { /* 다음 저장 때 함께 */ }
+        return settings;
+    }
+
     public static void Save(AppSettings settings) =>
         File.WriteAllText(AppPaths.SettingsFile, JsonSerializer.Serialize(settings, Options));
 }

@@ -1747,7 +1747,18 @@ Assert(screenSourceMigration.Changed &&
     Directory.Delete(queueDir, true);
 }
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 317/317");
+// 텔레메트리 설정: 기본 켬, 익명 ID는 최초 1회 생성.
+{
+    var freshSettings = new AppSettings();
+    Assert(freshSettings.TelemetryEnabled, "텔레메트리 설정: 기본값 켬");
+    Assert(string.IsNullOrEmpty(freshSettings.TelemetryAnonId), "텔레메트리 설정: ID는 보장 시점에 생성");
+    var ensured = SettingsStore.EnsureTelemetryAnonId(freshSettings);
+    Assert(Guid.TryParse(ensured.TelemetryAnonId, out _), "텔레메트리 설정: 익명 GUID 생성");
+    var again = SettingsStore.EnsureTelemetryAnonId(ensured);
+    Assert(again.TelemetryAnonId == ensured.TelemetryAnonId, "텔레메트리 설정: 이미 있으면 유지");
+}
+
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 321/321");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,
