@@ -33,7 +33,6 @@ public partial class MainWindow : Window
     private ClearBuildStats _clearStats = ClearBuildStats.Empty;
     private LiveStats _liveStats = new();
     private CompletedTopUnitTracker _completedTopUnits = null!;
-    private readonly LiveVerificationRecorder _liveVerification = new();
     private readonly TelemetryUploader _telemetry = new();
     private readonly MatchOutcomeDetector _outcome = new();
     private readonly MatchTelemetryBuffer _telemetryBuffer = new();
@@ -852,6 +851,16 @@ public partial class MainWindow : Window
                 TextWrapping = TextWrapping.Wrap
             }
         });
+        if (RecommendationPresentation.OverlayCommandLine(item) is { } commandLine)
+            headerBody.Children.Add(new TextBlock
+            {
+                Text = commandLine,
+                Foreground = Brushes.White,
+                FontSize = 13,
+                FontWeight = FontWeights.SemiBold,
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 8, 0, 0)
+            });
         headerBody.Children.Add(BuildCountBar(item.RecipeProgress, 7, new Thickness(0, 10, 0, 0)));
 
         var expander = new Expander
@@ -1351,8 +1360,6 @@ public partial class MainWindow : Window
                 _completedTopUnits.Reset();
                 _greenBloodUsage.Reset();
             }
-            _liveVerification.Observe(result);
-            UpdateLiveVerifyUi();
             RecognitionStatus.Text = KoreanLabels.RemoveLatin(result.Status);
             RecognitionStatus.Foreground = result.State switch
             {
@@ -1530,50 +1537,6 @@ public partial class MainWindow : Window
                 _telemetrySessionStart, hand.Sum(x => x.Count));
         }
         catch { /* fail-silent */ }
-    }
-
-    private void LiveVerify_OnChanged(object sender, RoutedEventArgs e)
-    {
-        _liveVerification.Enabled = LiveVerifyCheck.IsChecked == true;
-        UpdateLiveVerifyUi();
-    }
-
-    private void LiveVerifyMatch_OnClick(object sender, RoutedEventArgs e) => ConfirmLiveVerification(true);
-
-    private void LiveVerifyMismatch_OnClick(object sender, RoutedEventArgs e) => ConfirmLiveVerification(false);
-
-    private void ConfirmLiveVerification(bool match)
-    {
-        try
-        {
-            var path = _liveVerification.Confirm(match);
-            if (path is null)
-            {
-                LiveVerifyStatus.Text = "아직 기록할 인식 결과가 없습니다. 게임에서 패가 잡힌 뒤 판정하세요.";
-                return;
-            }
-        }
-        catch (Exception exception)
-        {
-            LiveVerifyStatus.Text = $"기록 실패: {exception.Message}";
-            return;
-        }
-        UpdateLiveVerifyUi();
-    }
-
-    private void UpdateLiveVerifyUi()
-    {
-        var enabled = _liveVerification.Enabled;
-        LiveVerifyMatchBtn.IsEnabled = enabled;
-        LiveVerifyMismatchBtn.IsEnabled = enabled;
-        if (!enabled)
-        {
-            LiveVerifyStatus.Text = "검증 모드를 켜면 패 변화를 감지해 게임 화면과의 대조를 요청합니다.";
-            return;
-        }
-        LiveVerifyStatus.Text = _liveVerification.Pending is { } pending
-            ? $"⚠ {pending.Description}\n{_liveVerification.ChecklistSummary}"
-            : $"{_liveVerification.ChecklistSummary} · 변화 대기 중 (기록: {_liveVerification.LogFilePath})";
     }
 
     private void EnableOverlayMove_OnClick(object sender, RoutedEventArgs e)

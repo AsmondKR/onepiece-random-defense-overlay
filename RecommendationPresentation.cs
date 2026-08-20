@@ -19,6 +19,12 @@ public static class RecommendationPresentation
     public static string RecommendationEffectLine(CompositionUnitDetail unit) =>
         AbilitySummary(unit);
 
+    /// <summary>접힌 추천 카드에 띄울 조합 명령어. 없으면 null.</summary>
+    public static string? OverlayCommandLine(Recommendation item) =>
+        item.CombineCommands.Count == 0
+            ? null
+            : "조합 명령어: " + string.Join(" / ", item.CombineCommands);
+
     public static string Ownership(CompositionUnitDetail unit)
     {
         var target = Math.Max(1, unit.IsRequired ? unit.RequiredCount : unit.SuggestedCount);

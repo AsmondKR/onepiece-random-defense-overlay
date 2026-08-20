@@ -1254,7 +1254,8 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
                 }
             ],
             RecipeTree = recipeTree,
-            RemainingCraftSteps = remainingSteps
+            RemainingCraftSteps = remainingSteps,
+            CombineCommands = unit.CombineCommands
         };
     }
 
@@ -1503,7 +1504,8 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
             Roles = roleStatuses,
             NextAction = next,
             RecipeProgress = recipeProgress,
-            CompositionUnits = CompositionUnits(route, inventory)
+            CompositionUnits = CompositionUnits(route, inventory),
+            CombineCommands = catalog.Unit(route.GoalUnitId).CombineCommands
         };
     }
 

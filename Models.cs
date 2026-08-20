@@ -91,6 +91,8 @@ public sealed class Recommendation
     public List<string> MissingSpecials { get; init; } = [];
     /// <summary>신+ 클리어 데이터 근거(표본·채용률). 표본이 부족하면 null이다.</summary>
     public ClearEvidence? ClearEvidence { get; set; }
+    /// <summary>이 추천 유닛의 채팅 조합 명령어. 없으면 빈 목록.</summary>
+    public IReadOnlyList<string> CombineCommands { get; init; } = [];
 }
 
 public sealed class RecipeCraftStep

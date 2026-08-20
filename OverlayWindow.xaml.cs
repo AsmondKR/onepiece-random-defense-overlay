@@ -610,6 +610,7 @@ public partial class OverlayWindow : OverlayWindowBase
                 $"{step.UnitId}:{step.OwnedCount}:{step.RequiredCount}")),
             string.Join(",", item.CompositionUnits.Select(unit => $"{unit.UnitId}:{unit.OwnedCount}")),
             string.Join(",", item.Warnings),
+            string.Join(",", item.CombineCommands),
             item.ClearEvidence is null
                 ? ""
                 : $"{item.ClearEvidence.SampleCount}:{item.ClearEvidence.SharePercent}")));
@@ -654,6 +655,16 @@ public partial class OverlayWindow : OverlayWindowBase
                 TextWrapping = TextWrapping.Wrap
             }
         });
+        if (RecommendationPresentation.OverlayCommandLine(item) is { } commandLine)
+            headerStack.Children.Add(new TextBlock
+            {
+                Text = commandLine,
+                Foreground = Brushes.White,
+                FontSize = 12,
+                FontWeight = FontWeights.SemiBold,
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 6, 0, 0)
+            });
         if (item.ClearEvidence is not null)
             headerStack.Children.Add(new TextBlock
             {

@@ -1684,6 +1684,11 @@ var jinbeCraftStep = jinbeGoalCard.RemainingCraftSteps.First(step =>
     catalog.Unit(step.UnitId).Rawcodes.Contains("A90H", StringComparer.Ordinal));
 Assert(jinbeCraftStep.CombineCommands.SequenceEqual(["바다의협객", "jinbe tr"]),
     "징베 초월 남은 조합에 채팅 명령어를 붙인다");
+Assert(jinbeGoalCard.CombineCommands.SequenceEqual(["바다의협객", "jinbe tr"]),
+    "추천 첫 화면 카드에 징베 조합 명령어가 있다");
+Assert(RecommendationPresentation.OverlayCommandLine(jinbeGoalCard) ==
+       "조합 명령어: 바다의협객 / jinbe tr",
+    "추천 오버레이 접힌 카드에 조합 명령어를 표시한다");
 var jinbeLine = RecommendationPresentation.CraftIngredientLine(jinbeCraftStep);
 Assert(jinbeLine.Contains("조합 명령어", StringComparison.Ordinal) &&
        jinbeLine.Contains("바다의협객", StringComparison.Ordinal) &&
@@ -1878,6 +1883,8 @@ Assert(screenSourceMigration.Changed &&
     var settingsXaml = File.ReadAllText(Path.Combine(overlayRoot, "MainWindow.xaml"));
     Assert(!settingsXaml.Contains("TelemetryCheck") && !settingsXaml.Contains("익명 플레이 통계"),
         "텔레메트리: 설정 창에 보내기 체크박스가 없음");
+    Assert(!settingsXaml.Contains("LiveVerify") && !settingsXaml.Contains("라이브 검증"),
+        "설정 창에 개발자용 라이브 검증 패널이 없음");
     var freshSettings = new AppSettings();
     Assert(string.IsNullOrEmpty(freshSettings.TelemetryAnonId), "텔레메트리 설정: ID는 보장 시점에 생성");
     var ensured = SettingsStore.EnsureTelemetryAnonId(freshSettings);
@@ -2196,7 +2203,7 @@ if (Environment.GetEnvironmentVariable("ORAND_DIAG") == "drill")
     return;
 }
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 409/409");
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 412/412");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,
