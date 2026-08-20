@@ -983,6 +983,21 @@ var cascadeAllocated = cascadeRecommendations.Sum(rec => rec.RecipeProgress.Leav
     .Sum(leaf => leaf.OwnedCount));
 Assert(cascadeAllocated == 1,
     "카드 1장은 전체 순위를 통틀어 한 번만 완료율에 집계(위 순위가 소비하면 아래 순위 제외)");
+var cascadeSecond = cascadeRecommendations.Skip(1).First(rec =>
+    rec.RecipeProgress.Leaves.Any(leaf =>
+        leaf.UnitId.Equals(cascadeSharedLeaf.UnitId, StringComparison.OrdinalIgnoreCase)));
+var flipped = engine.Recascade(cascadeRecommendations, Inventory(cascadeSharedLeaf.UnitId),
+    cascadeSecond.Route.Id);
+var flippedFirst = flipped.First(rec => rec.Route.Id == cascadeRecommendations[0].Route.Id);
+var flippedSecond = flipped.First(rec => rec.Route.Id == cascadeSecond.Route.Id);
+Assert(flippedSecond.RecipeProgress.Leaves.Where(leaf =>
+           leaf.UnitId.Equals(cascadeSharedLeaf.UnitId, StringComparison.OrdinalIgnoreCase))
+           .Sum(leaf => leaf.OwnedCount) == 1 &&
+       flippedFirst.RecipeProgress.Leaves.Where(leaf =>
+           leaf.UnitId.Equals(cascadeSharedLeaf.UnitId, StringComparison.OrdinalIgnoreCase))
+           .Sum(leaf => leaf.OwnedCount) == 0 &&
+       flipped[0].Route.Id == cascadeRecommendations[0].Route.Id,
+    "2순위 후보를 고르면 그 패가 재료를 먼저 쓰고 나머지는 남은 패로 퍼센트를 다시 계산한다");
 
 // 클라이언트 갱신은 저장소(GitHub) 스냅샷만 사용한다 — 티모지지 서버 미접속.
 Assert(ClearSnapshotRefreshService.ParseManifest(
@@ -2271,7 +2286,7 @@ if (Environment.GetEnvironmentVariable("ORAND_DIAG") == "drill")
     return;
 }
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 426/426");
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 427/427");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,

@@ -14,6 +14,7 @@ public partial class OverlayWindow : OverlayWindowBase
     private IReadOnlyList<AutoCombineStep> _combinePlan = [];
     private string? _selectedRouteId;
     private Func<Recommendation, IReadOnlyList<Recommendation>>? _storyChildren;
+    private Func<IReadOnlyList<Recommendation>, string?, IReadOnlyList<Recommendation>>? _recascade;
 
     public OverlayWindow()
     {
@@ -77,9 +78,11 @@ public partial class OverlayWindow : OverlayWindowBase
         double stunTarget = 1.4,
         double stunCap = 1.5,
         string? phaseHint = null,
-        Func<Recommendation, IReadOnlyList<Recommendation>>? storyChildren = null)
+        Func<Recommendation, IReadOnlyList<Recommendation>>? storyChildren = null,
+        Func<IReadOnlyList<Recommendation>, string?, IReadOnlyList<Recommendation>>? recascade = null)
     {
         _storyChildren = storyChildren;
+        _recascade = recascade;
         GoalText.Text = goalName;
         PhaseHintText.Text = phaseHint ?? "";
         PhaseHintText.Visibility = phaseHint is { Length: > 0 }
@@ -102,6 +105,7 @@ public partial class OverlayWindow : OverlayWindowBase
         if (_selectedRouteId is null ||
             recommendations.All(item => !item.Route.Id.Equals(_selectedRouteId, StringComparison.OrdinalIgnoreCase)))
             _selectedRouteId = recommendations.FirstOrDefault()?.Route.Id;
+        ApplySelectionCascade();
         FillBoard();
     }
 
@@ -122,7 +126,14 @@ public partial class OverlayWindow : OverlayWindowBase
     private void SelectRoute(string routeId)
     {
         _selectedRouteId = routeId;
+        ApplySelectionCascade();
         FillBoard();
+    }
+
+    private void ApplySelectionCascade()
+    {
+        if (_recascade is null || _recommendations.Count == 0) return;
+        _recommendations = _recascade(_recommendations, _selectedRouteId);
     }
 
     private string? _lastSpecialSignature;

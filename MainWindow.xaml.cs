@@ -775,7 +775,8 @@ public partial class MainWindow : Window
                 _clearStats.HasData ? _clearStats : null),
             _engine.ActiveStunTarget, _engine.ActiveStunCap,
             phaseHint,
-            rec => _engine.StoryClusterChildren(rec.Route.GoalUnitId, recommendationInventory));
+            rec => _engine.StoryClusterChildren(rec.Route.GoalUnitId, recommendationInventory),
+            (recs, selectedId) => _engine.Recascade(recs, CombinedInventory(), selectedId));
         if (autoStartMessage is not null) FooterStatus.Text = autoStartMessage;
         else if (message is not null) FooterStatus.Text = message;
     }
@@ -808,6 +809,8 @@ public partial class MainWindow : Window
 
     private void FillMainBoard()
     {
+        if (_selectedRouteId is not null && _boardRecs.Count > 0)
+            _boardRecs = _engine.Recascade(_boardRecs, CombinedInventory(), _selectedRouteId);
         var selected = _boardRecs.FirstOrDefault(item =>
             item.Route.Id.Equals(_selectedRouteId, StringComparison.OrdinalIgnoreCase))
             ?? _boardRecs.FirstOrDefault();

@@ -320,6 +320,41 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
     }
 
     /// <summary>
+    /// 후보 보드에서 고른 칸이 재료를 먼저 쓰도록 완료율을 다시 계산한다.
+    /// 칸 순서는 그대로 두고, 퍼센트만 선택한 패 기준으로 바꾼다.
+    /// </summary>
+    public IReadOnlyList<Recommendation> Recascade(
+        IReadOnlyList<Recommendation> recs,
+        IEnumerable<InventoryEntry> inventory,
+        string? consumeFirstRouteId)
+    {
+        if (recs.Count == 0) return recs;
+        var counts = inventory
+            .GroupBy(entry => entry.UnitId, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.Sum(entry => entry.Count),
+                StringComparer.OrdinalIgnoreCase);
+        var calculator = new RecipeCompletionCalculator(catalog.Unit);
+        var selected = recs.FirstOrDefault(item =>
+            item.Route.Id.Equals(consumeFirstRouteId, StringComparison.OrdinalIgnoreCase));
+        var consumeOrder = selected is null
+            ? recs
+            : new[] { selected }.Concat(recs.Where(item =>
+                !item.Route.Id.Equals(selected.Route.Id, StringComparison.OrdinalIgnoreCase)));
+        var remaining = counts;
+        var rebuilt = new Dictionary<string, Recommendation>(StringComparer.OrdinalIgnoreCase);
+        foreach (var rec in consumeOrder)
+        {
+            var crafted = EvaluateCraft(catalog.Unit(rec.Route.GoalUnitId), remaining, calculator,
+                out var leftover);
+            remaining = leftover;
+            crafted.ClusterParentUnitId = rec.ClusterParentUnitId;
+            crafted.ClearEvidence = rec.ClearEvidence;
+            rebuilt[rec.Route.Id] = crafted;
+        }
+        return recs.Select(item => rebuilt[item.Route.Id]).ToList();
+    }
+
+    /// <summary>
     /// 자동 시작 단계: 현재 패로 가장 빨리 완성되는 희귀함 순위. 서로 대안 관계라
     /// 각 희귀함은 전체 패 기준으로 독립 평가한다(순위 캐스케이드 미적용).
     /// 빈 패에서는 재료 수가 적은(빨리 나오는) 순서가 된다.
