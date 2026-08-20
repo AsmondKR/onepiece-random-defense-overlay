@@ -21,7 +21,7 @@ public partial class OverlayWindow : OverlayWindowBase
     {
         InitializeComponent();
         var appVersion = UpdateService.CurrentVersion;
-        OverlayVersionText.Text = $"v{appVersion.Major}.{appVersion.Minor}.{appVersion.Build} 테스트3";
+        OverlayVersionText.Text = $"v{appVersion.Major}.{appVersion.Minor}.{appVersion.Build}";
         Loaded += (_, _) =>
         {
             OverlayTheme.AttachRoundClip(NowWell, OverlayTheme.WellRadius);

@@ -8,7 +8,6 @@ using System.Windows.Shapes;
 namespace OrandOverlay;
 
 /// <summary>
-/// 테스트3 구조: 세로 카드 리스트가 아니라
 /// 지금 할 일 / 조합 흐름 / 초상화 보드 3구역.
 /// </summary>
 internal static class RecommendationBoard

@@ -6,7 +6,7 @@ using System.Windows.Media;
 namespace OrandOverlay;
 
 /// <summary>
-/// 테스트2 HUD. 카드 더미가 아니라 롤체/닥지/OP.GG처럼
+/// 롤체/닥지/OP.GG형 HUD 색·간격.
 /// 1번 피처드 + 나머지 표 + 상단 KPI 타일이다.
 /// </summary>
 internal static class OverlayTheme
