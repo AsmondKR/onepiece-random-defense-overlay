@@ -172,6 +172,7 @@ public partial class MainWindow : Window
     private async Task CheckForUpdateAsync()
     {
         if (_updateBusy) return;
+        if (UpdateService.IsTestBuild) return;
         if (!UpdatePolicy.ShouldInstallNow(_liveSessionActive, UpdatePolicy.IsDeveloperMachine)) return;
         var service = new UpdateService();
         var update = await service.CheckAsync();
@@ -196,6 +197,11 @@ public partial class MainWindow : Window
     private async void CheckUpdateNow_OnClick(object sender, RoutedEventArgs e)
     {
         if (_updateBusy) return;
+        if (UpdateService.IsTestBuild)
+        {
+            FooterStatus.Text = "테스트 빌드라 GitHub 배포본으로 덮지 않습니다.";
+            return;
+        }
         FooterStatus.Text = "업데이트 확인 중…";
         var service = new UpdateService();
         var (update, failed) = await service.CheckDetailedAsync();

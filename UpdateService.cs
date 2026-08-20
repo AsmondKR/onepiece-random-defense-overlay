@@ -34,6 +34,13 @@ public sealed class UpdateService(Func<string, Task<string>>? fetcher = null,
     public static Version CurrentVersion =>
         Assembly.GetExecutingAssembly().GetName().Version ?? new Version(0, 0, 0);
 
+    /// <summary>테스트 빌드는 GitHub 배포본으로 자기 자신을 덮지 않는다.</summary>
+    public static bool IsTestBuild =>
+        (Assembly.GetExecutingAssembly()
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+            ?.InformationalVersion ?? "")
+        .Contains("test", StringComparison.OrdinalIgnoreCase);
+
     public async Task<UpdateInfo?> CheckAsync() =>
         (await CheckDetailedAsync().ConfigureAwait(false)).Update;
 
