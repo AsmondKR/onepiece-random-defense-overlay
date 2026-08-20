@@ -169,6 +169,12 @@ var yamatoWithoutPirateShip = engine.RecommendNearestCrafts("yamato_transcendent
 Assert(yamatoWithoutPirateShip.All(item =>
         !item.Route.GoalUnitId.Equals("mobydick", StringComparison.OrdinalIgnoreCase)),
     "해적선이 없는 패에서는 모비딕호를 추천 후보에서 제외");
+var yamatoStoryLegendaries = yamatoWithoutPirateShip.Skip(1).Take(2)
+    .Select(item => item.Route.GoalUnitId)
+    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+Assert(yamatoStoryLegendaries.Contains("rawcode:S30h") &&
+       yamatoStoryLegendaries.Contains("rawcode:780h"),
+    "야마토 초월은 하위 전설(울티·토키)을 후보 보드 앞에 둔다");
 // 표시 순서는 채용률이 정하지만, 선택된 지원에는 스턴 1.4 패키지가 유지되어야 한다.
 var yamatoStunSupports = yamatoWithoutPirateShip.Skip(1)
     .Where(item => AbilityValue(item.CompositionUnits[0], "스턴") > 0)
@@ -177,20 +183,21 @@ Assert(yamatoStunSupports.Count > 0 &&
        yamatoStunSupports.Sum(item => AbilityValue(item.CompositionUnits[0], "스턴")) is >= 1.3 and <= 1.5,
     "야마토 초월 추천은 채용률 순서와 무관하게 스턴 1.4 패키지를 유지");
 var yamatoSlowPriority = engine.RecommendNearestCrafts("yamato_transcendent",
-    Inventory("rawcode:O30h", "rawcode:Y30h", "rawcode:IC0h"), 3);
-Assert(yamatoSlowPriority.Count > 1 && yamatoSlowPriority[1].Route.GoalUnitId == "rawcode:V50h",
+    Inventory("rawcode:O30h", "rawcode:Y30h", "rawcode:IC0h"), 8);
+Assert(FirstRoleSupport(engine, yamatoSlowPriority, "yamato_transcendent").Route.GoalUnitId ==
+       "rawcode:V50h",
     "야마토는 스턴 완성 뒤 순수 50이감 스모커보다 최근 커뮤니티의 에이스 왜곡을 우선");
 var yamatoSignedSlow = engine.RecommendNearestCrafts("yamato_transcendent",
     Inventory("rawcode:O30h", "rawcode:Y30h", "rawcode:IC0h", "rawcode:V20h",
-        "mobydick", "rawcode:W50h"), 2);
-Assert(yamatoSignedSlow.Count > 1 && yamatoSignedSlow[1].CompositionUnits[0].Abilities.Any(ability =>
-        ability.Name is "이동속도 감소" or "발동이동속도 감소"),
+        "mobydick", "rawcode:W50h"), 8);
+Assert(FirstRoleSupport(engine, yamatoSignedSlow, "yamato_transcendent").CompositionUnits[0]
+        .Abilities.Any(ability => ability.Name is "이동속도 감소" or "발동이동속도 감소"),
     "야마토의 적 이동속도 증가를 음수 이감으로 반영해 실제 풀이감 102까지 추가 보강");
 var communityRankedYamato = engine.RecommendNearestCrafts("yamato_transcendent",
     Inventory("rawcode:060h"), 8);
 Assert(communityRankedYamato[0].Route.GoalUnitId == "yamato_transcendent" &&
-       communityRankedYamato.Count > 1 &&
-       communityRankedYamato[1].Route.GoalUnitId == "mobydick" &&
+       FirstRoleSupport(engine, communityRankedYamato, "yamato_transcendent").Route.GoalUnitId ==
+       "mobydick" &&
        communityRankedYamato.Skip(1).Sum(item =>
            AbilityValue(item.CompositionUnits[0], "스턴")) is >= 1.3 and <= 1.5,
     "해적선 보유 시 채용률 1위 모비딕을 목표 다음으로 올리고 스턴 1.4 패키지는 유지");
@@ -224,21 +231,22 @@ var exactRarePlan = engine.RecommendNearestCrafts("dragon_legend", exactRareInve
 Assert(new RareRerollAdvisor(catalog).Evaluate(exactRareInventory, exactRarePlan)
         .All(item => item.UnitId != "rawcode:A20h"),
     "추천 제작에 정확히 필요한 희귀패는 리롤 후보에서 제외");
+var yamatoStory = engine.RecipeLegendaryUnitIds("yamato_transcendent").ToArray();
 var afterFullSlow = engine.RecommendNearestCrafts("yamato_transcendent",
-    Inventory("mobydick", "mobydick", "mobydick"), 2)[1].CompositionUnits[0];
+    Inventory([..yamatoStory, "mobydick", "mobydick", "mobydick"]), 2)[1].CompositionUnits[0];
 Assert(afterFullSlow.Abilities.Any(ability => ability.Name == "스턴"),
     "43747 풀이감 102 충족 뒤에는 스턴 1.4 보강 후보를 선택");
 var afterStableStun = engine.RecommendNearestCrafts("yamato_transcendent",
-    Inventory("rawcode:V20h", "rawcode:V20h", "rawcode:V20h", "dragon_legend", "rawcode:O30h"), 2)[1]
-    .CompositionUnits[0];
+    Inventory([..yamatoStory, "rawcode:V20h", "rawcode:V20h", "rawcode:V20h", "dragon_legend",
+        "rawcode:O30h"]), 2)[1].CompositionUnits[0];
 Assert(afterStableStun.Abilities.Any(ability =>
         ability.Name is "방어력 감소" or "발동방어력 감소" or "중첩방어력 감소"),
     "풀이감과 스턴 충족 뒤에는 방깎 후보를 선택");
 Assert(afterStableStun.Abilities.Any(ability => ability.Name == "공중이동"),
     "방깎 단계에서는 크립·정의의 문·해왕류·황금종용 공중이동 한 기를 먼저 겸함");
 var afterFullArmor = engine.RecommendNearestCrafts("yamato_transcendent",
-    Inventory("mobydick", "mobydick", "mobydick", "dragon_legend", "rawcode:O30h",
-        "mihawk_hidden", "mihawk_hidden", "mihawk_hidden"), 2)[1].CompositionUnits[0];
+    Inventory([..yamatoStory, "mobydick", "mobydick", "mobydick", "dragon_legend", "rawcode:O30h",
+        "mihawk_hidden", "mihawk_hidden", "mihawk_hidden"]), 2)[1].CompositionUnits[0];
 Assert(afterFullArmor.Abilities.Any(ability =>
         ability.Name is "방어력 감소" or "발동방어력 감소" or "중첩방어력 감소"),
     "풀이감·스턴 충족 뒤에는 풀방깎 211까지 방깎 후보를 우선");
@@ -257,7 +265,7 @@ var fullYamatoCoreInventory = Inventory("mobydick", "mobydick", "mobydick", "dra
     "mihawk_hidden", "mihawk_hidden", "mihawk_hidden", "mihawk_hidden");
 var cappedArmorRecommendations = engine.RecommendNearestCrafts("yamato_transcendent",
     fullYamatoCoreInventory, 8);
-Assert(cappedArmorRecommendations.Count == 1,
+Assert(OnlyGoalAndRecipeLegendaries(engine, cappedArmorRecommendations, "yamato_transcendent"),
     "풀이감 102·스턴 1.4·방깎 211을 넘기면 방깎과 보잡을 더 강제하지 않음");
 var belowFullArmorRecommendations = engine.RecommendNearestCrafts("yamato_transcendent",
     Inventory("mobydick", "mobydick", "mobydick", "dragon_legend", "rawcode:O30h",
@@ -266,7 +274,7 @@ Assert(belowFullArmorRecommendations.Skip(1).Any(item => item.CompositionUnits[0
         ability.Name is "방어력 감소" or "발동방어력 감소" or "중첩방어력 감소")),
     "방깎 211 전에는 현재 패에서 가까운 방깎 후보를 계속 추천");
 var usoppProfile = engine.RecommendNearestCrafts("rawcode:B90H", fullYamatoCoreInventory, 8);
-Assert(usoppProfile.Count == 1 &&
+Assert(OnlyGoalAndRecipeLegendaries(engine, usoppProfile, "rawcode:B90H") &&
        usoppProfile[0].CompositionUnits[0].Abilities.Any(ability => ability.Name == "보스 잡기") &&
        usoppProfile[0].CompositionUnits[0].Abilities.Any(ability => ability.Name == "광폭화 잡기"),
     "우솝 초월은 자체 보잡·광보잡을 인정해 별도 보조를 강제하지 않음");
@@ -283,13 +291,14 @@ var usoppRecommendedStun = usoppDaekkae.Skip(1)
 Assert(usoppRecommendedStun >= 1.3 && usoppRecommendedStun <= 1.5,
     "우솝 대깨 스턴 보강도 1.4 근처에서 멈춤");
 var zoroProfile = engine.RecommendNearestCrafts("rawcode:F90H", fullYamatoCoreInventory, 8);
-Assert(zoroProfile.Count == 2 && zoroProfile.Skip(1).Any(item =>
-        item.CompositionUnits[0].Abilities.Any(ability =>
-            ability.Name is "보스 잡기" or "광폭화 잡기")),
+Assert(zoroProfile[0].Route.GoalUnitId == "rawcode:F90H" &&
+       FirstRoleSupport(engine, zoroProfile, "rawcode:F90H").CompositionUnits[0].Abilities.Any(ability =>
+           ability.Name is "보스 잡기" or "광폭화 잡기"),
     "조로 초월은 핵심 수치 완성 뒤 고점용 보잡 후보 한 기만 선택적으로 제시");
 var zoroOneTop = engine.RecommendNearestCrafts("rawcode:F90H", [], 8,
     "PathOfKings.BountyHunter");
-Assert(zoroOneTop.Count > 1 && zoroOneTop[1].Route.GoalUnitId == "rawcode:O30h" &&
+Assert(zoroOneTop.Count > 1 &&
+       FirstRoleSupport(engine, zoroOneTop, "rawcode:F90H").Route.GoalUnitId == "rawcode:O30h" &&
        zoroOneTop.All(item => item.Route.GoalUnitId != "rawcode:F50h"),
     "조로 초월 1상위 항법은 크로커다일 제한을 막고 봉쿠레 히든을 첫 파트너로 추천");
 var zoroMultiTop = engine.RecommendNearestCrafts("rawcode:F90H", [], 8,
@@ -299,7 +308,9 @@ Assert(zoroMultiTop.Count > 1 &&
     "조로 초월 다상위도 스턴을 먼저 맞추고 크제·봉히 동시 과투자를 방지");
 var jinbeOneTop = engine.RecommendNearestCrafts("rawcode:A90H", [], 8,
     "PathOfKings.BountyHunter");
+var jinbeStory = engine.RecipeLegendaryUnitIds("rawcode:A90H");
 var jinbeStunPackage = jinbeOneTop.Skip(1)
+    .Where(item => !jinbeStory.Contains(item.Route.GoalUnitId, StringComparer.OrdinalIgnoreCase))
     .Where(item => AbilityValue(item.CompositionUnits[0], "스턴") > 0).ToList();
 Assert(jinbeStunPackage.Sum(item => AbilityValue(item.CompositionUnits[0], "스턴")) is >= 1.3 and <= 1.5 &&
        jinbeOneTop.Any(item => item.Route.GoalUnitId == "rawcode:V20h") &&
@@ -1068,7 +1079,9 @@ var sanjiPicks = engine.RecommendNearestCrafts("rawcode:H90H", [], take: 10,
     navigationMode: "AlliedForces.EmergencyCall");
 Assert(sanjiPicks.Count > 1 && sanjiPicks[0].Route.GoalUnitId == "rawcode:H90H",
     "긴급소집에서 상디초월 목표 카드를 먼저 표시");
+var sanjiStory = engine.RecipeLegendaryUnitIds("rawcode:H90H");
 var sanjiSupports = sanjiPicks.Skip(1)
+    .Where(item => !sanjiStory.Contains(item.Route.GoalUnitId, StringComparer.OrdinalIgnoreCase))
     .Select(item => catalog.Unit(item.Route.GoalUnitId))
     .ToList();
 Assert(!sanjiSupports.Any(unit =>
@@ -2239,7 +2252,7 @@ if (Environment.GetEnvironmentVariable("ORAND_DIAG") == "drill")
     return;
 }
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 421/421");
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 422/422");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,
@@ -2287,6 +2300,20 @@ static void Assert(bool condition, string name)
     if (!condition) throw new InvalidOperationException("FAIL: " + name);
     Console.WriteLine("OK: " + name);
 }
+
+static Recommendation FirstRoleSupport(RecommendationEngine engine,
+    IReadOnlyList<Recommendation> recs, string goalId) =>
+    recs.First(item =>
+        !item.Route.GoalUnitId.Equals(goalId, StringComparison.OrdinalIgnoreCase) &&
+        !engine.RecipeLegendaryUnitIds(goalId).Contains(item.Route.GoalUnitId,
+            StringComparer.OrdinalIgnoreCase));
+
+static bool OnlyGoalAndRecipeLegendaries(RecommendationEngine engine,
+    IReadOnlyList<Recommendation> recs, string goalId) =>
+    recs.All(item =>
+        item.Route.GoalUnitId.Equals(goalId, StringComparison.OrdinalIgnoreCase) ||
+        engine.RecipeLegendaryUnitIds(goalId).Contains(item.Route.GoalUnitId,
+            StringComparer.OrdinalIgnoreCase));
 
 static MemoryProfile ValidMemoryProfile(bool enabled, bool verified, double matchRatio = 0.6,
     string? sha256 = null) => new()

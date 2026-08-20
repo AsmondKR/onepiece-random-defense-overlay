@@ -229,11 +229,30 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
                 navigation.AllowsMultipleTopUnits, navigation.CanCraftTopUnits)
             : OrderByCraftDistance(candidates).Take(maximumSupports).Select(x => x.Recommendation).ToList();
 
+        // 초월은 하위 전설을 먼저 짜야 스토리를 민다. 역할 패키지보다 후보 보드 앞에 둔다.
+        var recipeLegendaryIds = RecipeLegendaryIds(goal);
+        if (recipeLegendaryIds.Count > 0)
+        {
+            var missingLegendaries = recipeLegendaryIds
+                .Where(id => counts.GetValueOrDefault(id) <= 0)
+                .Select(id => EvaluateCraft(catalog.Unit(id), counts, calculator))
+                .ToList();
+            var pinned = new HashSet<string>(missingLegendaries.Select(item => item.Route.GoalUnitId),
+                StringComparer.OrdinalIgnoreCase);
+            nearest = missingLegendaries
+                .Concat(nearest.Where(item => !pinned.Contains(item.Route.GoalUnitId)))
+                .Take(maximumSupports)
+                .ToList();
+        }
+
         // 어떤 유닛을 조합할지는 역할 로직이 고르고, 화면 순서는 신+ 채용률(또는
         // 수작업 우선도)이 높은 순으로 보여준다. 동점은 역할 파이프라인 순서 유지.
+        // 초월의 하위 전설은 채용률보다 스토리 진행이 앞선다.
         nearest = nearest
             .Select((recommendation, index) => (recommendation, index))
             .OrderByDescending(pair =>
+                recipeLegendaryIds.Contains(pair.recommendation.Route.GoalUnitId) ? 1 : 0)
+            .ThenByDescending(pair =>
                 CommunityPriorityScore(goal, catalog.Unit(pair.recommendation.Route.GoalUnitId)))
             .ThenBy(pair => pair.index)
             .Select(pair => pair.recommendation)
@@ -267,8 +286,9 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
                 var insertAt = results.Count;
                 for (var i = showGoal ? 1 : 0; i < results.Count; i++)
                 {
-                    if (CommunityPriorityScore(goal,
-                            catalog.Unit(results[i].Route.GoalUnitId)) >= seraphimScore) continue;
+                    var supportId = results[i].Route.GoalUnitId;
+                    if (recipeLegendaryIds.Contains(supportId)) continue;
+                    if (CommunityPriorityScore(goal, catalog.Unit(supportId)) >= seraphimScore) continue;
                     insertAt = i;
                     break;
                 }
@@ -1131,6 +1151,32 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
     }
 
     private static string BaseTier(string tier) => tier.Split('[', 2)[0].Trim();
+
+    public IReadOnlyList<string> RecipeLegendaryUnitIds(string goalUnitId) =>
+        RecipeLegendaryIds(catalog.Unit(goalUnitId));
+
+    /// <summary>
+    /// 초월 조합식에 들어 있는 전설(직접 재료와 그 아래 트리).
+    /// 스토리 진행을 위해 후보 보드에서 역할 패키지보다 앞에 둔다.
+    /// </summary>
+    private List<string> RecipeLegendaryIds(UnitDefinition goal)
+    {
+        if (BaseTier(goal.Tier) != "초월") return [];
+        var ids = new List<string>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        void Visit(string unitId)
+        {
+            if (!seen.Add(unitId)) return;
+            var unit = catalog.Unit(unitId);
+            if (BaseTier(unit.Tier) == "전설")
+                ids.Add(unit.Id);
+            foreach (var childId in unit.Recipe.Keys)
+                Visit(childId);
+        }
+        foreach (var childId in goal.Recipe.Keys)
+            Visit(childId);
+        return ids;
+    }
 
     // 아이템(흑도 슈스이 방깎 6 등)도 완성 전력으로 역할 목표에 합산한다.
     private static bool CountsAsCompletedSupport(string tier) =>
