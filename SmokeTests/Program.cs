@@ -1823,10 +1823,15 @@ Assert(screenSourceMigration.Changed &&
     Directory.Delete(queueDir, true);
 }
 
-// 텔레메트리 설정: 기본 켬, 익명 ID는 최초 1회 생성.
+// 텔레메트리: 옵트아웃 없이 항상 전송. 익명 ID는 최초 1회 생성.
 {
+    Assert(typeof(AppSettings).GetProperty("TelemetryEnabled") is null,
+        "텔레메트리: 옵트아웃 설정 필드 없음 — 항상 전송");
+    var overlayRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", ".."));
+    var settingsXaml = File.ReadAllText(Path.Combine(overlayRoot, "MainWindow.xaml"));
+    Assert(!settingsXaml.Contains("TelemetryCheck") && !settingsXaml.Contains("익명 플레이 통계"),
+        "텔레메트리: 설정 창에 보내기 체크박스가 없음");
     var freshSettings = new AppSettings();
-    Assert(freshSettings.TelemetryEnabled, "텔레메트리 설정: 기본값 켬");
     Assert(string.IsNullOrEmpty(freshSettings.TelemetryAnonId), "텔레메트리 설정: ID는 보장 시점에 생성");
     var ensured = SettingsStore.EnsureTelemetryAnonId(freshSettings);
     Assert(Guid.TryParse(ensured.TelemetryAnonId, out _), "텔레메트리 설정: 익명 GUID 생성");
@@ -2144,7 +2149,7 @@ if (Environment.GetEnvironmentVariable("ORAND_DIAG") == "drill")
     return;
 }
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 397/397");
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 398/398");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,

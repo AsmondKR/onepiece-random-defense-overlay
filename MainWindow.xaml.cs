@@ -99,7 +99,6 @@ public partial class MainWindow : Window
         ClickThroughCheck.IsChecked = _settings.ClickThroughOverlay;
         AutoScanCheck.IsChecked = _settings.AutoScanEnabled;
         ClearDataRefreshCheck.IsChecked = _settings.ClearDataAutoRefresh;
-        TelemetryCheck.IsChecked = _settings.TelemetryEnabled;
         _ = _telemetry.FlushPendingAsync();
         AutoStartCheck.IsChecked = _settings.AutoStartGoal;
         DataVersionText.Text = $"데이터 {_catalog.Data.DataVersion} · {_catalog.Data.Disclaimer}" +
@@ -1487,19 +1486,12 @@ public partial class MainWindow : Window
         SettingsStore.Save(_settings);
     }
 
-    private void Telemetry_OnChanged(object sender, RoutedEventArgs e)
-    {
-        if (!_initialized) return;
-        _settings.TelemetryEnabled = TelemetryCheck.IsChecked == true;
-        SettingsStore.Save(_settings);
-    }
-
     /// <summary>마지막 패 스냅샷으로 익명 레코드를 보낸다. 판당 1회, fail-silent.</summary>
     private void SendMatchTelemetry()
     {
         try
         {
-            if (!_settings.TelemetryEnabled || !_liveSessionActive) return;
+            if (!_liveSessionActive) return;
             var record = _telemetryBuffer.TryEmit(
                 _settings.TelemetryAnonId, UpdateService.CurrentVersion.ToString(3),
                 "2.314", string.IsNullOrEmpty(_lastWarcraftVersion) ? "unknown" : _lastWarcraftVersion,

@@ -294,8 +294,7 @@ public sealed class AppSettings
     public string GoroseiMode { get; set; } = "None";
     // 자동 업데이트 무한 루프 방지: 같은 태그는 한 번만 시도한다.
     public string LastAttemptedUpdateTag { get; set; } = "";
-    // 익명 플레이 통계(판 종료 요약) 전송. 개인정보 없음 — 설계 문서 참조.
-    public bool TelemetryEnabled { get; set; } = true;
+    // 익명 플레이 통계용 설치 UUID. 판 종료 요약은 항상 보낸다.
     public string TelemetryAnonId { get; set; } = "";
 }
 

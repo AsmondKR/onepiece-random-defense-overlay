@@ -77,9 +77,6 @@
           <CheckBox x:Name="AutoScanCheck" Content="실시간 메모리 인식" Margin="3,10,0,5" IsChecked="True" Checked="AutoScan_OnChanged" Unchecked="AutoScan_OnChanged"/>
           <CheckBox x:Name="ClickThroughCheck" Content="오버레이 클릭 통과" Margin="3,5" IsChecked="False" Checked="ClickThrough_OnChanged" Unchecked="ClickThrough_OnChanged"/>
           <CheckBox x:Name="ClearDataRefreshCheck" Content="신+ 클리어 데이터 자동 갱신" Margin="3,5" IsChecked="True" Checked="ClearDataRefresh_OnChanged" Unchecked="ClearDataRefresh_OnChanged"/>
-          <CheckBox x:Name="TelemetryCheck" Content="익명 플레이 통계 보내기" Margin="3,5"
-                    IsChecked="True" Checked="Telemetry_OnChanged" Unchecked="Telemetry_OnChanged"
-                    ToolTip="판이 끝나면 익명 요약(패·추천·결과)을 보내 추천 개선에 씁니다. 닉네임·계정 정보는 수집하지 않습니다."/>
           <Button Content="오버레이 이동" Click="EnableOverlayMove_OnClick" HorizontalAlignment="Left" Margin="0,4,0,0"
                   ToolTip="누른 뒤 오버레이 상단을 끌어 옮깁니다"/>
           <TextBlock Text="오버레이 켜기/끄기 키" Style="{StaticResource FieldLabel}" Margin="0,12,0,0"/>
