@@ -342,18 +342,42 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
             .ThenBy(recommendation => recommendation.RecipeProgress.RequiredLeafCount)
             .Take(Math.Max(1, take))
             .ToList();
-        if (rares.Count == 0) return rares;
-        // 첫 희귀함으로 스토리를 밀려면 그 특별함 재료를 먼저 짜야 한다.
-        var specials = RecipeTierIds(catalog.Unit(rares[0].Route.GoalUnitId), "특별함")
-            .Where(id => counts.GetValueOrDefault(id) <= 0)
-            .Select(id => EvaluateCraft(catalog.Unit(id), counts, calculator))
-            .ToList();
-        if (specials.Count == 0) return rares;
-        var parentId = rares[0].Route.GoalUnitId;
-        foreach (var special in specials)
-            special.ClusterParentUnitId = parentId;
-        return new[] { rares[0] }.Concat(specials).Concat(rares.Skip(1)).ToList();
+        return rares;
     }
+
+    /// <summary>
+    /// 선택한 후보의 스토리 하위 재료. 초월→전설, 전설→희귀함, 희귀함→특별함.
+    /// 후보 보드 클러스터는 목록 첫 칸이 아니라 지금 고른 칸에 붙인다.
+    /// </summary>
+    public IReadOnlyList<Recommendation> StoryClusterChildren(
+        string unitId, IEnumerable<InventoryEntry> inventory)
+    {
+        var counts = inventory
+            .GroupBy(entry => entry.UnitId, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.Sum(entry => entry.Count),
+                StringComparer.OrdinalIgnoreCase);
+        var unit = catalog.Unit(unitId);
+        var childTier = StoryChildTier(unit.Tier);
+        if (childTier is null) return [];
+        var calculator = new RecipeCompletionCalculator(catalog.Unit);
+        return RecipeTierIds(unit, childTier)
+            .Where(id => counts.GetValueOrDefault(id) <= 0)
+            .Select(id =>
+            {
+                var child = EvaluateCraft(catalog.Unit(id), counts, calculator);
+                child.ClusterParentUnitId = unit.Id;
+                return child;
+            })
+            .ToList();
+    }
+
+    private static string? StoryChildTier(string tier) => BaseTier(tier) switch
+    {
+        "초월" or "불멸" or "영원" or "제한됨" or "신비함" => "전설",
+        "전설" or "히든" or "변화된" or "왜곡됨" => "희귀함",
+        "희귀함" => "특별함",
+        _ => null
+    };
 
     // 배(해적선 060h·고대의 배 Y50h)는 일반 재료 조합으로 만들 수 없는 특수 획득물이다.
     // 좀비·토큰·확장팩·초월쿠마 같은 기타 재료는 게임 안에서 정상 획득 루트가 있으므로

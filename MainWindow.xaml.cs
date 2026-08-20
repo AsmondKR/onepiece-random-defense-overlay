@@ -774,7 +774,8 @@ public partial class MainWindow : Window
             _specialAdvisor.Evaluate(recommendationInventory, recommendations, goal,
                 _clearStats.HasData ? _clearStats : null),
             _engine.ActiveStunTarget, _engine.ActiveStunCap,
-            phaseHint);
+            phaseHint,
+            rec => _engine.StoryClusterChildren(rec.Route.GoalUnitId, recommendationInventory));
         if (autoStartMessage is not null) FooterStatus.Text = autoStartMessage;
         else if (message is not null) FooterStatus.Text = message;
     }
@@ -807,8 +808,14 @@ public partial class MainWindow : Window
 
     private void FillMainBoard()
     {
+        var selected = _boardRecs.FirstOrDefault(item =>
+            item.Route.Id.Equals(_selectedRouteId, StringComparison.OrdinalIgnoreCase))
+            ?? _boardRecs.FirstOrDefault();
+        var children = selected is null
+            ? []
+            : _engine.StoryClusterChildren(selected.Route.GoalUnitId, CombinedInventory());
         RecommendationBoard.Fill(NowPanel, FlowPanel, BoardPanel, _boardRecs, _boardPlan,
-            _selectedRouteId, SelectMainRoute, _boardBanner);
+            _selectedRouteId, SelectMainRoute, _boardBanner, children);
     }
 
     private void SelectMainRoute(string routeId)

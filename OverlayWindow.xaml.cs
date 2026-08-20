@@ -13,6 +13,7 @@ public partial class OverlayWindow : OverlayWindowBase
     private IReadOnlyList<Recommendation> _recommendations = [];
     private IReadOnlyList<AutoCombineStep> _combinePlan = [];
     private string? _selectedRouteId;
+    private Func<Recommendation, IReadOnlyList<Recommendation>>? _storyChildren;
 
     public OverlayWindow()
     {
@@ -75,8 +76,10 @@ public partial class OverlayWindow : OverlayWindowBase
         IReadOnlyList<SpecialDismantleAdvice>? specialAdvice = null,
         double stunTarget = 1.4,
         double stunCap = 1.5,
-        string? phaseHint = null)
+        string? phaseHint = null,
+        Func<Recommendation, IReadOnlyList<Recommendation>>? storyChildren = null)
     {
+        _storyChildren = storyChildren;
         GoalText.Text = goalName;
         PhaseHintText.Text = phaseHint ?? "";
         PhaseHintText.Visibility = phaseHint is { Length: > 0 }
@@ -104,10 +107,16 @@ public partial class OverlayWindow : OverlayWindowBase
 
     private void FillBoard()
     {
+        var selected = _recommendations.FirstOrDefault(item =>
+            item.Route.Id.Equals(_selectedRouteId, StringComparison.OrdinalIgnoreCase))
+            ?? _recommendations.FirstOrDefault();
+        var children = selected is null
+            ? []
+            : _storyChildren?.Invoke(selected) ?? [];
         RecommendationBoard.Fill(NowPanel, FlowPanel, BoardPanel, _recommendations, _combinePlan,
             _selectedRouteId, SelectRoute, PhaseHintText.Visibility == Visibility.Visible
                 ? PhaseHintText.Text
-                : null);
+                : null, children);
     }
 
     private void SelectRoute(string routeId)

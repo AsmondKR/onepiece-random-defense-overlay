@@ -179,6 +179,10 @@ Assert(yamatoWithoutPirateShip[0].ClusterParentUnitId is null &&
        yamatoWithoutPirateShip.Skip(1).Take(2).All(item =>
            item.ClusterParentUnitId == "yamato_transcendent"),
     "야마토 하위 전설은 후보 보드에서 야마토 클러스터에 묶인다");
+var yamatoCluster = engine.StoryClusterChildren("yamato_transcendent", []);
+Assert(yamatoCluster.Select(item => item.Route.GoalUnitId).ToHashSet(StringComparer.OrdinalIgnoreCase)
+           .IsSupersetOf(["rawcode:S30h", "rawcode:780h"]),
+    "빈 패에서 상위를 직접 골라도 선택한 초월의 전설이 클러스터에 붙는다");
 // 표시 순서는 채용률이 정하지만, 선택된 지원에는 스턴 1.4 패키지가 유지되어야 한다.
 var yamatoStunSupports = yamatoWithoutPirateShip.Skip(1)
     .Where(item => AbilityValue(item.CompositionUnits[0], "스턴") > 0)
@@ -1305,25 +1309,19 @@ Assert(SettlementReport.LegendEquivalent(catalog, catalog.Unit("rawcode:3A0h")) 
 
 // 자동 시작 단계의 희귀함 순위: 빈 패에서는 재료 적은 순, 재료가 모이면 완성률 순.
 var fastRaresEmpty = engine.RecommendFastRares([], 5);
-Assert(fastRaresEmpty.Count >= 5 &&
-       catalog.Unit(fastRaresEmpty[0].Route.GoalUnitId).Tier.Split('[', 2)[0].Trim() == "희귀함" &&
-       fastRaresEmpty.Count(rec =>
-           catalog.Unit(rec.Route.GoalUnitId).Tier.Split('[', 2)[0].Trim() == "희귀함") == 5,
+Assert(fastRaresEmpty.Count == 5 && fastRaresEmpty.All(rec =>
+        catalog.Unit(rec.Route.GoalUnitId).Tier.Split('[', 2)[0].Trim() == "희귀함"),
     "자동 시작 단계는 희귀함만 순위로 보여줌");
 var firstRareSpecials = engine.RecipeSpecialUnitIds(fastRaresEmpty[0].Route.GoalUnitId);
-var pinnedSpecials = fastRaresEmpty.Skip(1).Take(firstRareSpecials.Count)
-    .Select(rec => rec.Route.GoalUnitId)
-    .ToList();
+var selectedRareCluster = engine.StoryClusterChildren(fastRaresEmpty[0].Route.GoalUnitId, []);
 Assert(firstRareSpecials.Count == 0 ||
-       (pinnedSpecials.Count == firstRareSpecials.Count &&
-        firstRareSpecials.All(id => pinnedSpecials.Contains(id, StringComparer.OrdinalIgnoreCase)) &&
-        pinnedSpecials.All(id =>
-            catalog.Unit(id).Tier.Split('[', 2)[0].Trim() == "특별함")),
-    "첫 희귀함 옆에 그 희귀함의 특별함 재료를 후보 보드에 둔다");
-Assert(firstRareSpecials.Count == 0 ||
-       fastRaresEmpty.Skip(1).Take(firstRareSpecials.Count).All(item =>
-           item.ClusterParentUnitId == fastRaresEmpty[0].Route.GoalUnitId),
-    "첫 희귀함의 특별함 재료는 후보 보드에서 그 희귀함 클러스터에 묶인다");
+       (selectedRareCluster.Count == firstRareSpecials.Count &&
+        firstRareSpecials.All(id => selectedRareCluster.Any(item =>
+            item.Route.GoalUnitId.Equals(id, StringComparison.OrdinalIgnoreCase))) &&
+        selectedRareCluster.All(item =>
+            catalog.Unit(item.Route.GoalUnitId).Tier.Split('[', 2)[0].Trim() == "특별함" &&
+            item.ClusterParentUnitId == fastRaresEmpty[0].Route.GoalUnitId)),
+    "선택한 희귀함의 특별함 재료를 그 후보 클러스터에 붙인다");
 var targetRare = fastRaresEmpty[0];
 var targetRareMaterials = targetRare.RecipeProgress.Leaves
     .SelectMany(leaf => Enumerable.Repeat(leaf.UnitId, (int)leaf.RequiredCount))
@@ -2273,7 +2271,7 @@ if (Environment.GetEnvironmentVariable("ORAND_DIAG") == "drill")
     return;
 }
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 425/425");
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 426/426");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,

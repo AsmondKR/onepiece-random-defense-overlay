@@ -24,7 +24,8 @@ internal static class RecommendationBoard
         IReadOnlyList<AutoCombineStep> plan,
         string? selectedId,
         Action<string> onSelect,
-        string? banner = null)
+        string? banner = null,
+        IReadOnlyList<Recommendation>? selectedChildren = null)
     {
         nowPanel.Children.Clear();
         flowPanel.Children.Clear();
@@ -77,8 +78,17 @@ internal static class RecommendationBoard
             boardPanel.Children.Add(missing);
         }
         var tiles = new WrapPanel();
-        foreach (var cluster in Clusters(recs))
-            tiles.Children.Add(RenderCluster(cluster, selected.Route.Id, onSelect));
+        var children = selectedChildren ?? [];
+        var childIds = children.Select(item => item.Route.GoalUnitId)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var rec in recs)
+        {
+            var isSelected = rec.Route.Id.Equals(selected.Route.Id, StringComparison.OrdinalIgnoreCase);
+            if (!isSelected && childIds.Contains(rec.Route.GoalUnitId)) continue;
+            tiles.Children.Add(isSelected
+                ? RenderCluster(new BoardCluster(rec, children), selected.Route.Id, onSelect)
+                : BoardTile(rec, false, onSelect));
+        }
         boardPanel.Children.Add(tiles);
     }
 
