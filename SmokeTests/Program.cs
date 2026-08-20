@@ -1746,6 +1746,20 @@ Assert(catalog.Unit("rawcode:O30h").CombineCommands.SequenceEqual(["봉쿠레조
     "봉쿠레 히든 조합 명령어는 봉쿠레조합 / bonkurei");
 Assert(catalog.Unit("rawcode:Q30h").CombineCommands.SequenceEqual(["모비딕호조합", "mobydick"]),
     "모비딕호 조합 명령어는 모비딕호조합 / mobydick");
+Assert(catalog.Unit("rawcode:090H").CombineCommands.SequenceEqual(["치밀하고비열한어둠", "teach tr"]),
+    "검은수염 초월 영문 명령어는 teach tr (tichi tr 아님)");
+Assert(catalog.Unit("rawcode:F40h").CombineCommands.SequenceEqual(["산먹깨비", "gaban im"]),
+    "가반 불멸 조합 명령어는 산먹깨비 / gaban im");
+Assert(catalog.Unit("rawcode:A40h").CombineCommands.SequenceEqual(["대해적흰수염", "newgate im"]),
+    "흰수염 불멸 영문 명령어는 newgate im");
+Assert(catalog.Unit("rawcode:JC0h").CombineCommands.SequenceEqual(["전설의사무라이", "ryuma et"]),
+    "류마 영원 영문 명령어는 ryuma et");
+Assert(catalog.Unit("rawcode:AA0H").CombineCommands.SequenceEqual(["세계최고의과학자", "vegapunk tr"]),
+    "베가펑크 초월 조합 명령어는 세계최고의과학자 / vegapunk tr");
+Assert(catalog.Unit("rawcode:180h").CombineCommands.SequenceEqual(["괴물의후계자", "bullet im"]),
+    "불릿 불멸 조합 명령어는 괴물의후계자 / bullet im");
+Assert(catalog.Unit("rawcode:A60h").CombineCommands.SequenceEqual(["최고의엔터테이너", "tesoro et"]),
+    "테조로 영원 조합 명령어는 최고의엔터테이너 / tesoro et");
 Assert(catalog.RawcodeCatalog.Values.Count(entry => entry.Commands.Count > 0) >= 70,
     "조합 명령어가 있는 유닛은 초월·히든·해적선까지 전부 실림");
 var jinbeGoalCard = new RecommendationEngine(catalog, null, combineHotkeys)
@@ -2286,7 +2300,7 @@ if (Environment.GetEnvironmentVariable("ORAND_DIAG") == "drill")
     return;
 }
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 427/427");
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 434/434");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,
