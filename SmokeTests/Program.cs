@@ -775,6 +775,26 @@ Assert(RecognitionPolicy.IsConfirmedOutOfGame(new RecognitionResult
        }) &&
        !RecognitionPolicy.IsConfirmedOutOfGame(new RecognitionResult { State = RecognitionState.Waiting }),
     "확인된 게임 경계만 수동 보정을 지우고 일시 읽기 오류는 보존");
+Assert(RecognitionPolicy.ShouldResetMatch(new RecognitionResult
+       {
+           State = RecognitionState.Waiting,
+           ConfirmsSessionBoundary = true
+       }) &&
+       !RecognitionPolicy.ShouldResetMatch(new RecognitionResult { State = RecognitionState.Waiting }) &&
+       !RecognitionPolicy.ShouldResetMatch(new RecognitionResult
+       {
+           State = RecognitionState.TransientReadError,
+           ConfirmsSessionBoundary = true
+       }),
+    "한 판이 끝나 로비·패 0장이면 다음 판 희귀함 자동시작을 다시 연다");
+Assert(new RecognitionResult
+       {
+           State = RecognitionState.Waiting,
+           Status = "보유 패 없음 · 대기 중",
+           ConfirmsSessionBoundary = true
+       }.ConfirmsSessionBoundary &&
+       new RecognitionResult { State = RecognitionState.Waiting }.ShouldClearAutomaticInventory,
+    "패가 비면 이전 판 자동 패를 지우고 세션 경계를 연다");
 // 실패 클래스별 상태 전이: fail-closed(추천 중단) vs fail-soft(마지막 정상 유지).
 // 게임 미실행(Waiting)은 위 줄(ShouldReplaceInventory·ShouldClearAutomaticInventory·MayUseLastGoodForRecommendations)에서 이미 커버.
 Assert(!RecognitionPolicy.MayUseLastGoodForRecommendations(RecognitionState.UnverifiedProfile) &&

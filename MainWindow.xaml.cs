@@ -908,7 +908,7 @@ public partial class MainWindow : Window
             }
             if (_outcome.Outcome is "fail" or "clear")
                 SendMatchTelemetry();
-            if (result.ShouldClearAutomaticInventory && RecognitionPolicy.IsConfirmedOutOfGame(result))
+            if (RecognitionPolicy.ShouldResetMatch(result))
             {
                 SendMatchTelemetry();
                 _telemetryBuffer.Reset();

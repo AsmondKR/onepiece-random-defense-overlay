@@ -151,16 +151,18 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
                 {
                     State = RecognitionState.Waiting,
                     Status = "보유 패 없음 · 대기 중",
+                    ConfirmsSessionBoundary = true,
                     Diagnostics = diagnostics
                 };
             var catalogMatches = mapped.KnownCount + mapped.CatalogNamedCount;
             // 뽑기 전에는 로컬 소유 객체가 맵 컨트롤러·헬퍼뿐이라 카드가 0장이다.
-            // 이것은 읽기 오류가 아니라 아직 패가 없는 상태다.
+            // 이것은 읽기 오류가 아니라 아직 패가 없는 상태다. 이전 판 목표를 여기서 푼다.
             if (catalogMatches == 0)
                 return new RecognitionResult
                 {
                     State = RecognitionState.Waiting,
                     Status = "보유 패 없음 · 대기 중",
+                    ConfirmsSessionBoundary = true,
                     Diagnostics = diagnostics
                 };
             var catalogRatio = (double)catalogMatches / Math.Max(1, diagnostics.ObservedObjects);
@@ -396,6 +398,9 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
     {
         State = state,
         Status = status,
+        // 로비·워크 종료·맵 로딩(Waiting)은 이전 판이 끝난 것이다. 안 켜면 징베 초월
+        // 같은 자동시작 목표가 다음 판까지 남고, 희귀함 추천이 다시 안 열린다.
+        ConfirmsSessionBoundary = state == RecognitionState.Waiting,
         Diagnostics = diagnostics is null
             ? new RecognitionDiagnostics { Source = "WarcraftMemory", ProfileSource = profileSource, Detail = detail }
             : new RecognitionDiagnostics

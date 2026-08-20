@@ -522,6 +522,13 @@ public static class RecognitionPolicy
         state == RecognitionState.TransientReadError;
 
     public static bool IsConfirmedOutOfGame(RecognitionResult result) => result.ConfirmsSessionBoundary;
+
+    /// <summary>
+    /// 한 판이 끝나 로비·대기(패 0장)로 돌아가면 자동시작과 완성 상위 잠금을 푼다.
+    /// 일시 읽기 race는 이전 판 목표를 유지한다.
+    /// </summary>
+    public static bool ShouldResetMatch(RecognitionResult result) =>
+        result.ShouldClearAutomaticInventory && result.ConfirmsSessionBoundary;
 }
 
 public static class InventoryMerge
