@@ -4,6 +4,7 @@ using Microsoft.Win32;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -22,7 +23,7 @@ public partial class OverlayWindow : OverlayWindowBase
     {
         InitializeComponent();
         var appVersion = UpdateService.CurrentVersion;
-        OverlayVersionText.Text = $"v{appVersion.Major}.{appVersion.Minor}.{appVersion.Build} 테스트";
+        OverlayVersionText.Text = $"v{appVersion.Major}.{appVersion.Minor}.{appVersion.Build} 테스트2";
         // 패 상태 창은 추천 창과 함께 뜨고 함께 사라진다(위치만 각자 기억).
         IsVisibleChanged += (_, e) =>
         {
@@ -49,6 +50,7 @@ public partial class OverlayWindow : OverlayWindowBase
     private TextBlock CombineHeader => Stats.CombineHeader;
     private StackPanel EmergencyPanel => Stats.EmergencyPanel;
     private TextBlock EmergencyHeader => Stats.EmergencyHeader;
+    private UniformGrid CoreKpiPanel => Stats.CoreKpiPanel;
     private StackPanel CurrentStatsPanel => Stats.CurrentStatsPanel;
     private StackPanel RareRerollPanel => Stats.RareRerollPanel;
     private StackPanel SpecialPanel => Stats.SpecialPanel;
@@ -100,16 +102,25 @@ public partial class OverlayWindow : OverlayWindowBase
         RecommendationPanel.Children.Clear();
 
         if (recommendations.Count == 0)
+        {
             RecommendationPanel.Children.Add(new TextBlock
             {
                 Text = "패 인식 대기 중",
-                Foreground = new SolidColorBrush(Color.FromRgb(156, 163, 175)),
+                Foreground = OverlayTheme.MutedBrush,
                 FontSize = 12,
-                Margin = new Thickness(2, 4, 0, 0)
+                Margin = new Thickness(2, 8, 0, 0)
             });
-
-        for (var i = 0; i < recommendations.Count; i++)
-            RecommendationPanel.Children.Add(RecommendationCard(recommendations[i], i + 1));
+        }
+        else
+        {
+            RecommendationPanel.Children.Add(FeaturedRecommendation(recommendations[0]));
+            if (recommendations.Count > 1)
+            {
+                RecommendationPanel.Children.Add(OverlayTheme.RecTableHeader());
+                for (var i = 1; i < recommendations.Count; i++)
+                    RecommendationPanel.Children.Add(TableRecommendation(recommendations[i], i + 1, i % 2 == 1));
+            }
+        }
 
         Dispatcher.BeginInvoke(new Action(() =>
             RecommendationScroll.ScrollToVerticalOffset(scrollOffset)));
@@ -131,38 +142,14 @@ public partial class OverlayWindow : OverlayWindowBase
         var visible = plan.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         CombineHeader.Visibility = visible;
         CombinePanel.Visibility = visible;
+        var index = 1;
         foreach (var step in plan.Take(6))
         {
-            var stack = new StackPanel { Margin = new Thickness(0, 0, 0, 5) };
-            stack.Children.Add(new TextBlock
-            {
-                Text = step.TargetName,
-                Foreground = OverlayTheme.GoldBrush,
-                FontSize = 11,
-                FontWeight = FontWeights.SemiBold,
-                TextWrapping = TextWrapping.Wrap
-            });
-            if (step.Commands.Count > 0)
-            {
-                stack.Children.Add(new TextBlock
-                {
-                    Text = step.TriggerName + " 선택",
-                    Foreground = OverlayTheme.MutedBrush,
-                    FontSize = 11
-                });
-                stack.Children.Add(OverlayTheme.CommandChips(step.Commands));
-            }
-            else
-            {
-                stack.Children.Add(new TextBlock
-                {
-                    Text = $"{step.TriggerName} 선택 → {step.Key} 키",
-                    Foreground = OverlayTheme.MutedBrush,
-                    FontSize = 11,
-                    TextWrapping = TextWrapping.Wrap
-                });
-            }
-            CombinePanel.Children.Add(stack);
+            var commands = step.Commands.Count > 0
+                ? step.Commands
+                : step.Key is { Length: > 0 } key ? (IReadOnlyList<string>)[key] : [];
+            CombinePanel.Children.Add(
+                OverlayTheme.CombineRow(index++, step.TargetName, step.TriggerName, commands));
         }
         if (plan.Count > 6)
             CombinePanel.Children.Add(new TextBlock
@@ -355,10 +342,9 @@ public partial class OverlayWindow : OverlayWindowBase
             });
             RareRerollPanel.Children.Add(new Border
             {
-                Background = new SolidColorBrush(Color.FromArgb(95, 69, 42, 10)),
-                CornerRadius = new CornerRadius(6),
-                Padding = new Thickness(7, 6, 7, 6),
-                Margin = new Thickness(0, 0, 0, 5),
+                BorderBrush = OverlayTheme.HairlineBrush,
+                BorderThickness = new Thickness(0, 0, 0, 1),
+                Padding = new Thickness(0, 5, 0, 5),
                 Child = stack
             });
         }
@@ -388,6 +374,7 @@ public partial class OverlayWindow : OverlayWindowBase
         if (signature == _lastStatsSignature) return;
         _lastStatsSignature = signature;
         CurrentStatsPanel.Children.Clear();
+        CoreKpiPanel.Children.Clear();
 
         // 오로성(신+ 판별 효과)에 따라 이감·깎기 목표가 올라간다.
         var slowTarget = GoroseiEffects.AdjustSlowTarget(102, gorosei);
@@ -397,68 +384,65 @@ public partial class OverlayWindow : OverlayWindowBase
             CurrentStatsPanel.Children.Add(new TextBlock
             {
                 Text = goroseiNote,
-                Foreground = new SolidColorBrush(Color.FromRgb(251, 191, 36)),
+                Foreground = OverlayTheme.WarnBrush,
                 FontSize = 11,
                 TextWrapping = TextWrapping.Wrap,
                 Margin = new Thickness(0, 0, 0, 6)
             });
 
-        // 스턴 목표·상한은 공략(엔진 프로필)이 정하고, 어떤 기물로 채울지는
-        // 스턴 세트 선택이 알아서 짠다. 카드에는 수치만 보여준다.
-        CurrentStatsPanel.Children.Add(CoreStatCard("스턴", stats.Stun, stunTarget, ""));
-        CurrentStatsPanel.Children.Add(CoreStatCard("이감", stats.TotalSlow, slowTarget,
+        CoreKpiPanel.Children.Add(OverlayTheme.Kpi("스턴", stats.Stun, stunTarget, ""));
+        CoreKpiPanel.Children.Add(OverlayTheme.Kpi("이감", stats.TotalSlow, slowTarget,
             stats.TriggeredSlow > 0
                 ? $"고정 {FormatNumber(stats.Slow)} · 발동 {FormatNumber(stats.TriggeredSlow)}"
                 : $"고정 {FormatNumber(stats.Slow)}"));
-        // 마딜 상위는 방깎 211이 무의미하다(신+ 실측 중앙값 0). 마감 깎기 카드를
-        // 마방깎으로 바꾸고, 목표는 "소스 1점 이상"(워큐리 시 10)이다.
-        CurrentStatsPanel.Children.Add(magicGoal
-            ? CoreStatCard("마방깎", stats.MagicArmorReduction, magicArmorTarget,
+        CoreKpiPanel.Children.Add(magicGoal
+            ? OverlayTheme.Kpi("마방깎", stats.MagicArmorReduction, magicArmorTarget,
                 gorosei == GoroseiMode.Warcury
                     ? "워큐리 보정: 마방깎 10 필요"
-                    : "마방깎 유닛 1기 이상 (예: 갓 에넬 · 후지토라)")
-            : CoreStatCard("방깎", stats.TotalArmorReduction, armorTarget,
+                    : "마방깎 1기 이상")
+            : OverlayTheme.Kpi("방깎", stats.TotalArmorReduction, armorTarget,
                 ArmorBreakdown(stats)));
 
+        var pairs = new UniformGrid { Columns = 2, Margin = new Thickness(0, 4, 0, 0) };
         if (magicGoal)
         {
-            // 고인물 검증: 클리어가 목적이면 단일·끝딜 기수 밸런스가 핵심 지표다.
-            // 단일=만피 몹을 현퍼뎀 스킬로 직접 찝기, 끝딜=딸피 라인몹 막타.
             CurrentStatsPanel.Children.Add(SectionLabel("딜 밸런스"));
-            CurrentStatsPanel.Children.Add(ProviderRow("단일", stats.SingleDamageProviders,
-                "만피 몹 찝어서 현퍼뎀"));
-            CurrentStatsPanel.Children.Add(ProviderRow("끝딜", stats.FinisherDamageProviders,
-                "딸피 라인몹 막타"));
+            pairs.Children.Add(ProviderRow("단일", stats.SingleDamageProviders, "만피 몹 현퍼뎀"));
+            pairs.Children.Add(ProviderRow("끝딜", stats.FinisherDamageProviders, "딸피 막타"));
+            CurrentStatsPanel.Children.Add(pairs);
             if (stats.SingleDamageProviders > 0 && stats.FinisherDamageProviders > 0)
                 CurrentStatsPanel.Children.Add(new TextBlock
                 {
                     Text = "단·끝 구성: 스킬 대상 직접 컨트롤 필요",
-                    Foreground = new SolidColorBrush(Color.FromRgb(251, 191, 36)),
+                    Foreground = OverlayTheme.WarnBrush,
                     FontSize = 11,
                     TextWrapping = TextWrapping.Wrap,
-                    Margin = new Thickness(0, 2, 0, 0)
+                    Margin = new Thickness(0, 2, 0, 4)
                 });
+            pairs = new UniformGrid { Columns = 2 };
         }
 
         CurrentStatsPanel.Children.Add(SectionLabel("공격 지원"));
-        CurrentStatsPanel.Children.Add(ValueRow("공증", stats.TotalAttackBoost,
+        pairs.Children.Add(ValueRow("공증", stats.TotalAttackBoost,
             stats.TriggeredAttackBoost > 0
                 ? $"고정 {FormatNumber(stats.AttackBoost)} · 발동 {FormatNumber(stats.TriggeredAttackBoost)}"
                 : null));
-        CurrentStatsPanel.Children.Add(ValueRow("공속", stats.AttackSpeed));
-        if (magicGoal) CurrentStatsPanel.Children.Add(ValueRow("마뎀증", stats.MagicAmp));
-        CurrentStatsPanel.Children.Add(ValueRow("체젠", stats.HealthRegen));
-        CurrentStatsPanel.Children.Add(ValueRow("마젠", stats.ManaRegen));
+        pairs.Children.Add(ValueRow("공속", stats.AttackSpeed));
+        if (magicGoal) pairs.Children.Add(ValueRow("마뎀증", stats.MagicAmp));
+        pairs.Children.Add(ValueRow("체젠", stats.HealthRegen));
+        pairs.Children.Add(ValueRow("마젠", stats.ManaRegen));
+        CurrentStatsPanel.Children.Add(pairs);
 
         CurrentStatsPanel.Children.Add(SectionLabel("특수 역할"));
+        var roles = new UniformGrid { Columns = 2 };
         if (!magicGoal)
-            CurrentStatsPanel.Children.Add(ProviderRow("암브", stats.ArmorBreakProviders,
-                "누적형 · 방깎 합계와 별도"));
-        CurrentStatsPanel.Children.Add(ProviderRow("보잡", stats.BossControlProviders));
-        CurrentStatsPanel.Children.Add(ProviderRow("광보잡", stats.BerserkControlProviders));
-        CurrentStatsPanel.Children.Add(ProviderRow("공중이동", stats.AirMovementProviders));
-        CurrentStatsPanel.Children.Add(ProviderRow("순간이동", stats.TeleportProviders));
-        CurrentStatsPanel.Children.Add(ProviderRow("바제스", stats.BurgessProviders));
+            roles.Children.Add(ProviderRow("암브", stats.ArmorBreakProviders, "누적형"));
+        roles.Children.Add(ProviderRow("보잡", stats.BossControlProviders));
+        roles.Children.Add(ProviderRow("광보잡", stats.BerserkControlProviders));
+        roles.Children.Add(ProviderRow("공중이동", stats.AirMovementProviders));
+        roles.Children.Add(ProviderRow("순간이동", stats.TeleportProviders));
+        roles.Children.Add(ProviderRow("바제스", stats.BurgessProviders));
+        CurrentStatsPanel.Children.Add(roles);
     }
 
     private static string ArmorBreakdown(InventoryStatSummary stats)
@@ -473,128 +457,14 @@ public partial class OverlayWindow : OverlayWindowBase
         return string.Join(" · ", values);
     }
 
-    private static UIElement CoreStatCard(string name, double current, double target, string detail)
-    {
-        var reached = current + 0.0001 >= target;
-        var accent = reached ? OverlayTheme.Ok : OverlayTheme.Warn;
-        var title = new Grid();
-        title.ColumnDefinitions.Add(new ColumnDefinition());
-        title.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        title.Children.Add(new TextBlock
-        {
-            Text = name,
-            Foreground = Brushes.White,
-            FontSize = 12,
-            FontWeight = FontWeights.SemiBold
-        });
-        var value = new TextBlock
-        {
-            Text = $"{FormatNumber(current)} / {FormatNumber(target)}",
-            Foreground = new SolidColorBrush(accent),
-            FontSize = 13,
-            FontWeight = FontWeights.Bold
-        };
-        Grid.SetColumn(value, 1);
-        title.Children.Add(value);
+    private static UIElement ValueRow(string name, double value, string? detail = null) =>
+        OverlayTheme.Pair(name, FormatNumber(value), OverlayTheme.GoldBrush, detail);
 
-        var stack = new StackPanel { Margin = new Thickness(0, 0, 0, 6) };
-        stack.Children.Add(title);
-        stack.Children.Add(StatBar(current, target, accent));
-        if (!string.IsNullOrWhiteSpace(detail))
-            stack.Children.Add(new TextBlock
-            {
-                Text = detail,
-                Foreground = OverlayTheme.MutedBrush,
-                FontSize = 10.5,
-                TextWrapping = TextWrapping.Wrap,
-                Margin = new Thickness(0, 2, 0, 0)
-            });
-        return stack;
-    }
+    private static UIElement ProviderRow(string name, int providers, string? detail = null) =>
+        OverlayTheme.Pair(name, $"{providers}기",
+            providers > 0 ? OverlayTheme.OkBrush : OverlayTheme.MutedBrush, detail);
 
-    private static UIElement StatBar(double current, double target, Color accent)
-    {
-        var ratio = target <= 0 ? 1 : Math.Clamp(current / target, 0, 1);
-        var grid = new Grid { Height = 5, Margin = new Thickness(0, 5, 0, 0) };
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(ratio, GridUnitType.Star) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1 - ratio, GridUnitType.Star) });
-        grid.Children.Add(new Border
-        {
-            Background = new SolidColorBrush(accent),
-            CornerRadius = new CornerRadius(3)
-        });
-        return new Border
-        {
-            Background = new SolidColorBrush(Color.FromRgb(65, 72, 88)),
-            CornerRadius = new CornerRadius(3),
-            Child = grid
-        };
-    }
-
-    private static UIElement ValueRow(string name, double value, string? detail = null)
-    {
-        var stack = new StackPanel();
-        var row = new Grid();
-        row.ColumnDefinitions.Add(new ColumnDefinition());
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        row.Children.Add(new TextBlock { Text = name, Foreground = Brushes.White, FontSize = 12 });
-        var number = new TextBlock
-        {
-            Text = FormatNumber(value),
-            Foreground = OverlayTheme.GoldBrush,
-            FontSize = 12,
-            FontWeight = FontWeights.SemiBold
-        };
-        Grid.SetColumn(number, 1);
-        row.Children.Add(number);
-        stack.Children.Add(row);
-        if (!string.IsNullOrWhiteSpace(detail))
-            stack.Children.Add(new TextBlock
-            {
-                Text = detail,
-                Foreground = new SolidColorBrush(Color.FromRgb(166, 177, 196)),
-                FontSize = 10.5,
-                TextWrapping = TextWrapping.Wrap
-            });
-        return new Border { Padding = new Thickness(4, 3, 4, 3), Child = stack };
-    }
-
-    private static UIElement ProviderRow(string name, int providers, string? detail = null)
-    {
-        var stack = new StackPanel();
-        var row = new Grid();
-        row.ColumnDefinitions.Add(new ColumnDefinition());
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        row.Children.Add(new TextBlock { Text = name, Foreground = Brushes.White, FontSize = 12 });
-        var value = new TextBlock
-        {
-            Text = $"{providers}기",
-            Foreground = providers > 0 ? OverlayTheme.OkBrush : OverlayTheme.MutedBrush,
-            FontSize = 12,
-            FontWeight = FontWeights.SemiBold
-        };
-        Grid.SetColumn(value, 1);
-        row.Children.Add(value);
-        stack.Children.Add(row);
-        if (!string.IsNullOrWhiteSpace(detail))
-            stack.Children.Add(new TextBlock
-            {
-                Text = detail,
-                Foreground = new SolidColorBrush(Color.FromRgb(166, 177, 196)),
-                FontSize = 10.5,
-                TextWrapping = TextWrapping.Wrap
-            });
-        return new Border { Padding = new Thickness(4, 3, 4, 3), Child = stack };
-    }
-
-    private static TextBlock SectionLabel(string text) => new()
-    {
-        Text = text,
-        Foreground = OverlayTheme.MutedBrush,
-        FontSize = 12,
-        FontWeight = FontWeights.SemiBold,
-        Margin = new Thickness(2, 10, 0, 4)
-    };
+    private static TextBlock SectionLabel(string text) => OverlayTheme.Section(text);
 
     private static string FormatNumber(double value) =>
         value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
@@ -616,63 +486,47 @@ public partial class OverlayWindow : OverlayWindowBase
                 ? ""
                 : $"{item.ClearEvidence.SampleCount}:{item.ClearEvidence.SharePercent}")));
 
-    private UIElement RecommendationCard(Recommendation item, int rank)
+    private UIElement FeaturedRecommendation(Recommendation item)
     {
         var unit = item.CompositionUnits[0];
-        var row = new Grid { Margin = new Thickness(0, 1, 0, 1) };
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        row.ColumnDefinitions.Add(new ColumnDefinition());
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var icon = UnitImageFactory.Create(unit.Image, unit.Name, 40, unit.UnitId);
-        icon.Margin = new Thickness(0, 0, 8, 0);
-        icon.VerticalAlignment = VerticalAlignment.Center;
-        row.Children.Add(icon);
-        var name = new TextBlock
-        {
-            Text = $"{rank}  {RecommendationPresentation.CraftUnitName(unit)}",
-            Foreground = Brushes.White,
-            FontSize = 13,
-            FontWeight = FontWeights.SemiBold,
-            VerticalAlignment = VerticalAlignment.Center,
-            TextWrapping = TextWrapping.Wrap
-        };
-        Grid.SetColumn(name, 1);
-        row.Children.Add(name);
-        if (item.CombineCommands.Count > 0)
-        {
-            var chips = OverlayTheme.CommandChips(item.CombineCommands);
-            Grid.SetColumn(chips, 2);
-            row.Children.Add(chips);
-        }
-        var score = new TextBlock
-        {
-            Text = RecommendationPresentation.CompletionPercent(item.RecipeProgress),
-            Foreground = OverlayTheme.GoldBrush,
-            FontSize = 13,
-            FontWeight = FontWeights.Bold,
-            VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(8, 0, 0, 0)
-        };
-        Grid.SetColumn(score, 3);
-        row.Children.Add(score);
-
-        UIElement header = row;
+        var header = OverlayTheme.FeaturedBlock(
+            UnitImageFactory.Create(unit.Image, unit.Name, 64, unit.UnitId),
+            "1  " + RecommendationPresentation.CraftUnitName(unit),
+            RecommendationPresentation.RecommendationEffectLine(unit),
+            item.CombineCommands,
+            RecommendationPresentation.CompletionPercent(item.RecipeProgress),
+            item.NextAction);
         if (item.Warnings.Count > 0)
         {
             var stack = new StackPanel();
-            stack.Children.Add(row);
+            stack.Children.Add(header);
             stack.Children.Add(new TextBlock
             {
                 Text = item.Warnings[0],
                 Foreground = OverlayTheme.WarnBrush,
                 FontSize = 11,
                 TextWrapping = TextWrapping.Wrap,
-                Margin = new Thickness(48, 2, 0, 0)
+                Margin = new Thickness(76, 4, 0, 0)
             });
             header = stack;
         }
+        return OverlayTheme.FeaturedShell(RecommendationExpander(item, unit, header));
+    }
 
+    private UIElement TableRecommendation(Recommendation item, int rank, bool alt)
+    {
+        var unit = item.CompositionUnits[0];
+        var header = OverlayTheme.CompactRow(
+            rank,
+            UnitImageFactory.Create(unit.Image, unit.Name, 32, unit.UnitId),
+            RecommendationPresentation.CraftUnitName(unit),
+            item.CombineCommands,
+            RecommendationPresentation.CompletionPercent(item.RecipeProgress));
+        return OverlayTheme.TableShell(RecommendationExpander(item, unit, header), alt);
+    }
+
+    private Expander RecommendationExpander(Recommendation item, CompositionUnitDetail unit, UIElement header)
+    {
         var expander = new Expander
         {
             Header = header,
@@ -687,17 +541,7 @@ public partial class OverlayWindow : OverlayWindowBase
             $"{RecommendationPresentation.CompletionPercent(item.RecipeProgress)}, 조합식과 부족 패 상세");
         expander.Expanded += (_, _) => _expandedRouteIds.Add(item.Route.Id);
         expander.Collapsed += (_, _) => _expandedRouteIds.Remove(item.Route.Id);
-
-        return new Border
-        {
-            Background = OverlayTheme.RowBrush,
-            BorderBrush = OverlayTheme.HairlineBrush,
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(4),
-            Padding = new Thickness(6, 5, 6, 5),
-            Margin = new Thickness(0, 0, 0, 4),
-            Child = expander
-        };
+        return expander;
     }
 
     private static UIElement CountBar(RecipeProgress progress)
@@ -732,19 +576,20 @@ public partial class OverlayWindow : OverlayWindowBase
     {
         var stack = new StackPanel { Margin = new Thickness(0, 8, 0, 0) };
         // 부족한 패 나열은 길어질 수 있어 카드를 펼쳤을 때만 보여준다(유저 요청).
+        stack.Children.Add(CountBar(item.RecipeProgress));
         stack.Children.Add(new TextBlock
         {
             Text = item.NextAction,
-            Foreground = Brushes.LightGray,
+            Foreground = OverlayTheme.MutedBrush,
             FontSize = 12,
-            Margin = new Thickness(0, 0, 0, 7),
+            Margin = new Thickness(0, 8, 0, 7),
             TextWrapping = TextWrapping.Wrap
         });
         foreach (var warning in item.Warnings)
             stack.Children.Add(new TextBlock
             {
                 Text = "⚠ " + warning,
-                Foreground = new SolidColorBrush(Color.FromRgb(251, 191, 36)),
+                Foreground = OverlayTheme.WarnBrush,
                 FontSize = 12,
                 TextWrapping = TextWrapping.Wrap,
                 Margin = new Thickness(0, 0, 0, 7)
@@ -831,153 +676,29 @@ public partial class OverlayWindow : OverlayWindowBase
 
     private static UIElement RemainingRecipeCard(RecipeCraftStep node, int? stepNumber)
     {
-        var row = new Grid();
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        row.ColumnDefinitions.Add(new ColumnDefinition());
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var icon = UnitImageFactory.Create(node.Image, node.Name, 44, node.UnitId);
-        icon.Margin = new Thickness(0, 0, 10, 0);
-        icon.VerticalAlignment = VerticalAlignment.Center;
-        row.Children.Add(icon);
-
-        var text = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-        text.Children.Add(new TextBlock
-        {
-            Text = (stepNumber is { } number ? $"{number}. " : "") +
-                   RecommendationPresentation.CraftUnitName(node.Name, node.Tier),
-            Foreground = Brushes.White,
-            FontSize = 13,
-            FontWeight = FontWeights.SemiBold,
-            TextWrapping = TextWrapping.Wrap
-        });
-        text.Children.Add(CraftActionLine(node));
-        Grid.SetColumn(text, 1);
-        row.Children.Add(text);
-
-        var progress = new StackPanel
-        {
-            VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(10, 0, 0, 0)
-        };
-        progress.Children.Add(new TextBlock
-        {
-            Text = $"{Math.Round(node.CompletionRatio * 100, MidpointRounding.AwayFromZero):0}%",
-            Foreground = new SolidColorBrush(Color.FromRgb(196, 181, 253)),
-            FontSize = 14,
-            FontWeight = FontWeights.SemiBold,
-            TextAlignment = TextAlignment.Right
-        });
-        progress.Children.Add(new TextBlock
-        {
-            Text = $"{node.OwnedCount}/{node.RequiredCount}",
-            Foreground = new SolidColorBrush(Color.FromRgb(251, 191, 36)),
-            FontSize = 11,
-            FontWeight = FontWeights.SemiBold,
-            TextAlignment = TextAlignment.Right,
-            Margin = new Thickness(0, 1, 0, 0)
-        });
-        Grid.SetColumn(progress, 2);
-        row.Children.Add(progress);
-        return new Border
-        {
-            Background = new SolidColorBrush(Color.FromArgb(100, 14, 18, 28)),
-            CornerRadius = new CornerRadius(6),
-            Padding = new Thickness(9),
-            Margin = new Thickness(0, 5, 0, 0),
-            Child = row
-        };
-    }
-
-    // "선택할 유닛 나미 · 조합 키 [Z]"를 한 줄로 펼친다. 라벨은 죽이고
-    // 실제 행동 대상(유닛 이름, 키)만 크게 보이게 한다.
-    private static UIElement CraftActionLine(RecipeCraftStep node)
-    {
-        var panel = new WrapPanel { Margin = new Thickness(0, 3, 0, 0) };
         var select = RecommendationPresentation.CraftSelectUnitName(node);
-        if (select is null)
-        {
-            panel.Children.Add(CraftHintLabel("조합할 하위 유닛 없음"));
-            return panel;
-        }
-        panel.Children.Add(CraftHintLabel("선택할 유닛"));
-        panel.Children.Add(new TextBlock
-        {
-            Text = select,
-            Foreground = new SolidColorBrush(Color.FromRgb(196, 181, 253)),
-            FontSize = 13,
-            FontWeight = FontWeights.SemiBold,
-            VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(5, 0, 0, 0)
-        });
-        if (node.CombineCommands.Count > 0)
-        {
-            panel.Children.Add(CraftHintLabel("조합 명령어", left: 12));
-            panel.Children.Add(new TextBlock
-            {
-                Text = string.Join(" / ", node.CombineCommands),
-                Foreground = Brushes.White,
-                FontSize = 13,
-                FontWeight = FontWeights.SemiBold,
-                TextWrapping = TextWrapping.Wrap,
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(5, 0, 0, 0)
-            });
-        }
-        else if (node.CombineKey is { Length: > 0 } key)
-        {
-            panel.Children.Add(CraftHintLabel("조합 키", left: 12));
-            panel.Children.Add(new Border
-            {
-                Background = new SolidColorBrush(Color.FromRgb(42, 49, 71)),
-                BorderBrush = new SolidColorBrush(Color.FromRgb(97, 106, 140)),
-                BorderThickness = new Thickness(1, 1, 1, 2),
-                CornerRadius = new CornerRadius(4),
-                Padding = new Thickness(7, 0, 7, 1),
-                Margin = new Thickness(5, 0, 0, 0),
-                VerticalAlignment = VerticalAlignment.Center,
-                Child = new TextBlock
-                {
-                    Text = key,
-                    Foreground = Brushes.White,
-                    FontSize = 12,
-                    FontWeight = FontWeights.Bold
-                }
-            });
-        }
-        else if (RecommendationPresentation.CraftCompanionNames(node) is { } companions)
-        {
-            panel.Children.Add(CraftHintLabel("함께 조합", left: 12));
-            panel.Children.Add(new TextBlock
-            {
-                Text = companions,
-                Foreground = new SolidColorBrush(Color.FromRgb(196, 181, 253)),
-                FontSize = 13,
-                FontWeight = FontWeights.SemiBold,
-                TextWrapping = TextWrapping.Wrap,
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(5, 0, 0, 0)
-            });
-        }
-        return panel;
+        var action = select is null ? "조합할 하위 유닛 없음" : select + " 선택";
+        var companions = RecommendationPresentation.CraftCompanionNames(node);
+        if (companions is not null) action += " · " + companions;
+        var commands = node.CombineCommands.Count > 0
+            ? node.CombineCommands
+            : node.CombineKey is { Length: > 0 } key ? (IReadOnlyList<string>)[key] : [];
+        return OverlayTheme.CraftRow(
+            UnitImageFactory.Create(node.Image, node.Name, 32, node.UnitId),
+            (stepNumber is { } number ? $"{number}. " : "") +
+            RecommendationPresentation.CraftUnitName(node.Name, node.Tier),
+            action,
+            commands,
+            $"{Math.Round(node.CompletionRatio * 100, MidpointRounding.AwayFromZero):0}%",
+            $"{node.OwnedCount}/{node.RequiredCount}");
     }
 
-    private static TextBlock CraftHintLabel(string text, double left = 0) => new()
+    private static TextBlock DetailSectionTitle(string text, Thickness? margin = null)
     {
-        Text = text,
-        Foreground = new SolidColorBrush(Color.FromRgb(148, 163, 184)),
-        FontSize = 11,
-        VerticalAlignment = VerticalAlignment.Center,
-        Margin = new Thickness(left, 0, 0, 0)
-    };
-
-    private static TextBlock DetailSectionTitle(string text, Thickness? margin = null) => new()
-    {
-        Text = text,
-        Foreground = new SolidColorBrush(Color.FromRgb(167, 139, 250)),
-        FontSize = 13,
-        FontWeight = FontWeights.SemiBold,
-        Margin = margin ?? new Thickness(0)
-    };
+        var block = OverlayTheme.Section(text);
+        if (margin is { } value) block.Margin = value;
+        return block;
+    }
 
     private static UIElement CompositionUnitRow(CompositionUnitDetail unit)
     {
@@ -988,7 +709,7 @@ public partial class OverlayWindow : OverlayWindowBase
         title.Children.Add(new TextBlock
         {
             Text = RecommendationPresentation.CraftUnitName(unit),
-            Foreground = unit.IsGoal ? new SolidColorBrush(Color.FromRgb(196, 181, 253)) : Brushes.White,
+            Foreground = unit.IsGoal ? OverlayTheme.GoldBrush : OverlayTheme.WhiteBrush,
             FontSize = 12,
             FontWeight = FontWeights.SemiBold,
             TextWrapping = TextWrapping.Wrap
@@ -996,9 +717,7 @@ public partial class OverlayWindow : OverlayWindowBase
         var ownership = new TextBlock
         {
             Text = RecommendationPresentation.Ownership(unit),
-            Foreground = unit.OwnedCount > 0
-                ? new SolidColorBrush(Color.FromRgb(74, 222, 128))
-                : new SolidColorBrush(Color.FromRgb(173, 179, 192)),
+            Foreground = unit.OwnedCount > 0 ? OverlayTheme.OkBrush : OverlayTheme.MutedBrush,
             FontSize = 11,
             Margin = new Thickness(6, 0, 0, 0)
         };
@@ -1008,32 +727,18 @@ public partial class OverlayWindow : OverlayWindowBase
         stack.Children.Add(new TextBlock
         {
             Text = RecommendationPresentation.AbilitySummary(unit),
-            Foreground = new SolidColorBrush(Color.FromRgb(190, 198, 214)),
+            Foreground = OverlayTheme.MutedBrush,
             FontSize = 11,
             TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(0, 2, 0, 0)
         });
-        return new Border
-        {
-            Background = new SolidColorBrush(Color.FromArgb(100, 14, 18, 28)),
-            CornerRadius = new CornerRadius(6),
-            Padding = new Thickness(7, 5, 7, 5),
-            Margin = new Thickness(0, 4, 0, 0),
-            Child = stack
-        };
+        return stack;
     }
 
     private static UIElement MissingLeavesPanel(RecipeProgress progress)
     {
         var stack = new StackPanel { Margin = new Thickness(0, 8, 0, 0) };
-        stack.Children.Add(new TextBlock
-        {
-            Text = "부족한 최하위 재료",
-            Foreground = new SolidColorBrush(Color.FromRgb(167, 139, 250)),
-            FontSize = 13,
-            FontWeight = FontWeights.SemiBold,
-            Margin = new Thickness(0, 0, 0, 4)
-        });
+        stack.Children.Add(OverlayTheme.Section("부족한 최하위 재료"));
         if (progress.MissingLeaves.Count == 0)
         {
             stack.Children.Add(new TextBlock
@@ -1052,38 +757,10 @@ public partial class OverlayWindow : OverlayWindowBase
         return stack;
     }
 
-    private static UIElement MissingLeafCard(RecipeLeafProgress leaf)
-    {
-        var stack = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
-        stack.Children.Add(UnitImageFactory.Create(leaf.Image, leaf.Name, 40, leaf.UnitId));
-        stack.Children.Add(new TextBlock
-        {
-            Text = RecommendationPresentation.CraftUnitName(leaf.Name, leaf.Tier),
-            Foreground = Brushes.White,
-            FontSize = 11,
-            FontWeight = FontWeights.SemiBold,
-            TextAlignment = TextAlignment.Center,
-            TextWrapping = TextWrapping.Wrap,
-            Margin = new Thickness(0, 3, 0, 0)
-        });
-        stack.Children.Add(new TextBlock
-        {
-            Text = $"부족 ×{leaf.MissingCount}",
-            Foreground = new SolidColorBrush(Color.FromRgb(251, 191, 36)),
-            FontSize = 12,
-            FontWeight = FontWeights.SemiBold,
-            TextAlignment = TextAlignment.Center
-        });
-        return new Border
-        {
-            Width = 125,
-            MinHeight = 108,
-            Background = new SolidColorBrush(Color.FromArgb(100, 14, 18, 28)),
-            CornerRadius = new CornerRadius(6),
-            Padding = new Thickness(5),
-            Margin = new Thickness(0, 3, 5, 2),
-            Child = stack
-        };
-    }
+    private static UIElement MissingLeafCard(RecipeLeafProgress leaf) =>
+        OverlayTheme.MissingChip(
+            UnitImageFactory.Create(leaf.Image, leaf.Name, 28, leaf.UnitId),
+            RecommendationPresentation.CraftUnitName(leaf.Name, leaf.Tier),
+            leaf.MissingCount);
 
 }

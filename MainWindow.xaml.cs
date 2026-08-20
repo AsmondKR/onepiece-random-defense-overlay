@@ -103,7 +103,7 @@ public partial class MainWindow : Window
         DataVersionText.Text = $"데이터 {_catalog.Data.DataVersion} · {_catalog.Data.Disclaimer}" +
                                ClearStatsSummary();
         var appVersion = UpdateService.CurrentVersion;
-        VersionText.Text = $"v{appVersion.Major}.{appVersion.Minor}.{appVersion.Build} 테스트";
+        VersionText.Text = $"v{appVersion.Major}.{appVersion.Minor}.{appVersion.Build} 테스트2";
 
         _overlay = new OverlayWindow();
         _overlay.RestorePosition(_settings.OverlayLeft, _settings.OverlayTop);
@@ -751,14 +751,25 @@ public partial class MainWindow : Window
                 Margin = new Thickness(0, 0, 0, 7)
             });
         if (visibleRecommendations.Count == 0)
+        {
             RecommendationCards.Children.Add(new TextBlock
             {
                 Text = "패 인식 대기 중",
-                Foreground = new SolidColorBrush(Color.FromRgb(156, 163, 175)),
+                Foreground = OverlayTheme.MutedBrush,
                 FontSize = 12
             });
-        for (var i = 0; i < visibleRecommendations.Count; i++)
-            RecommendationCards.Children.Add(BuildRecommendationCard(visibleRecommendations[i], i + 1));
+        }
+        else
+        {
+            RecommendationCards.Children.Add(BuildFeaturedRecommendation(visibleRecommendations[0]));
+            if (visibleRecommendations.Count > 1)
+            {
+                RecommendationCards.Children.Add(OverlayTheme.RecTableHeader());
+                for (var i = 1; i < visibleRecommendations.Count; i++)
+                    RecommendationCards.Children.Add(
+                        BuildTableRecommendation(visibleRecommendations[i], i + 1, i % 2 == 1));
+            }
+        }
         // "지금 조합 가능"은 1번 우선순위 추천의 조합 단계만 보여준다(사용자 요청).
         // 여러 추천의 단계를 섞어 보여주면 지금 뭘 눌러야 하는지 흐려진다.
         var combinePlan = _combinePlanner.Plan(visibleRecommendations.Take(1).ToList(),
@@ -809,73 +820,48 @@ public partial class MainWindow : Window
         return builder.ToString();
     }
 
-    private UIElement BuildRecommendationCard(Recommendation item, int rank)
+    private UIElement BuildFeaturedRecommendation(Recommendation item)
     {
         var unit = item.CompositionUnits[0];
-        var headerBody = new StackPanel();
-        var header = new Grid();
-        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        header.ColumnDefinitions.Add(new ColumnDefinition());
-        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var icon = UnitImageFactory.Create(unit.Image, unit.Name, 44, unit.UnitId);
-        icon.Margin = new Thickness(0, 0, 10, 0);
-        header.Children.Add(icon);
-        var title = new TextBlock
-        {
-            Text = $"{rank}  {RecommendationPresentation.CraftUnitName(unit)}",
-            FontSize = 15,
-            FontWeight = FontWeights.SemiBold,
-            Foreground = Brushes.White,
-            VerticalAlignment = VerticalAlignment.Center,
-            TextWrapping = TextWrapping.Wrap
-        };
-        Grid.SetColumn(title, 1);
-        header.Children.Add(title);
-        if (item.CombineCommands.Count > 0)
-        {
-            var chips = OverlayTheme.CommandChips(item.CombineCommands);
-            Grid.SetColumn(chips, 2);
-            header.Children.Add(chips);
-        }
-        var score = new TextBlock
-        {
-            Text = RecommendationPresentation.CompletionPercent(item.RecipeProgress),
-            Foreground = OverlayTheme.GoldBrush,
-            FontSize = 15,
-            FontWeight = FontWeights.Bold,
-            VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(10, 0, 0, 0)
-        };
-        Grid.SetColumn(score, 3);
-        header.Children.Add(score);
-        headerBody.Children.Add(header);
+        var header = OverlayTheme.FeaturedBlock(
+            UnitImageFactory.Create(unit.Image, unit.Name, 72, unit.UnitId),
+            "1  " + RecommendationPresentation.CraftUnitName(unit),
+            RecommendationPresentation.RecommendationEffectLine(unit),
+            item.CombineCommands,
+            RecommendationPresentation.CompletionPercent(item.RecipeProgress),
+            item.NextAction);
+        return OverlayTheme.FeaturedShell(BuildRecommendationExpander(item, unit, header));
+    }
 
+    private UIElement BuildTableRecommendation(Recommendation item, int rank, bool alt)
+    {
+        var unit = item.CompositionUnits[0];
+        var header = OverlayTheme.CompactRow(
+            rank,
+            UnitImageFactory.Create(unit.Image, unit.Name, 32, unit.UnitId),
+            RecommendationPresentation.CraftUnitName(unit),
+            item.CombineCommands,
+            RecommendationPresentation.CompletionPercent(item.RecipeProgress));
+        return OverlayTheme.TableShell(BuildRecommendationExpander(item, unit, header), alt);
+    }
+
+    private Expander BuildRecommendationExpander(Recommendation item, CompositionUnitDetail unit, UIElement header)
+    {
         var expander = new Expander
         {
-            Header = headerBody,
+            Header = header,
             Content = BuildRecommendationDetails(item),
             IsExpanded = _expandedRouteIds.Contains(item.Route.Id),
             Foreground = Brushes.White,
             HorizontalContentAlignment = HorizontalAlignment.Stretch
         };
         AutomationProperties.SetName(expander,
-            $"{RecommendationPresentation.CraftUnitName(item.CompositionUnits[0])}, " +
-            $"{RecommendationPresentation.RecommendationEffectLine(item.CompositionUnits[0])}, " +
+            $"{RecommendationPresentation.CraftUnitName(unit)}, " +
+            $"{RecommendationPresentation.RecommendationEffectLine(unit)}, " +
             $"{RecommendationPresentation.CompletionPercent(item.RecipeProgress)}, 조합식과 부족 패 상세");
         expander.Expanded += (_, _) => _expandedRouteIds.Add(item.Route.Id);
         expander.Collapsed += (_, _) => _expandedRouteIds.Remove(item.Route.Id);
-
-        return new Border
-        {
-            Background = OverlayTheme.RowBrush,
-            BorderBrush = OverlayTheme.HairlineBrush,
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(4),
-            Padding = new Thickness(10, 8, 10, 8),
-            Margin = new Thickness(0, 0, 0, 6),
-            Child = expander
-        };
+        return expander;
     }
 
     private static UIElement BuildCountBar(RecipeProgress progress, double height,
@@ -911,10 +897,11 @@ public partial class MainWindow : Window
     {
         var stack = new StackPanel { Margin = new Thickness(0, 12, 0, 0) };
         // 부족한 패 나열은 길어질 수 있어 카드를 펼쳤을 때만 보여준다(유저 요청).
+        stack.Children.Add(BuildCountBar(item.RecipeProgress, 4, new Thickness(0, 0, 0, 8)));
         stack.Children.Add(new TextBlock
         {
             Text = item.NextAction,
-            Foreground = new SolidColorBrush(Color.FromRgb(167, 139, 250)),
+            Foreground = OverlayTheme.MutedBrush,
             FontSize = 13,
             Margin = new Thickness(0, 0, 0, 8),
             TextWrapping = TextWrapping.Wrap
@@ -1044,196 +1031,40 @@ public partial class MainWindow : Window
 
     private static UIElement BuildRemainingRecipeCard(RecipeCraftStep node, int? stepNumber)
     {
-        var row = new Grid();
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        row.ColumnDefinitions.Add(new ColumnDefinition());
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var icon = UnitImageFactory.Create(node.Image, node.Name, 44, node.UnitId);
-        icon.Margin = new Thickness(0, 0, 10, 0);
-        icon.VerticalAlignment = VerticalAlignment.Center;
-        row.Children.Add(icon);
-
-        var text = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-        text.Children.Add(new TextBlock
-        {
-            Text = (stepNumber is { } number ? $"{number}. " : "") +
-                   RecommendationPresentation.CraftUnitName(node.Name, node.Tier),
-            Foreground = Brushes.White,
-            FontSize = 13,
-            FontWeight = FontWeights.SemiBold,
-            TextWrapping = TextWrapping.Wrap
-        });
-        text.Children.Add(BuildCraftActionLine(node));
-        Grid.SetColumn(text, 1);
-        row.Children.Add(text);
-
-        var progress = new StackPanel
-        {
-            VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(10, 0, 0, 0)
-        };
-        progress.Children.Add(new TextBlock
-        {
-            Text = $"{Math.Round(node.CompletionRatio * 100, MidpointRounding.AwayFromZero):0}%",
-            Foreground = new SolidColorBrush(Color.FromRgb(196, 181, 253)),
-            FontSize = 14,
-            FontWeight = FontWeights.SemiBold,
-            TextAlignment = TextAlignment.Right
-        });
-        progress.Children.Add(new TextBlock
-        {
-            Text = $"보유 {node.OwnedCount}/{node.RequiredCount}",
-            Foreground = new SolidColorBrush(Color.FromRgb(251, 191, 36)),
-            FontSize = 11,
-            FontWeight = FontWeights.SemiBold,
-            TextAlignment = TextAlignment.Right,
-            Margin = new Thickness(0, 1, 0, 0)
-        });
-        Grid.SetColumn(progress, 2);
-        row.Children.Add(progress);
-        return new Border
-        {
-            Background = new SolidColorBrush(Color.FromRgb(19, 24, 35)),
-            CornerRadius = new CornerRadius(8),
-            Padding = new Thickness(9),
-            Margin = new Thickness(0, 3, 0, 3),
-            Child = row
-        };
-    }
-
-    // "선택할 유닛 나미 · 조합 키 [Z]"를 한 줄로 펼친다. 라벨은 죽이고
-    // 실제 행동 대상(유닛 이름, 키)만 크게 보이게 한다.
-    private static UIElement BuildCraftActionLine(RecipeCraftStep node)
-    {
-        var panel = new WrapPanel { Margin = new Thickness(0, 3, 0, 0) };
         var select = RecommendationPresentation.CraftSelectUnitName(node);
-        if (select is null)
-        {
-            panel.Children.Add(BuildCraftHintLabel("조합할 하위 유닛 없음"));
-            return panel;
-        }
-        panel.Children.Add(BuildCraftHintLabel("선택할 유닛"));
-        panel.Children.Add(new TextBlock
-        {
-            Text = select,
-            Foreground = new SolidColorBrush(Color.FromRgb(196, 181, 253)),
-            FontSize = 13,
-            FontWeight = FontWeights.SemiBold,
-            VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(5, 0, 0, 0)
-        });
-        if (node.CombineCommands.Count > 0)
-        {
-            panel.Children.Add(BuildCraftHintLabel("조합 명령어", left: 12));
-            panel.Children.Add(new TextBlock
-            {
-                Text = string.Join(" / ", node.CombineCommands),
-                Foreground = Brushes.White,
-                FontSize = 13,
-                FontWeight = FontWeights.SemiBold,
-                TextWrapping = TextWrapping.Wrap,
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(5, 0, 0, 0)
-            });
-        }
-        else if (node.CombineKey is { Length: > 0 } key)
-        {
-            panel.Children.Add(BuildCraftHintLabel("조합 키", left: 12));
-            panel.Children.Add(new Border
-            {
-                Background = new SolidColorBrush(Color.FromRgb(42, 49, 71)),
-                BorderBrush = new SolidColorBrush(Color.FromRgb(97, 106, 140)),
-                BorderThickness = new Thickness(1, 1, 1, 2),
-                CornerRadius = new CornerRadius(4),
-                Padding = new Thickness(7, 0, 7, 1),
-                Margin = new Thickness(5, 0, 0, 0),
-                VerticalAlignment = VerticalAlignment.Center,
-                Child = new TextBlock
-                {
-                    Text = key,
-                    Foreground = Brushes.White,
-                    FontSize = 12,
-                    FontWeight = FontWeights.Bold
-                }
-            });
-        }
-        else if (RecommendationPresentation.CraftCompanionNames(node) is { } companions)
-        {
-            panel.Children.Add(BuildCraftHintLabel("함께 조합", left: 12));
-            panel.Children.Add(new TextBlock
-            {
-                Text = companions,
-                Foreground = new SolidColorBrush(Color.FromRgb(196, 181, 253)),
-                FontSize = 13,
-                FontWeight = FontWeights.SemiBold,
-                TextWrapping = TextWrapping.Wrap,
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(5, 0, 0, 0)
-            });
-        }
-        return panel;
+        var action = select is null ? "조합할 하위 유닛 없음" : select + " 선택";
+        var companions = RecommendationPresentation.CraftCompanionNames(node);
+        if (companions is not null) action += " · " + companions;
+        var commands = node.CombineCommands.Count > 0
+            ? node.CombineCommands
+            : node.CombineKey is { Length: > 0 } key ? (IReadOnlyList<string>)[key] : [];
+        return OverlayTheme.CraftRow(
+            UnitImageFactory.Create(node.Image, node.Name, 32, node.UnitId),
+            (stepNumber is { } number ? $"{number}. " : "") +
+            RecommendationPresentation.CraftUnitName(node.Name, node.Tier),
+            action,
+            commands,
+            $"{Math.Round(node.CompletionRatio * 100, MidpointRounding.AwayFromZero):0}%",
+            $"{node.OwnedCount}/{node.RequiredCount}");
     }
-
-    private static TextBlock BuildCraftHintLabel(string text, double left = 0) => new()
-    {
-        Text = text,
-        Foreground = new SolidColorBrush(Color.FromRgb(148, 163, 184)),
-        FontSize = 11,
-        VerticalAlignment = VerticalAlignment.Center,
-        Margin = new Thickness(left, 0, 0, 0)
-    };
 
     private static UIElement BuildMissingLeafGrid(IReadOnlyList<RecipeLeafProgress> leaves)
     {
         var panel = new WrapPanel { Orientation = Orientation.Horizontal };
         foreach (var leaf in leaves)
-            panel.Children.Add(BuildMissingLeafCard(leaf));
+            panel.Children.Add(OverlayTheme.MissingChip(
+                UnitImageFactory.Create(leaf.Image, leaf.Name, 28, leaf.UnitId),
+                RecommendationPresentation.CraftUnitName(leaf.Name, leaf.Tier),
+                leaf.MissingCount));
         return panel;
     }
 
-    private static UIElement BuildMissingLeafCard(RecipeLeafProgress leaf)
+    private static TextBlock BuildDetailSectionTitle(string text, Thickness? margin = null)
     {
-        var stack = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
-        stack.Children.Add(UnitImageFactory.Create(leaf.Image, leaf.Name, 42, leaf.UnitId));
-        stack.Children.Add(new TextBlock
-        {
-            Text = RecommendationPresentation.CraftUnitName(leaf.Name, leaf.Tier),
-            Foreground = Brushes.White,
-            FontSize = 10,
-            FontWeight = FontWeights.SemiBold,
-            TextAlignment = TextAlignment.Center,
-            TextWrapping = TextWrapping.Wrap,
-            Margin = new Thickness(0, 5, 0, 0)
-        });
-        stack.Children.Add(new TextBlock
-        {
-            Text = $"부족 ×{leaf.MissingCount}",
-            Foreground = new SolidColorBrush(Color.FromRgb(251, 191, 36)),
-            FontSize = 11,
-            FontWeight = FontWeights.SemiBold,
-            TextAlignment = TextAlignment.Center,
-            Margin = new Thickness(0, 2, 0, 0)
-        });
-        return new Border
-        {
-            Width = 122,
-            MinHeight = 102,
-            Background = new SolidColorBrush(Color.FromRgb(19, 24, 35)),
-            CornerRadius = new CornerRadius(8),
-            Padding = new Thickness(7),
-            Margin = new Thickness(0, 3, 6, 3),
-            Child = stack
-        };
+        var block = OverlayTheme.Section(text);
+        if (margin is { } value) block.Margin = value;
+        return block;
     }
-
-    private static TextBlock BuildDetailSectionTitle(string text, Thickness? margin = null) => new()
-    {
-        Text = text,
-        Foreground = new SolidColorBrush(Color.FromRgb(167, 139, 250)),
-        FontSize = 13,
-        FontWeight = FontWeights.SemiBold,
-        Margin = margin ?? new Thickness(0, 0, 0, 4)
-    };
 
     private static UIElement BuildCompositionUnit(CompositionUnitDetail unit)
     {
@@ -1244,7 +1075,7 @@ public partial class MainWindow : Window
         title.Children.Add(new TextBlock
         {
             Text = RecommendationPresentation.CraftUnitName(unit),
-            Foreground = unit.IsGoal ? new SolidColorBrush(Color.FromRgb(196, 181, 253)) : Brushes.White,
+            Foreground = unit.IsGoal ? OverlayTheme.GoldBrush : OverlayTheme.WhiteBrush,
             FontWeight = FontWeights.SemiBold,
             FontSize = 12,
             TextWrapping = TextWrapping.Wrap
@@ -1252,9 +1083,7 @@ public partial class MainWindow : Window
         var ownership = new TextBlock
         {
             Text = RecommendationPresentation.Ownership(unit),
-            Foreground = unit.OwnedCount > 0
-                ? new SolidColorBrush(Color.FromRgb(74, 222, 128))
-                : Brushes.LightGray,
+            Foreground = unit.OwnedCount > 0 ? OverlayTheme.OkBrush : OverlayTheme.MutedBrush,
             FontSize = 10,
             Margin = new Thickness(10, 0, 0, 0)
         };
@@ -1264,7 +1093,7 @@ public partial class MainWindow : Window
         stack.Children.Add(new TextBlock
         {
             Text = RecommendationPresentation.AbilitySummary(unit),
-            Foreground = new SolidColorBrush(Color.FromRgb(190, 198, 214)),
+            Foreground = OverlayTheme.MutedBrush,
             FontSize = 11,
             TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(0, 3, 0, 0)
@@ -1273,19 +1102,12 @@ public partial class MainWindow : Window
             stack.Children.Add(new TextBlock
             {
                 Text = RecommendationPresentation.SafeDescription(unit.Description),
-                Foreground = new SolidColorBrush(Color.FromRgb(137, 146, 164)),
+                Foreground = OverlayTheme.MutedBrush,
                 FontSize = 10,
                 TextWrapping = TextWrapping.Wrap,
                 Margin = new Thickness(0, 3, 0, 0)
             });
-        return new Border
-        {
-            Background = new SolidColorBrush(Color.FromRgb(19, 24, 35)),
-            CornerRadius = new CornerRadius(8),
-            Padding = new Thickness(10, 8, 10, 8),
-            Margin = new Thickness(0, 4, 0, 0),
-            Child = stack
-        };
+        return stack;
     }
 
     private async Task ScanAsync()

@@ -95,7 +95,7 @@
         <Setter.Value>
           <ControlTemplate TargetType="Button">
             <Border x:Name="ButtonBody" Background="{TemplateBinding Background}"
-                    CornerRadius="8" Padding="{TemplateBinding Padding}">
+                    CornerRadius="2" Padding="{TemplateBinding Padding}">
               <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
             <ControlTemplate.Triggers>
@@ -162,7 +162,7 @@
                   <ControlTemplate TargetType="ToggleButton">
                     <Border x:Name="ComboBody" Background="{StaticResource ControlBrush}"
                             BorderBrush="{StaticResource BorderTintBrush}" BorderThickness="1"
-                            CornerRadius="8">
+                            CornerRadius="2">
                       <Path HorizontalAlignment="Right" VerticalAlignment="Center"
                             Margin="0,0,11,0" Data="M0,0 L4.5,4.5 9,0"
                             Stroke="#FF9BA3B4" StrokeThickness="1.6"/>
@@ -189,7 +189,7 @@
                      AllowsTransparency="True" PopupAnimation="Fade" Focusable="False">
                 <Border Background="{StaticResource PopupBrush}"
                         BorderBrush="{StaticResource BorderTintBrush}" BorderThickness="1"
-                        CornerRadius="9" Margin="0,4,0,8" Padding="0,4"
+                        CornerRadius="2" Margin="0,4,0,8" Padding="0,4"
                         MinWidth="{TemplateBinding ActualWidth}"
                         MaxHeight="{TemplateBinding MaxDropDownHeight}">
                   <Border.Effect>
@@ -253,7 +253,7 @@
           <ControlTemplate TargetType="TextBox">
             <Border x:Name="TextBody" Background="{TemplateBinding Background}"
                     BorderBrush="{StaticResource BorderTintBrush}" BorderThickness="1"
-                    CornerRadius="8" Padding="{TemplateBinding Padding}">
+                    CornerRadius="2" Padding="{TemplateBinding Padding}">
               <ScrollViewer x:Name="PART_ContentHost"/>
             </Border>
             <ControlTemplate.Triggers>
@@ -338,10 +338,10 @@
             </Border>
             <ControlTemplate.Triggers>
               <Trigger Property="IsMouseOver" Value="True">
-                <Setter TargetName="RowBody" Property="Background" Value="#33313A54"/>
+                <Setter TargetName="RowBody" Property="Background" Value="#33262B35"/>
               </Trigger>
               <Trigger Property="IsSelected" Value="True">
-                <Setter TargetName="RowBody" Property="Background" Value="#553F2E77"/>
+                <Setter TargetName="RowBody" Property="Background" Value="#33E8C547"/>
               </Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
