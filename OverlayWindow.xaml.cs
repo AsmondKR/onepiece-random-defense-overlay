@@ -13,6 +13,7 @@ public partial class OverlayWindow : OverlayWindowBase
     private IReadOnlyList<Recommendation> _recommendations = [];
     private IReadOnlyList<AutoCombineStep> _combinePlan = [];
     private string? _selectedRouteId;
+    private string? _clusterHeadRouteId;
     private Func<Recommendation, IReadOnlyList<Recommendation>>? _storyChildren;
     private Func<IReadOnlyList<Recommendation>, string?, IReadOnlyList<Recommendation>>? _recascade;
 
@@ -102,38 +103,64 @@ public partial class OverlayWindow : OverlayWindowBase
         _lastRecommendationSignature = signature;
         _recommendations = recommendations;
         _combinePlan = combinePlan;
-        if (_selectedRouteId is null ||
-            recommendations.All(item => !item.Route.Id.Equals(_selectedRouteId, StringComparison.OrdinalIgnoreCase)))
-            _selectedRouteId = recommendations.FirstOrDefault()?.Route.Id;
+        PreserveBoardSelection();
         ApplySelectionCascade();
         FillBoard();
     }
 
     private void FillBoard()
     {
-        var selected = _recommendations.FirstOrDefault(item =>
-            item.Route.Id.Equals(_selectedRouteId, StringComparison.OrdinalIgnoreCase))
-            ?? _recommendations.FirstOrDefault();
-        var children = selected is null
+        var head = ClusterHead();
+        var children = head is null
             ? []
-            : _storyChildren?.Invoke(selected) ?? [];
+            : _storyChildren?.Invoke(head) ?? [];
+        if (!BoardSelection.IsKnown(_recommendations, children, _selectedRouteId))
+            _selectedRouteId = head?.Route.Id;
         RecommendationBoard.Fill(NowPanel, FlowPanel, BoardPanel, _recommendations, _combinePlan,
             _selectedRouteId, SelectRoute, PhaseHintText.Visibility == Visibility.Visible
                 ? PhaseHintText.Text
-                : null, children);
+                : null, children, head?.Route.Id);
     }
 
     private void SelectRoute(string routeId)
     {
         _selectedRouteId = routeId;
+        var head = ClusterHead();
+        var currentChildren = head is null
+            ? []
+            : _storyChildren?.Invoke(head) ?? [];
+        if (BoardSelection.Contains(_recommendations, routeId) &&
+            !BoardSelection.Contains(currentChildren, routeId))
+            _clusterHeadRouteId = BoardSelection.Find(_recommendations, routeId)!.Route.Id;
         ApplySelectionCascade();
         FillBoard();
+    }
+
+    private void PreserveBoardSelection()
+    {
+        var head = ClusterHead();
+        var children = head is null
+            ? []
+            : _storyChildren?.Invoke(head) ?? [];
+        if (BoardSelection.IsKnown(_recommendations, children, _selectedRouteId)) return;
+        _selectedRouteId = head?.Route.Id;
+        _clusterHeadRouteId = head?.Route.Id;
+    }
+
+    private Recommendation? ClusterHead()
+    {
+        if (_recommendations.Count == 0) return null;
+        var id = BoardSelection.ClusterHeadId(
+            _recommendations, [], _selectedRouteId, _clusterHeadRouteId);
+        return BoardSelection.Find(_recommendations, id) ?? _recommendations[0];
     }
 
     private void ApplySelectionCascade()
     {
         if (_recascade is null || _recommendations.Count == 0) return;
-        _recommendations = _recascade(_recommendations, _selectedRouteId);
+        var head = ClusterHead();
+        _recommendations = _recascade(_recommendations, head?.Route.Id ?? _selectedRouteId);
+        _clusterHeadRouteId = ClusterHead()?.Route.Id;
     }
 
     private string? _lastSpecialSignature;

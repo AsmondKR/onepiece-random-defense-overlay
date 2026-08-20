@@ -51,6 +51,7 @@ public partial class MainWindow : Window
     private bool _relockAfterMove;
     private bool _updatingSelections;
     private string? _selectedRouteId;
+    private string? _clusterHeadRouteId;
     private IReadOnlyList<Recommendation> _boardRecs = [];
     private IReadOnlyList<AutoCombineStep> _boardPlan = [];
     private string? _boardBanner;
@@ -749,10 +750,19 @@ public partial class MainWindow : Window
             ? "7라운드까지 희귀함이 안 나오면 선택 위습 1~2개 사용 권장"
             : null;
 
+        var headId = BoardSelection.ClusterHeadId(
+            visibleRecommendations, [], _selectedRouteId, _clusterHeadRouteId);
+        var head = BoardSelection.Find(visibleRecommendations, headId)
+                   ?? visibleRecommendations.FirstOrDefault();
+        var previewChildren = head is null
+            ? []
+            : _engine.StoryClusterChildren(head.Route.GoalUnitId, CombinedInventory());
         if (_selectedRouteId is null ||
-            visibleRecommendations.All(item =>
-                !item.Route.Id.Equals(_selectedRouteId, StringComparison.OrdinalIgnoreCase)))
-            _selectedRouteId = visibleRecommendations.FirstOrDefault()?.Route.Id;
+            !BoardSelection.IsKnown(visibleRecommendations, previewChildren, _selectedRouteId))
+        {
+            _selectedRouteId = head?.Route.Id;
+            _clusterHeadRouteId = head?.Route.Id;
+        }
         var combinePlan = _combinePlanner.Plan(visibleRecommendations.Take(1).ToList(),
             recommendationInventory, _completedTopUnits.CompletedUnitIds);
         _boardRecs = visibleRecommendations;
@@ -809,21 +819,33 @@ public partial class MainWindow : Window
 
     private void FillMainBoard()
     {
+        var headId = BoardSelection.ClusterHeadId(
+            _boardRecs, [], _selectedRouteId, _clusterHeadRouteId);
         if (_selectedRouteId is not null && _boardRecs.Count > 0)
-            _boardRecs = _engine.Recascade(_boardRecs, CombinedInventory(), _selectedRouteId);
-        var selected = _boardRecs.FirstOrDefault(item =>
-            item.Route.Id.Equals(_selectedRouteId, StringComparison.OrdinalIgnoreCase))
-            ?? _boardRecs.FirstOrDefault();
-        var children = selected is null
+            _boardRecs = _engine.Recascade(_boardRecs, CombinedInventory(), headId);
+        var head = BoardSelection.Find(_boardRecs, headId) ?? _boardRecs.FirstOrDefault();
+        _clusterHeadRouteId = head?.Route.Id;
+        var children = head is null
             ? []
-            : _engine.StoryClusterChildren(selected.Route.GoalUnitId, CombinedInventory());
+            : _engine.StoryClusterChildren(head.Route.GoalUnitId, CombinedInventory());
+        if (!BoardSelection.IsKnown(_boardRecs, children, _selectedRouteId))
+            _selectedRouteId = head?.Route.Id;
         RecommendationBoard.Fill(NowPanel, FlowPanel, BoardPanel, _boardRecs, _boardPlan,
-            _selectedRouteId, SelectMainRoute, _boardBanner, children);
+            _selectedRouteId, SelectMainRoute, _boardBanner, children, head?.Route.Id);
     }
 
     private void SelectMainRoute(string routeId)
     {
         _selectedRouteId = routeId;
+        var headId = BoardSelection.ClusterHeadId(
+            _boardRecs, [], _selectedRouteId, _clusterHeadRouteId);
+        var head = BoardSelection.Find(_boardRecs, headId);
+        var currentChildren = head is null
+            ? []
+            : _engine.StoryClusterChildren(head.Route.GoalUnitId, CombinedInventory());
+        if (BoardSelection.Contains(_boardRecs, routeId) &&
+            !BoardSelection.Contains(currentChildren, routeId))
+            _clusterHeadRouteId = BoardSelection.Find(_boardRecs, routeId)!.Route.Id;
         FillMainBoard();
     }
 

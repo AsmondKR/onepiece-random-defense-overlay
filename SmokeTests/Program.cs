@@ -183,6 +183,34 @@ var yamatoCluster = engine.StoryClusterChildren("yamato_transcendent", []);
 Assert(yamatoCluster.Select(item => item.Route.GoalUnitId).ToHashSet(StringComparer.OrdinalIgnoreCase)
            .IsSupersetOf(["rawcode:S30h", "rawcode:780h"]),
     "빈 패에서 상위를 직접 골라도 선택한 초월의 전설이 클러스터에 붙는다");
+var yamatoGoalCard = yamatoWithoutPirateShip[0];
+var ultiChild = yamatoCluster.First(item =>
+    item.Route.GoalUnitId.Equals("rawcode:S30h", StringComparison.OrdinalIgnoreCase));
+Assert(BoardSelection.Resolve([yamatoGoalCard], yamatoCluster, ultiChild.Route.Id)!
+           .Route.GoalUnitId == "rawcode:S30h",
+    "클러스터 하위 전설을 고르면 1순위가 아니라 그 전설이 선택된다");
+Assert(BoardSelection.ClusterHeadId([yamatoGoalCard], yamatoCluster, ultiChild.Route.Id,
+           yamatoGoalCard.Route.Id) == yamatoGoalCard.Route.Id,
+    "하위패를 눌러도 묶여 있던 상위 클러스터는 그대로 둔다");
+Assert(BoardSelection.IsKnown([yamatoGoalCard], yamatoCluster, ultiChild.Route.Id) &&
+       ultiChild.RemainingCraftSteps.Count > 0,
+    "선택한 하위패의 조합 흐름 단계가 있다");
+var ultiCommons = RecommendationPresentation.BoardMissingLeaves(ultiChild.RecipeProgress, true);
+Assert(ultiCommons.Count > 0 &&
+       ultiCommons.All(leaf => leaf.Tier.Split('[', 2)[0].Trim() == "흔함"),
+    "하위패를 고르면 그 패를 짜는 데 부족한 흔함을 보여 준다");
+var twoRanks = engine.RecommendNearestCrafts("yamato_transcendent",
+    Inventory("rawcode:060h"), 8);
+Assert(twoRanks.Count >= 2, "해적선이 있으면 2순위 지원 카드가 생긴다");
+var rankTwo = twoRanks[1];
+var rankTwoChildren = engine.StoryClusterChildren(rankTwo.Route.GoalUnitId, Inventory("rawcode:060h"));
+var nestedId = rankTwoChildren.FirstOrDefault()?.Route.Id ?? rankTwo.Route.Id;
+Assert(BoardSelection.ClusterHeadId(twoRanks, rankTwoChildren, nestedId, rankTwo.Route.Id) ==
+       rankTwo.Route.Id,
+    "2순위 클러스터의 하위패를 눌러도 1순위로 돌아가지 않는다");
+Assert(BoardSelection.Resolve(twoRanks, rankTwoChildren, nestedId) is { } nestedPick &&
+       BoardSelection.Matches(nestedPick, nestedId),
+    "2순위 하위패를 고르면 그 하위패의 조합 흐름을 연다");
 // 표시 순서는 채용률이 정하지만, 선택된 지원에는 스턴 1.4 패키지가 유지되어야 한다.
 var yamatoStunSupports = yamatoWithoutPirateShip.Skip(1)
     .Where(item => AbilityValue(item.CompositionUnits[0], "스턴") > 0)
@@ -2300,7 +2328,7 @@ if (Environment.GetEnvironmentVariable("ORAND_DIAG") == "drill")
     return;
 }
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 434/434");
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 440/440");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,

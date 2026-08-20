@@ -25,7 +25,8 @@ internal static class RecommendationBoard
         string? selectedId,
         Action<string> onSelect,
         string? banner = null,
-        IReadOnlyList<Recommendation>? selectedChildren = null)
+        IReadOnlyList<Recommendation>? selectedChildren = null,
+        string? clusterHeadId = null)
     {
         nowPanel.Children.Clear();
         flowPanel.Children.Clear();
@@ -52,8 +53,13 @@ internal static class RecommendationBoard
             return;
         }
 
-        var selected = recs.FirstOrDefault(item =>
-            item.Route.Id.Equals(selectedId, StringComparison.OrdinalIgnoreCase)) ?? recs[0];
+        var children = selectedChildren ?? [];
+        var selected = BoardSelection.Resolve(recs, children, selectedId) ?? recs[0];
+        var viewingChild = BoardSelection.Contains(children, selected.Route.Id);
+        var clusterHead = BoardSelection.Find(recs,
+                             BoardSelection.ClusterHeadId(recs, children, selected.Route.Id, clusterHeadId))
+                         ?? recs[0];
+        var nowPlan = viewingChild ? Array.Empty<AutoCombineStep>() : plan;
 
         if (!string.IsNullOrWhiteSpace(banner))
             nowPanel.Children.Add(new TextBlock
@@ -65,12 +71,23 @@ internal static class RecommendationBoard
                 Margin = new Thickness(0, 0, 0, 6)
             });
 
-        nowPanel.Children.Add(NowBlock(selected, plan));
+        nowPanel.Children.Add(NowBlock(selected, nowPlan));
         flowPanel.Children.Add(FlowBlock(selected));
-        if (selected.RecipeProgress.MissingLeaves.Count > 0)
+        var missingLeaves = RecommendationPresentation.BoardMissingLeaves(
+            selected.RecipeProgress, viewingChild);
+        if (missingLeaves.Count > 0)
         {
+            if (viewingChild)
+                boardPanel.Children.Add(new TextBlock
+                {
+                    Text = "부족한 흔함",
+                    Foreground = OverlayTheme.MutedBrush,
+                    FontSize = 10,
+                    FontWeight = FontWeights.SemiBold,
+                    Margin = new Thickness(0, 0, 0, 4)
+                });
             var missing = new WrapPanel { Margin = new Thickness(0, 0, 0, 8) };
-            foreach (var leaf in selected.RecipeProgress.MissingLeaves.Take(10))
+            foreach (var leaf in missingLeaves.Take(12))
                 missing.Children.Add(OverlayTheme.MissingChip(
                     UnitImageFactory.Create(leaf.Image, leaf.Name, 24, leaf.UnitId),
                     RecommendationPresentation.CraftUnitName(leaf.Name, leaf.Tier),
@@ -78,16 +95,15 @@ internal static class RecommendationBoard
             boardPanel.Children.Add(missing);
         }
         var tiles = new WrapPanel();
-        var children = selectedChildren ?? [];
         var childIds = children.Select(item => item.Route.GoalUnitId)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         foreach (var rec in recs)
         {
-            var isSelected = rec.Route.Id.Equals(selected.Route.Id, StringComparison.OrdinalIgnoreCase);
-            if (!isSelected && childIds.Contains(rec.Route.GoalUnitId)) continue;
-            tiles.Children.Add(isSelected
+            var isHead = BoardSelection.Matches(rec, clusterHead.Route.Id);
+            if (!isHead && childIds.Contains(rec.Route.GoalUnitId)) continue;
+            tiles.Children.Add(isHead
                 ? RenderCluster(new BoardCluster(rec, children), selected.Route.Id, onSelect)
-                : BoardTile(rec, false, onSelect));
+                : BoardTile(rec, BoardSelection.Matches(rec, selected.Route.Id), onSelect));
         }
         boardPanel.Children.Add(tiles);
     }
@@ -432,7 +448,7 @@ internal static class RecommendationBoard
         hit.MouseEnter += (_, _) => ring.BorderBrush = OverlayTheme.GoldBrush;
         hit.MouseLeave += (_, _) =>
             ring.BorderBrush = selected ? OverlayTheme.GoldBrush : OverlayTheme.HairlineBrush;
-        hit.MouseLeftButtonDown += (_, e) =>
+        hit.PreviewMouseLeftButtonDown += (_, e) =>
         {
             e.Handled = true;
             onSelect(item.Route.Id);
