@@ -1666,6 +1666,33 @@ Assert(keyedStep is not null &&
        RecommendationPresentation.CraftIngredientLine(keyedStep)
            .Contains("유닛 조합 키: ", StringComparison.Ordinal),
     "조합 키를 아는 단계는 선택할 유닛과 조합 키로 안내");
+var jinbeUnit = catalog.Unit("rawcode:A90H");
+Assert(jinbeUnit.CombineCommands.SequenceEqual(["바다의협객", "jinbe tr"]),
+    "징베 초월 조합 명령어는 바다의협객 / jinbe tr");
+Assert(catalog.Unit("rawcode:HA0h").CombineCommands.Count == 0 &&
+       catalog.Unit("rawcode:Q80h").CombineCommands.Count == 0,
+    "전설·제한됨은 채팅 명령어가 없다");
+var jinbeGoalCard = new RecommendationEngine(catalog, null, combineHotkeys)
+    .RecommendNearestCrafts("rawcode:A90H", [], 1)[0];
+var jinbeCraftStep = jinbeGoalCard.RemainingCraftSteps.First(step =>
+    catalog.Unit(step.UnitId).Rawcodes.Contains("A90H", StringComparer.Ordinal));
+Assert(jinbeCraftStep.CombineCommands.SequenceEqual(["바다의협객", "jinbe tr"]),
+    "징베 초월 남은 조합에 채팅 명령어를 붙인다");
+var jinbeLine = RecommendationPresentation.CraftIngredientLine(jinbeCraftStep);
+Assert(jinbeLine.Contains("조합 명령어", StringComparison.Ordinal) &&
+       jinbeLine.Contains("바다의협객", StringComparison.Ordinal) &&
+       jinbeLine.Contains("jinbe tr", StringComparison.Ordinal),
+    "초월 조합 안내에 한글·영문 명령어를 그대로 보여준다");
+var jinbeReady = jinbeUnit.Recipe.Keys
+    .SelectMany(id => Enumerable.Repeat(id, jinbeUnit.Recipe[id]))
+    .Where(id => catalog.Unit(id).Tier.Split('[', 2)[0].Trim() is not "자원")
+    .ToArray();
+var jinbeReadyCrafts = new RecommendationEngine(catalog, null, combineHotkeys)
+    .RecommendNearestCrafts("rawcode:A90H", Inventory(jinbeReady), 1);
+Assert(combinePlanner.Plan(jinbeReadyCrafts, Inventory(jinbeReady))
+        .Any(step => step.TargetUnitId.Equals("rawcode:A90H", StringComparison.OrdinalIgnoreCase) &&
+                     step.Commands.Contains("바다의협객") && step.Commands.Contains("jinbe tr")),
+    "징베 재료가 모이면 지금 조합 가능에 채팅 명령어가 잡힌다");
 
 // 자동 업데이트: 최신 릴리스 태그가 현재 버전보다 높을 때만 exe 자산을 고른다.
 const string releaseJson = """
@@ -2163,7 +2190,7 @@ if (Environment.GetEnvironmentVariable("ORAND_DIAG") == "drill")
     return;
 }
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 401/401");
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 406/406");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,

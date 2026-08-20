@@ -45,7 +45,9 @@ public static class RecommendationPresentation
         var select = CraftSelectUnitName(step);
         if (select is null) return "조합할 하위 유닛 없음";
         var line = $"선택할 유닛: {select}";
-        // 맵에서 추출한 조합 키가 있으면 실제 조작(선택 → 키)을 그대로 안내한다.
+        // 초월 이상은 채팅 명령어, 그 아래는 맵 단축키. 영문 명령어(jinbe tr)는 그대로 둔다.
+        if (step.CombineCommands.Count > 0)
+            return line + "\n조합 명령어: " + string.Join(" / ", step.CombineCommands);
         if (step.CombineKey is { Length: > 0 } key)
             return line + $"\n유닛 조합 키: {key}";
         var companions = CraftCompanionNames(step);
@@ -62,7 +64,8 @@ public static class RecommendationPresentation
     /// <summary>조합 키가 없을 때 함께 조합할 나머지 재료 목록("A / B"). 없으면 null.</summary>
     public static string? CraftCompanionNames(RecipeCraftStep step)
     {
-        if (step.CombineKey is { Length: > 0 } || step.Ingredients.Count <= 1) return null;
+        if (step.CombineCommands.Count > 0 || step.CombineKey is { Length: > 0 } ||
+            step.Ingredients.Count <= 1) return null;
         var ordered = step.Ingredients.OrderBy(i => i.SelectionOrder).Skip(1).ToList();
         return ordered.Count == 0 ? null : string.Join(" / ", ordered.Select(IngredientName));
     }

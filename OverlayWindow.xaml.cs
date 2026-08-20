@@ -124,7 +124,7 @@ public partial class OverlayWindow : OverlayWindowBase
     private void RenderCombinePlan(IReadOnlyList<AutoCombineStep> plan)
     {
         var signature = string.Join("|", plan.Select(step =>
-            $"{step.TargetUnitId}:{step.TriggerUnitId}:{step.Key}"));
+            $"{step.TargetUnitId}:{step.TriggerUnitId}:{step.Key}:{string.Join(",", step.Commands)}"));
         if (signature == _lastCombinePlanSignature) return;
         _lastCombinePlanSignature = signature;
         CombinePanel.Children.Clear();
@@ -144,7 +144,9 @@ public partial class OverlayWindow : OverlayWindowBase
             });
             stack.Children.Add(new TextBlock
             {
-                Text = $"{step.TriggerName} 선택 → {step.Key} 키",
+                Text = step.Commands.Count > 0
+                    ? $"{step.TriggerName} 선택 → {string.Join(" / ", step.Commands)}"
+                    : $"{step.TriggerName} 선택 → {step.Key} 키",
                 Foreground = new SolidColorBrush(Color.FromRgb(166, 177, 196)),
                 FontSize = 11,
                 TextWrapping = TextWrapping.Wrap
@@ -911,7 +913,21 @@ public partial class OverlayWindow : OverlayWindowBase
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(5, 0, 0, 0)
         });
-        if (node.CombineKey is { Length: > 0 } key)
+        if (node.CombineCommands.Count > 0)
+        {
+            panel.Children.Add(CraftHintLabel("조합 명령어", left: 12));
+            panel.Children.Add(new TextBlock
+            {
+                Text = string.Join(" / ", node.CombineCommands),
+                Foreground = Brushes.White,
+                FontSize = 13,
+                FontWeight = FontWeights.SemiBold,
+                TextWrapping = TextWrapping.Wrap,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(5, 0, 0, 0)
+            });
+        }
+        else if (node.CombineKey is { Length: > 0 } key)
         {
             panel.Children.Add(CraftHintLabel("조합 키", left: 12));
             panel.Children.Add(new Border

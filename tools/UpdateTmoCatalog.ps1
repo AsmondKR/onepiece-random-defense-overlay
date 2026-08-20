@@ -32,7 +32,13 @@ $mergedUnits = foreach ($unit in $catalog.units) {
     }
     $official = $officialById[$unit.rawcode]
 
-    [ordered]@{
+    $tierBase = ($unit.tier -split '\[', 2)[0].Trim()
+    $commands = @()
+    if ($tierBase -in @('초월', '불멸', '영원') -and $official.commands) {
+        $commands = @($official.commands)
+    }
+
+    $row = [ordered]@{
         rawcode = $unit.rawcode
         name = $unit.name
         tier = $unit.tier
@@ -41,6 +47,8 @@ $mergedUnits = foreach ($unit in $catalog.units) {
         abilities = if ($official.abilities) { $official.abilities } else { [ordered]@{} }
         description = if ($official.desc) { [string]$official.desc } else { '' }
     }
+    if ($commands.Count -gt 0) { $row.commands = $commands }
+    $row
 }
 
 $result = [ordered]@{

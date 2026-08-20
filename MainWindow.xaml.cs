@@ -1123,7 +1123,21 @@ public partial class MainWindow : Window
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(5, 0, 0, 0)
         });
-        if (node.CombineKey is { Length: > 0 } key)
+        if (node.CombineCommands.Count > 0)
+        {
+            panel.Children.Add(BuildCraftHintLabel("조합 명령어", left: 12));
+            panel.Children.Add(new TextBlock
+            {
+                Text = string.Join(" / ", node.CombineCommands),
+                Foreground = Brushes.White,
+                FontSize = 13,
+                FontWeight = FontWeights.SemiBold,
+                TextWrapping = TextWrapping.Wrap,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(5, 0, 0, 0)
+            });
+        }
+        else if (node.CombineKey is { Length: > 0 } key)
         {
             panel.Children.Add(BuildCraftHintLabel("조합 키", left: 12));
             panel.Children.Add(new Border

@@ -1315,6 +1315,7 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
                 OwnedCount = (int)Math.Min(int.MaxValue, value.Owned),
                 CombineKey = combineHotkeys
                     ?.FindByResult(catalog.Unit(value.Node.UnitId).Rawcodes)?.Key,
+                CombineCommands = catalog.Unit(value.Node.UnitId).CombineCommands,
                 // 남은 수량 기준 재료 완성률 — 드릴다운에서 하위 단계 %로 보여준다.
                 CompletionRatio = calculator.Calculate(
                     Enumerable.Repeat(value.Node.UnitId,

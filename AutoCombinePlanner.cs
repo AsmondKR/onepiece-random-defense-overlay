@@ -109,7 +109,6 @@ public sealed class AutoCombinePlanner(DataCatalog catalog, CombineHotkeyCatalog
         var entry = hotkeys.FindByResult(catalog.Unit(step.UnitId).Rawcodes) ??
                     hotkeys.FindByResultName($"{step.Name} - {step.Tier}") ??
                     hotkeys.FindByResultName(step.Name);
-        if (entry is null) return null;
 
         // 트리거(먼저 선택) 재료는 앱의 조합 트리가 이미 알고 있다. 자원은 제외한다.
         var trigger = step.Ingredients
@@ -118,21 +117,26 @@ public sealed class AutoCombinePlanner(DataCatalog catalog, CombineHotkeyCatalog
             .First();
         var triggerUnit = catalog.Unit(trigger.UnitId);
 
+        var commands = catalog.Unit(step.UnitId).CombineCommands;
+        if (entry is null && commands.Count == 0) return null;
+
         return new AutoCombineStep(
             TargetUnitId: step.UnitId,
             TargetName: RecommendationPresentation.CraftUnitName(step.Name, step.Tier),
             TriggerUnitId: triggerUnit.Id,
             TriggerName: triggerUnit.Name,
             TriggerRawcode: triggerUnit.Rawcodes.FirstOrDefault() ?? "",
-            Key: entry.Key);
+            Key: entry?.Key ?? "",
+            Commands: commands);
     }
 }
 
-/// <summary>실행 계획 한 단계: 트리거 유닛을 선택하고 키를 누르면 대상이 조합된다.</summary>
+/// <summary>실행 계획 한 단계: 트리거 유닛을 선택하고 키를 누르거나 명령어를 입력한다.</summary>
 public sealed record AutoCombineStep(
     string TargetUnitId,
     string TargetName,
     string TriggerUnitId,
     string TriggerName,
     string TriggerRawcode,
-    string Key);
+    string Key,
+    IReadOnlyList<string> Commands);

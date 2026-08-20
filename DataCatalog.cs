@@ -81,7 +81,8 @@ public sealed class DataCatalog
                     Tags = ["rawcode-catalog"],
                     Image = entry.Image,
                     OfficialAbilities = AbilitiesFor(entry),
-                    Description = KoreanText(entry.Description)
+                    Description = KoreanText(entry.Description),
+                    CombineCommands = entry.Commands
                 };
             return new UnitDefinition { Id = id, Name = "이름 미등록 유닛", Rawcodes = [rawcode] };
         }
@@ -110,7 +111,10 @@ public sealed class DataCatalog
                 : AbilitiesFor(catalogEntry),
             Description = !string.IsNullOrWhiteSpace(unit.Description) || catalogEntry is null
                 ? KoreanText(unit.Description)
-                : KoreanText(catalogEntry.Description)
+                : KoreanText(catalogEntry.Description),
+            CombineCommands = catalogEntry is { Commands.Count: > 0 }
+                ? catalogEntry.Commands
+                : unit.CombineCommands
         };
         return KoreanUnit(enriched);
     }
@@ -199,7 +203,8 @@ public sealed class DataCatalog
             Rawcodes = unit.Rawcodes,
             Image = unit.Image,
             OfficialAbilities = unit.OfficialAbilities,
-            Description = unit.Description
+            Description = unit.Description,
+            CombineCommands = unit.CombineCommands
         };
     }
 
@@ -255,7 +260,8 @@ public sealed class DataCatalog
                 // Use an explicit guide recipe when captured; otherwise retain the base asset.
                 Recipe = guide.Recipe.Count > 0 ? guide.Recipe : original.Recipe,
                 Abilities = guide.Abilities,
-                Description = guide.Description
+                Description = guide.Description,
+                Commands = original.Commands
             };
         }
         return merged;
@@ -311,6 +317,7 @@ public sealed class RawcodeCatalogEntry
     public List<RawcodeRecipeEntry> Recipe { get; init; } = [];
     public Dictionary<string, JsonElement> Abilities { get; init; } = [];
     public string Description { get; init; } = "";
+    public List<string> Commands { get; init; } = [];
 }
 
 public sealed class RawcodeRecipeEntry
