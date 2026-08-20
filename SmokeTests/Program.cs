@@ -2027,6 +2027,83 @@ Assert(TelemetryUploader.DefaultEndpoint.StartsWith("https://") &&
     Assert(reset.Outcome == "unknown", "클리어 판정: 세션 경계에서 클리어 상태도 초기화");
 }
 
+// 텔레메트리 버퍼: 전멸·세션 종료로 패가 비어도 마지막 패를 남겨 클리어/패배를 보낸다.
+// 예전 경로는 인벤토리를 먼저 지운 뒤 보내서, 완성 상위가 없으면 0건이 되었다.
+{
+    var t0 = new DateTimeOffset(2026, 8, 20, 12, 0, 0, TimeSpan.Zero);
+    static TelemetryRecord? Emit(MatchTelemetryBuffer buffer, DateTimeOffset ended,
+        string outcome, string source) =>
+        buffer.TryEmit(
+            "33333333-3333-3333-3333-333333333333", "0.6.7", "2.314", "2.0.4.23745",
+            "yamato_transcendent", "PathOfKings.BountyHunter", "None", "auto",
+            ended, outcome, source);
+
+    Assert(Emit(new MatchTelemetryBuffer(), t0, "fail", "unitWipe") is null,
+        "텔레메트리 버퍼: 패를 한 번도 못 본 빈 판은 보내지 않음");
+
+    var failDetector = new MatchOutcomeDetector();
+    var failBuffer = new MatchTelemetryBuffer();
+    var livingHand = new List<InventoryEntry>
+    {
+        new() { UnitId = "luffy_common", Count = 4 },
+        new() { UnitId = "rawcode:200h", Count = 2 },
+    };
+    failBuffer.Capture(livingHand, ["yamato_transcendent"], ["yamato_transcendent"], t0, 6);
+    failDetector.Observe(6, 300, t0);
+    // MainWindow는 Waiting에서 _automatic.Clear() 한다. 빈 관측이 스냅샷을 덮으면 안 된다.
+    failBuffer.Capture([], [], [], t0.AddSeconds(1), 0);
+    failDetector.Observe(0, 300, t0.AddSeconds(1));
+    failDetector.Observe(0, 300, t0.AddSeconds(2));
+    Assert(failDetector.Outcome == "fail" && failDetector.OutcomeSource == "unitWipe",
+        "텔레메트리 버퍼: 전멸 연속 관측은 패배");
+    var failRecord = Emit(failBuffer, t0.AddSeconds(2), failDetector.Outcome, failDetector.OutcomeSource);
+    Assert(failRecord is not null, "텔레메트리 버퍼: 패배 확정 시 레코드를 만든다");
+    Assert(failRecord!.Outcome == "fail" && failRecord.OutcomeSource == "unitWipe",
+        "텔레메트리 버퍼: 패배 라벨·근거(unitWipe)를 붙인다");
+    Assert(failRecord.FinalHand.Count == 2 && failRecord.FinalHand.Sum(x => x.Count) == 6,
+        "텔레메트리 버퍼: 전멸 뒤에도 마지막 패를 보낸다");
+    Assert(failRecord.CompletedTops.SequenceEqual(["yamato_transcendent"]) &&
+           failRecord.LastObservedUnitCount == 6,
+        "텔레메트리 버퍼: 완성 상위·마지막 유닛 수는 전멸 전 값을 유지");
+    Assert(Emit(failBuffer, t0.AddSeconds(10), "unknown", "none") is null,
+        "텔레메트리 버퍼: 패배를 보낸 뒤 세션 종료로 한 판을 두 번 보내지 않음");
+
+    var clearDetector = new MatchOutcomeDetector();
+    var clearBuffer = new MatchTelemetryBuffer();
+    var clearHand = new List<InventoryEntry> { new() { UnitId = "rawcode:E90H", Count = 8 } };
+    clearBuffer.Capture(clearHand, ["yamato_transcendent"], ["yamato_transcendent"], t0, 8);
+    clearDetector.ObserveRound(1);
+    clearDetector.ObserveSettlement(0, t0);
+    clearDetector.Observe(8, 300, t0);
+    clearDetector.ObserveRound(65);
+    clearDetector.ObserveSettlement(4, t0.AddMinutes(31));
+    clearDetector.Observe(8, 300, t0.AddMinutes(31).AddSeconds(10));
+    clearDetector.Observe(8, 300, t0.AddMinutes(31).AddSeconds(40));
+    Assert(clearDetector.Outcome == "clear" && clearDetector.OutcomeSource == "mapSettlement",
+        "텔레메트리 버퍼: 정산 후 생존 확인은 클리어");
+    var clearRecord = Emit(clearBuffer, t0.AddMinutes(31).AddSeconds(40),
+        clearDetector.Outcome, clearDetector.OutcomeSource);
+    Assert(clearRecord is not null && clearRecord.Outcome == "clear" &&
+           clearRecord.OutcomeSource == "mapSettlement",
+        "텔레메트리 버퍼: 클리어 확정 시 레코드를 만든다");
+    Assert(clearRecord!.FinalHand.Count == 1 && clearRecord.FinalHand[0].Count == 8,
+        "텔레메트리 버퍼: 클리어는 마지막 생존 패를 보낸다");
+
+    var midBuffer = new MatchTelemetryBuffer();
+    midBuffer.Capture(livingHand, [], ["yamato_transcendent"], t0, 6);
+    var unknownRecord = Emit(midBuffer, t0.AddMinutes(5), "unknown", "none");
+    Assert(unknownRecord is not null && unknownRecord.Outcome == "unknown" &&
+           unknownRecord.FinalHand.Sum(x => x.Count) == 6,
+        "텔레메트리 버퍼: 판정 전에 세션이 끝나도 마지막 패는 보낸다");
+
+    failBuffer.Reset();
+    failBuffer.Capture(clearHand, ["yamato_transcendent"], ["yamato_transcendent"], t0.AddHours(1), 8);
+    var nextRecord = Emit(failBuffer, t0.AddHours(1).AddMinutes(40), "clear", "mapSettlement");
+    Assert(nextRecord is not null && nextRecord.Outcome == "clear" &&
+           nextRecord.FinalHand[0].UnitId == "rawcode:E90H",
+        "텔레메트리 버퍼: Reset 후 다음 판은 다시 보낼 수 있다");
+}
+
 // 업데이트 시점 정책: 유저 클라이언트는 판이 끝난 뒤에 교체한다(재시작이 판을 끊으므로).
 // 개발 PC는 즉시 교체해야 검증이 빠르므로 예외.
 {
@@ -2067,7 +2144,7 @@ if (Environment.GetEnvironmentVariable("ORAND_DIAG") == "drill")
     return;
 }
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 363/363");
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 397/397");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,

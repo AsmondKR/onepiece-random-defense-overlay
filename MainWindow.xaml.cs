@@ -36,6 +36,7 @@ public partial class MainWindow : Window
     private readonly LiveVerificationRecorder _liveVerification = new();
     private readonly TelemetryUploader _telemetry = new();
     private readonly MatchOutcomeDetector _outcome = new();
+    private readonly MatchTelemetryBuffer _telemetryBuffer = new();
     private DateTimeOffset _telemetrySessionStart;
     private List<string> _telemetryLastTop = [];
     private string _lastWarcraftVersion = "";
@@ -127,6 +128,7 @@ public partial class MainWindow : Window
             _updateTimer.Stop();
             _scanCancellation?.Cancel();
             _scanCancellation?.Dispose();
+            SendMatchTelemetry();
             SaveOverlayPosition();
             _overlay.Stats.CloseForApplication();
             _overlay.CloseForApplication();
@@ -704,6 +706,7 @@ public partial class MainWindow : Window
             navigationMode: navigation.Id, gorosei: gorosei, buildVariant: buildVariant,
             suppressSeraphim: _greenBloodUsage.Used);
         _telemetryLastTop = recommendations.Take(5).Select(x => x.Route.GoalUnitId).ToList();
+        CaptureMatchTelemetry();
         GoalSelectLabel.Text = "목표 상위 유닛 · 학습된 유닛만" +
             (_liveStats.TryGetGoal(goal.Id, out var liveGoal)
                 ? $" · 실사용 {liveGoal.Plays}판{(liveGoal.ClearRateText.Length == 0 ? "" : " · " + liveGoal.ClearRateText)}"
@@ -1301,21 +1304,13 @@ public partial class MainWindow : Window
                 _automaticStale = false;
                 _automaticDisconnected = false;
                 _liveSessionActive = true;
+                CaptureMatchTelemetry();
             }
             else if (result.ShouldClearAutomaticInventory)
             {
                 _automatic.Clear();
                 _automaticStale = false;
                 _automaticDisconnected = true;
-                if (RecognitionPolicy.IsConfirmedOutOfGame(result))
-                {
-                    SendMatchTelemetry(); // _automatic/_completedTopUnits 리셋 전에
-                    _outcome.Reset();
-                    _liveSessionActive = false;
-                    _autoStartApplied = false;
-                    _completedTopUnits.Reset();
-                    _greenBloodUsage.Reset();
-                }
             }
             else
             {
@@ -1330,6 +1325,18 @@ public partial class MainWindow : Window
                     _outcome.ObserveRound(mapState.MaxRound);
                     _outcome.ObserveSettlement(mapState.SettlementCopies);
                 }
+            }
+            if (_outcome.Outcome is "fail" or "clear")
+                SendMatchTelemetry();
+            if (result.ShouldClearAutomaticInventory && RecognitionPolicy.IsConfirmedOutOfGame(result))
+            {
+                SendMatchTelemetry();
+                _telemetryBuffer.Reset();
+                _outcome.Reset();
+                _liveSessionActive = false;
+                _autoStartApplied = false;
+                _completedTopUnits.Reset();
+                _greenBloodUsage.Reset();
             }
             _liveVerification.Observe(result);
             UpdateLiveVerifyUi();
@@ -1487,23 +1494,34 @@ public partial class MainWindow : Window
         SettingsStore.Save(_settings);
     }
 
-    /// <summary>세션 경계 확정 시점의 패·추천 상태로 익명 레코드를 만들어 전송한다. fail-silent.</summary>
+    /// <summary>마지막 패 스냅샷으로 익명 레코드를 보낸다. 판당 1회, fail-silent.</summary>
     private void SendMatchTelemetry()
     {
         try
         {
             if (!_settings.TelemetryEnabled || !_liveSessionActive) return;
-            var hand = _automatic.Values.Where(x => x.Count > 0).ToList();
-            var completed = _completedTopUnits.CompletedUnitIds.ToList();
-            if (hand.Count == 0 && completed.Count == 0) return; // 빈 판은 보내지 않음
-            var record = MatchTelemetryRecorder.Build(
+            var record = _telemetryBuffer.TryEmit(
                 _settings.TelemetryAnonId, UpdateService.CurrentVersion.ToString(3),
                 "2.314", string.IsNullOrEmpty(_lastWarcraftVersion) ? "unknown" : _lastWarcraftVersion,
-                _settings.GoalUnitId, _settings.NavigationMode, _settings.GoroseiMode,
-                "auto", hand, completed, _telemetryLastTop,
-                _telemetrySessionStart, DateTimeOffset.UtcNow, hand.Sum(x => x.Count),
-                _outcome.Outcome, _outcome.OutcomeSource);
+                string.IsNullOrWhiteSpace(_settings.GoalUnitId) ? "unknown" : _settings.GoalUnitId,
+                string.IsNullOrWhiteSpace(_settings.NavigationMode) ? "unknown" : _settings.NavigationMode,
+                string.IsNullOrWhiteSpace(_settings.GoroseiMode) ? "None" : _settings.GoroseiMode,
+                "auto", DateTimeOffset.UtcNow, _outcome.Outcome, _outcome.OutcomeSource);
+            if (record is null) return;
             _ = _telemetry.EnqueueAndFlushAsync(record);
+        }
+        catch { /* fail-silent */ }
+    }
+
+    /// <summary>패가 있는 스캔만 스냅샷에 남긴다. 전멸·대기 스캔은 마지막 패를 덮지 않는다.</summary>
+    private void CaptureMatchTelemetry()
+    {
+        try
+        {
+            if (!_liveSessionActive) return;
+            var hand = _automatic.Values.Where(x => x.Count > 0).ToList();
+            _telemetryBuffer.Capture(hand, _completedTopUnits.CompletedUnitIds, _telemetryLastTop,
+                _telemetrySessionStart, hand.Sum(x => x.Count));
         }
         catch { /* fail-silent */ }
     }

@@ -5,7 +5,7 @@ namespace OrandOverlay;
 /// <summary>
 /// 판 종료 시 서버로 보내는 익명 플레이 레코드(스키마 v1).
 /// 내 슬롯 데이터만 담는다. 닉네임·계정·IP는 어떤 필드로도 존재하지 않는다.
-/// 승패 라벨은 판정 프로브가 생기기 전까지 unknown으로 보낸다(설계 문서 참조).
+/// 승패 라벨은 판정기가 확정하면 clear/fail, 아니면 unknown이다.
 /// </summary>
 public sealed class TelemetryRecord
 {
