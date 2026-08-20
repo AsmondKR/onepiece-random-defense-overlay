@@ -77,11 +77,35 @@ internal static class RecommendationBoard
             boardPanel.Children.Add(missing);
         }
         var tiles = new WrapPanel();
-        foreach (var rec in recs)
-            tiles.Children.Add(BoardTile(rec,
-                rec.Route.Id.Equals(selected.Route.Id, StringComparison.OrdinalIgnoreCase),
-                onSelect));
+        foreach (var cluster in Clusters(recs))
+            tiles.Children.Add(RenderCluster(cluster, selected.Route.Id, onSelect));
         boardPanel.Children.Add(tiles);
+    }
+
+    public readonly record struct BoardCluster(Recommendation Head, IReadOnlyList<Recommendation> Children);
+
+    public static IReadOnlyList<BoardCluster> Clusters(IReadOnlyList<Recommendation> recs)
+    {
+        var used = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var clusters = new List<BoardCluster>();
+        foreach (var rec in recs)
+        {
+            if (rec.ClusterParentUnitId is { Length: > 0 }) continue;
+            if (!used.Add(rec.Route.GoalUnitId)) continue;
+            var children = recs
+                .Where(child => child.ClusterParentUnitId is { } parent &&
+                                parent.Equals(rec.Route.GoalUnitId, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            foreach (var child in children)
+                used.Add(child.Route.GoalUnitId);
+            clusters.Add(new BoardCluster(rec, children));
+        }
+        foreach (var rec in recs)
+        {
+            if (!used.Add(rec.Route.GoalUnitId)) continue;
+            clusters.Add(new BoardCluster(rec, []));
+        }
+        return clusters;
     }
 
     private static UIElement NowBlock(Recommendation selected, IReadOnlyList<AutoCombineStep> plan)
@@ -319,6 +343,91 @@ internal static class RecommendationBoard
             Margin = new Thickness(4, 0, 4, 0),
             VerticalAlignment = VerticalAlignment.Center
         };
+    }
+
+    private static UIElement RenderCluster(BoardCluster cluster, string selectedId, Action<string> onSelect)
+    {
+        if (cluster.Children.Count == 0)
+            return BoardTile(cluster.Head, cluster.Head.Route.Id.Equals(selectedId, StringComparison.OrdinalIgnoreCase),
+                onSelect);
+
+        var selectedInCluster = cluster.Head.Route.Id.Equals(selectedId, StringComparison.OrdinalIgnoreCase) ||
+                                cluster.Children.Any(child =>
+                                    child.Route.Id.Equals(selectedId, StringComparison.OrdinalIgnoreCase));
+        var row = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        row.Children.Add(BoardPortrait(cluster.Head, 48, 11,
+            cluster.Head.Route.Id.Equals(selectedId, StringComparison.OrdinalIgnoreCase), onSelect));
+        row.Children.Add(new Border
+        {
+            Width = 1,
+            Height = 34,
+            Background = OverlayTheme.GoldBrush,
+            Opacity = 0.5,
+            Margin = new Thickness(6, 0, 6, 10),
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        foreach (var child in cluster.Children)
+            row.Children.Add(BoardPortrait(child, 32, 10,
+                child.Route.Id.Equals(selectedId, StringComparison.OrdinalIgnoreCase), onSelect));
+        return new Border
+        {
+            Background = selectedInCluster ? OverlayTheme.FeaturedBrush : OverlayTheme.RowBrush,
+            BorderBrush = selectedInCluster ? OverlayTheme.GoldBrush : OverlayTheme.HairlineBrush,
+            BorderThickness = new Thickness(selectedInCluster ? 1.5 : 1),
+            CornerRadius = new CornerRadius(OverlayTheme.WellRadius),
+            Padding = new Thickness(8, 8, 8, 6),
+            Margin = new Thickness(0, 0, 10, 10),
+            Child = row
+        };
+    }
+
+    private static UIElement BoardPortrait(Recommendation item, double size, double percentSize,
+        bool selected, Action<string> onSelect)
+    {
+        var unit = item.CompositionUnits[0];
+        var icon = UnitImageFactory.Create(unit.Image, unit.Name, size, unit.UnitId);
+        icon.HorizontalAlignment = HorizontalAlignment.Center;
+        var body = new StackPanel { Width = size + 8 };
+        var ring = new Border
+        {
+            HorizontalAlignment = HorizontalAlignment.Center,
+            BorderBrush = selected ? OverlayTheme.GoldBrush : OverlayTheme.HairlineBrush,
+            BorderThickness = new Thickness(2),
+            CornerRadius = new CornerRadius(OverlayTheme.ImageRadius),
+            Child = icon
+        };
+        body.Children.Add(ring);
+        body.Children.Add(new TextBlock
+        {
+            Text = RecommendationPresentation.CompletionPercent(item.RecipeProgress),
+            Foreground = OverlayTheme.GoldBrush,
+            FontSize = percentSize,
+            FontWeight = FontWeights.Bold,
+            TextAlignment = TextAlignment.Center,
+            Margin = new Thickness(0, 3, 0, 0)
+        });
+        var hit = new Border
+        {
+            Background = Brushes.Transparent,
+            Cursor = Cursors.Hand,
+            Child = body,
+            Margin = new Thickness(0, 0, 4, 0)
+        };
+        hit.ToolTip = RecommendationPresentation.CraftUnitName(unit);
+        AutomationProperties.SetName(hit, RecommendationPresentation.CraftUnitName(unit));
+        hit.MouseEnter += (_, _) => ring.BorderBrush = OverlayTheme.GoldBrush;
+        hit.MouseLeave += (_, _) =>
+            ring.BorderBrush = selected ? OverlayTheme.GoldBrush : OverlayTheme.HairlineBrush;
+        hit.MouseLeftButtonDown += (_, e) =>
+        {
+            e.Handled = true;
+            onSelect(item.Route.Id);
+        };
+        return hit;
     }
 
     private static UIElement BoardTile(Recommendation item, bool selected, Action<string> onSelect)

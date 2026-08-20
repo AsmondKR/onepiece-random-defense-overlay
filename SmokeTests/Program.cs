@@ -175,6 +175,10 @@ var yamatoStoryLegendaries = yamatoWithoutPirateShip.Skip(1).Take(2)
 Assert(yamatoStoryLegendaries.Contains("rawcode:S30h") &&
        yamatoStoryLegendaries.Contains("rawcode:780h"),
     "야마토 초월은 하위 전설(울티·토키)을 후보 보드 앞에 둔다");
+Assert(yamatoWithoutPirateShip[0].ClusterParentUnitId is null &&
+       yamatoWithoutPirateShip.Skip(1).Take(2).All(item =>
+           item.ClusterParentUnitId == "yamato_transcendent"),
+    "야마토 하위 전설은 후보 보드에서 야마토 클러스터에 묶인다");
 // 표시 순서는 채용률이 정하지만, 선택된 지원에는 스턴 1.4 패키지가 유지되어야 한다.
 var yamatoStunSupports = yamatoWithoutPirateShip.Skip(1)
     .Where(item => AbilityValue(item.CompositionUnits[0], "스턴") > 0)
@@ -1316,6 +1320,10 @@ Assert(firstRareSpecials.Count == 0 ||
         pinnedSpecials.All(id =>
             catalog.Unit(id).Tier.Split('[', 2)[0].Trim() == "특별함")),
     "첫 희귀함 옆에 그 희귀함의 특별함 재료를 후보 보드에 둔다");
+Assert(firstRareSpecials.Count == 0 ||
+       fastRaresEmpty.Skip(1).Take(firstRareSpecials.Count).All(item =>
+           item.ClusterParentUnitId == fastRaresEmpty[0].Route.GoalUnitId),
+    "첫 희귀함의 특별함 재료는 후보 보드에서 그 희귀함 클러스터에 묶인다");
 var targetRare = fastRaresEmpty[0];
 var targetRareMaterials = targetRare.RecipeProgress.Leaves
     .SelectMany(leaf => Enumerable.Repeat(leaf.UnitId, (int)leaf.RequiredCount))
@@ -2265,7 +2273,7 @@ if (Environment.GetEnvironmentVariable("ORAND_DIAG") == "drill")
     return;
 }
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 423/423");
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 425/425");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,

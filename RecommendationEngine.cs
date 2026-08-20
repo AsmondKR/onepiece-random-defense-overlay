@@ -305,6 +305,8 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
             results[i] = EvaluateCraft(catalog.Unit(results[i].Route.GoalUnitId),
                 cascadeInventory, calculator, out var remainingAfterBuild);
             cascadeInventory = remainingAfterBuild;
+            if (recipeLegendaryIds.Contains(results[i].Route.GoalUnitId))
+                results[i].ClusterParentUnitId = goal.Id;
         }
 
         foreach (var recommendation in results)
@@ -347,6 +349,9 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
             .Select(id => EvaluateCraft(catalog.Unit(id), counts, calculator))
             .ToList();
         if (specials.Count == 0) return rares;
+        var parentId = rares[0].Route.GoalUnitId;
+        foreach (var special in specials)
+            special.ClusterParentUnitId = parentId;
         return new[] { rares[0] }.Concat(specials).Concat(rares.Skip(1)).ToList();
     }
 

@@ -93,6 +93,11 @@ public sealed class Recommendation
     public ClearEvidence? ClearEvidence { get; set; }
     /// <summary>이 추천 유닛의 채팅 조합 명령어. 없으면 빈 목록.</summary>
     public IReadOnlyList<string> CombineCommands { get; init; } = [];
+    /// <summary>
+    /// 후보 보드에서 이 칸이 붙는 부모 유닛 ID. 초월의 하위 전설, 첫 희귀함의 특별함.
+    /// 없으면 단독 칸.
+    /// </summary>
+    public string? ClusterParentUnitId { get; set; }
 }
 
 public sealed class RecipeCraftStep
