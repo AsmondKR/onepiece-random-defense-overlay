@@ -141,7 +141,7 @@ internal static class RecommendationBoard
         {
             Text = RecommendationPresentation.CompletionPercent(selected.RecipeProgress),
             Foreground = OverlayTheme.GoldBrush,
-            FontSize = 32,
+            FontSize = 26,
             FontWeight = FontWeights.Bold,
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(12, 0, 0, 0)
@@ -246,10 +246,11 @@ internal static class RecommendationBoard
         }
         return new Border
         {
-            Background = OverlayTheme.RowBrush,
+            Background = current ? OverlayTheme.FeaturedBrush : OverlayTheme.RowBrush,
             BorderBrush = current ? OverlayTheme.GoldBrush : OverlayTheme.HairlineBrush,
             BorderThickness = new Thickness(current ? 2 : 1),
-            Padding = new Thickness(5, 4, 5, 4),
+            CornerRadius = new CornerRadius(OverlayTheme.TileRadius),
+            Padding = new Thickness(6, 6, 6, 6),
             Child = body
         };
     }
@@ -296,15 +297,26 @@ internal static class RecommendationBoard
         });
         var tile = new Border
         {
-            Background = OverlayTheme.RowBrush,
+            Background = selected ? OverlayTheme.FeaturedBrush : OverlayTheme.RowBrush,
             BorderBrush = selected ? OverlayTheme.GoldBrush : OverlayTheme.HairlineBrush,
             BorderThickness = new Thickness(selected ? 2 : 1),
-            Padding = new Thickness(4, 4, 4, 4),
-            Margin = new Thickness(0, 0, 8, 8),
+            CornerRadius = new CornerRadius(OverlayTheme.TileRadius),
+            Padding = new Thickness(6, 6, 6, 6),
+            Margin = new Thickness(0, 0, 10, 10),
             Cursor = Cursors.Hand,
             Child = body
         };
         AutomationProperties.SetName(tile, RecommendationPresentation.CraftUnitName(unit));
+        tile.MouseEnter += (_, _) =>
+        {
+            if (!selected) tile.BorderBrush = OverlayTheme.GoldBrush;
+            tile.Background = OverlayTheme.FeaturedBrush;
+        };
+        tile.MouseLeave += (_, _) =>
+        {
+            tile.BorderBrush = selected ? OverlayTheme.GoldBrush : OverlayTheme.HairlineBrush;
+            tile.Background = selected ? OverlayTheme.FeaturedBrush : OverlayTheme.RowBrush;
+        };
         tile.MouseLeftButtonDown += (_, e) =>
         {
             e.Handled = true;

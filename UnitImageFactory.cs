@@ -25,7 +25,7 @@ public static class UnitImageFactory
             Width = size,
             Height = size,
             Background = new SolidColorBrush(Color.FromRgb(55, 65, 81)),
-            CornerRadius = new CornerRadius(5),
+            CornerRadius = new CornerRadius(OverlayTheme.ImageRadius),
             Child = new TextBlock
             {
                 Text = FirstKoreanCharacter(unitName),
@@ -37,6 +37,7 @@ public static class UnitImageFactory
             }
         };
         var container = new Grid { Width = size, Height = size };
+        OverlayTheme.AttachRoundClip(container, OverlayTheme.ImageRadius);
         container.Children.Add(fallback);
         // 원격(티모지지 CDN) 요청은 하지 않는다 — 서버 부하를 만들지 않기로 한 약속.
         // 번들에 없는 유닛은 이니셜 타일로 표시된다.

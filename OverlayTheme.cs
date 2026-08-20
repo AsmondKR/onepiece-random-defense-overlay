@@ -31,6 +31,25 @@ internal static class OverlayTheme
     public static SolidColorBrush HairlineBrush { get; } = Freeze(Hairline);
     public static SolidColorBrush WhiteBrush { get; } = Freeze(Colors.White);
 
+    public const double ChromeRadius = 16;
+    public const double WellRadius = 12;
+    public const double TileRadius = 10;
+    public const double ImageRadius = 8;
+    public const double ChipRadius = 6;
+
+    public static void AttachRoundClip(FrameworkElement element, double radius)
+    {
+        void Apply()
+        {
+            if (element.ActualWidth <= 0 || element.ActualHeight <= 0) return;
+            element.Clip = new RectangleGeometry(
+                new Rect(0, 0, element.ActualWidth, element.ActualHeight), radius, radius);
+        }
+        element.SizeChanged += (_, _) => Apply();
+        element.Loaded += (_, _) => Apply();
+        Apply();
+    }
+
     public static string Num(double value) =>
         value.ToString("0.##", CultureInfo.InvariantCulture);
 
@@ -41,8 +60,8 @@ internal static class OverlayTheme
             Background = new SolidColorBrush(Chip),
             BorderBrush = primary ? GoldBrush : HairlineBrush,
             BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(2),
-            Padding = new Thickness(6, 1, 6, 1),
+            CornerRadius = new CornerRadius(ChipRadius),
+            Padding = new Thickness(7, 2, 7, 2),
             Margin = new Thickness(0, 0, 4, 0),
             VerticalAlignment = VerticalAlignment.Center,
             Child = new TextBlock
@@ -264,7 +283,13 @@ internal static class OverlayTheme
                 TextWrapping = TextWrapping.Wrap,
                 Margin = new Thickness(0, 3, 0, 0)
             });
-        return stack;
+        return new Border
+        {
+            Background = RowBrush,
+            CornerRadius = new CornerRadius(TileRadius),
+            Margin = new Thickness(0, 0, 0, 8),
+            Child = stack
+        };
     }
 
     public static UIElement Bar(double current, double target, Color accent)
@@ -277,6 +302,7 @@ internal static class OverlayTheme
         return new Border
         {
             Background = new SolidColorBrush(Color.FromRgb(40, 45, 56)),
+            CornerRadius = new CornerRadius(2),
             Child = grid
         };
     }
@@ -409,7 +435,7 @@ internal static class OverlayTheme
             Background = new SolidColorBrush(Chip),
             BorderBrush = HairlineBrush,
             BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(2),
+            CornerRadius = new CornerRadius(ChipRadius),
             Padding = new Thickness(6, 4, 8, 4),
             Margin = new Thickness(0, 0, 6, 6),
             Child = row

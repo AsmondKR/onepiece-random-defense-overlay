@@ -26,8 +26,8 @@ public partial class OverlayWindow : OverlayWindowBase
         };
     }
 
-    protected override double DesignWidth => 720;
-    protected override double DesignHeight => 560;
+    protected override double DesignWidth => 760;
+    protected override double DesignHeight => 680;
     protected override UIElement? ClickThroughIndicator => ClickThroughBadge;
 
     public StatsOverlayWindow Stats { get; } = new();
@@ -203,6 +203,7 @@ public partial class OverlayWindow : OverlayWindowBase
         Background = OverlayTheme.RowBrush,
         BorderBrush = OverlayTheme.HairlineBrush,
         BorderThickness = new Thickness(1),
+        CornerRadius = new CornerRadius(OverlayTheme.ChipRadius),
         Padding = new Thickness(8, 4, 8, 4),
         Margin = new Thickness(0, 0, 6, 6),
         Child = new TextBlock

@@ -36,6 +36,8 @@ public abstract class OverlayWindowBase : Window
         {
             ApplyResolutionScale();
             ClampToVisibleMonitor();
+            if (Content is FrameworkElement chrome)
+                OverlayTheme.AttachRoundClip(chrome, OverlayTheme.ChromeRadius);
         };
         DpiChanged += (_, _) => Dispatcher.BeginInvoke(new Action(() =>
         {
