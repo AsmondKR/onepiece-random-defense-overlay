@@ -27,7 +27,7 @@ public partial class OverlayWindow : OverlayWindowBase
     }
 
     protected override double DesignWidth => 720;
-    protected override double DesignHeight => 380;
+    protected override double DesignHeight => 560;
     protected override UIElement? ClickThroughIndicator => ClickThroughBadge;
 
     public StatsOverlayWindow Stats { get; } = new();
@@ -41,7 +41,7 @@ public partial class OverlayWindow : OverlayWindowBase
     private WrapPanel EmergencyPanel => Stats.EmergencyPanel;
     private TextBlock EmergencyHeader => Stats.EmergencyHeader;
     private UniformGrid CoreKpiPanel => Stats.CoreKpiPanel;
-    private WrapPanel CurrentStatsPanel => Stats.CurrentStatsPanel;
+    private StackPanel CurrentStatsPanel => Stats.CurrentStatsPanel;
     private WrapPanel RareRerollPanel => Stats.RareRerollPanel;
     private WrapPanel SpecialPanel => Stats.SpecialPanel;
     private TextBlock SpecialHeader => Stats.SpecialHeader;
@@ -270,21 +270,25 @@ public partial class OverlayWindow : OverlayWindowBase
 
     private static UIElement StatChip(string name, string value, bool accent)
     {
-        var stack = new StackPanel { Margin = new Thickness(0, 0, 16, 4), MinWidth = 64 };
-        stack.Children.Add(new TextBlock
+        var row = new Grid { Margin = new Thickness(0, 0, 0, 5) };
+        row.ColumnDefinitions.Add(new ColumnDefinition());
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.Children.Add(new TextBlock
         {
             Text = name,
             Foreground = OverlayTheme.MutedBrush,
-            FontSize = 10
+            FontSize = 12
         });
-        stack.Children.Add(new TextBlock
+        var number = new TextBlock
         {
             Text = value,
             Foreground = accent ? OverlayTheme.GoldBrush : OverlayTheme.MutedBrush,
-            FontSize = 14,
+            FontSize = 13,
             FontWeight = FontWeights.Bold
-        });
-        return stack;
+        };
+        Grid.SetColumn(number, 1);
+        row.Children.Add(number);
+        return row;
     }
 
     private static string ArmorBreakdown(InventoryStatSummary stats)

@@ -2,18 +2,18 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:OrandOverlay"
-        Width="720" Height="380" Top="48" Left="1180"
+        Width="720" Height="560" Top="48" Left="1180"
         FontFamily="Malgun Gothic"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         Topmost="True" ShowInTaskbar="False" ResizeMode="NoResize">
-  <!-- 테스트3: 세로 리스트가 아니라 지금/흐름/보드 3구역 가로 HUD. -->
+  <!-- 지금 / 흐름(높이 고정) / 후보 보드(나머지 전부). -->
   <Border Background="#F2080A0E" BorderBrush="#FF232833" BorderThickness="1">
     <Grid>
       <Grid.RowDefinitions>
         <RowDefinition Height="Auto"/>
         <RowDefinition Height="Auto"/>
         <RowDefinition Height="Auto"/>
-        <RowDefinition Height="*"/>
+        <RowDefinition Height="*" MinHeight="200"/>
         <RowDefinition Height="Auto"/>
       </Grid.RowDefinitions>
       <Grid Background="Transparent" Cursor="SizeAll" MouseLeftButtonDown="DragArea_OnMouseLeftButtonDown"
@@ -44,16 +44,16 @@
       <Border Grid.Row="1" Background="#FF10131A" Margin="10,8,10,0" Padding="10,8">
         <StackPanel x:Name="NowPanel"/>
       </Border>
-      <ScrollViewer Grid.Row="2" Margin="10,8,10,0" HorizontalScrollBarVisibility="Auto"
-                    VerticalScrollBarVisibility="Disabled">
+      <ScrollViewer Grid.Row="2" Margin="10,8,10,0" MaxHeight="118"
+                    HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
         <StackPanel x:Name="FlowPanel"/>
       </ScrollViewer>
       <ScrollViewer Grid.Row="3" Margin="10,8,10,0" VerticalScrollBarVisibility="Auto"
                     HorizontalScrollBarVisibility="Disabled">
         <StackPanel>
           <TextBlock Text="후보 보드  ·  눌러서 흐름 전환" Foreground="#FF8B93A7" FontSize="10"
-                     FontWeight="SemiBold" Margin="0,0,0,4"/>
-          <WrapPanel x:Name="BoardPanel"/>
+                     FontWeight="SemiBold" Margin="0,0,0,6"/>
+          <StackPanel x:Name="BoardPanel"/>
         </StackPanel>
       </ScrollViewer>
       <Grid Grid.Row="4" Margin="10,6,10,8">

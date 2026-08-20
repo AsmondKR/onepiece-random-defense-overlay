@@ -55,16 +55,28 @@ internal static class RecommendationBoard
 
         nowPanel.Children.Add(NowBlock(selected, plan));
         flowPanel.Children.Add(FlowBlock(selected));
+        if (selected.RecipeProgress.MissingLeaves.Count > 0)
+        {
+            var missing = new WrapPanel { Margin = new Thickness(0, 0, 0, 8) };
+            foreach (var leaf in selected.RecipeProgress.MissingLeaves.Take(10))
+                missing.Children.Add(OverlayTheme.MissingChip(
+                    UnitImageFactory.Create(leaf.Image, leaf.Name, 24, leaf.UnitId),
+                    RecommendationPresentation.CraftUnitName(leaf.Name, leaf.Tier),
+                    leaf.MissingCount));
+            boardPanel.Children.Add(missing);
+        }
+        var tiles = new WrapPanel();
         for (var i = 0; i < recs.Count; i++)
-            boardPanel.Children.Add(BoardTile(recs[i], i + 1,
+            tiles.Children.Add(BoardTile(recs[i], i + 1,
                 recs[i].Route.Id.Equals(selected.Route.Id, StringComparison.OrdinalIgnoreCase),
                 onSelect));
+        boardPanel.Children.Add(tiles);
     }
 
     private static UIElement NowBlock(Recommendation selected, IReadOnlyList<AutoCombineStep> plan)
     {
         var unit = selected.CompositionUnits[0];
-        var icon = UnitImageFactory.Create(unit.Image, unit.Name, 72, unit.UnitId);
+        var icon = UnitImageFactory.Create(unit.Image, unit.Name, 56, unit.UnitId);
         icon.VerticalAlignment = VerticalAlignment.Center;
 
         var text = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
@@ -194,30 +206,6 @@ internal static class RecommendationBoard
             stack.Children.Add(row);
         }
 
-        var ability = selected.CompositionUnits.Count > 0
-            ? RecommendationPresentation.RecommendationEffectLine(selected.CompositionUnits[0])
-            : "";
-        if (!string.IsNullOrWhiteSpace(ability))
-            stack.Children.Add(new TextBlock
-            {
-                Text = ability,
-                Foreground = OverlayTheme.MutedBrush,
-                FontSize = 11,
-                TextWrapping = TextWrapping.Wrap,
-                Margin = new Thickness(0, 6, 0, 0)
-            });
-
-        if (selected.RecipeProgress.MissingLeaves.Count > 0)
-        {
-            var missing = new WrapPanel { Margin = new Thickness(0, 8, 0, 0) };
-            foreach (var leaf in selected.RecipeProgress.MissingLeaves.Take(10))
-                missing.Children.Add(OverlayTheme.MissingChip(
-                    UnitImageFactory.Create(leaf.Image, leaf.Name, 24, leaf.UnitId),
-                    RecommendationPresentation.CraftUnitName(leaf.Name, leaf.Tier),
-                    leaf.MissingCount));
-            stack.Children.Add(missing);
-        }
-
         return stack;
     }
 
@@ -226,9 +214,8 @@ internal static class RecommendationBoard
         var commands = step.CombineCommands.Count > 0
             ? step.CombineCommands
             : step.CombineKey is { Length: > 0 } key ? (IReadOnlyList<string>)[key] : [];
-        var select = RecommendationPresentation.CraftSelectUnitName(step);
-        var body = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center, Width = 86 };
-        var icon = UnitImageFactory.Create(step.Image, step.Name, 48, step.UnitId);
+        var body = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center, Width = 76 };
+        var icon = UnitImageFactory.Create(step.Image, step.Name, 40, step.UnitId);
         icon.HorizontalAlignment = HorizontalAlignment.Center;
         body.Children.Add(icon);
         body.Children.Add(new TextBlock
@@ -238,8 +225,9 @@ internal static class RecommendationBoard
             FontSize = 11,
             FontWeight = FontWeights.SemiBold,
             TextAlignment = TextAlignment.Center,
-            TextWrapping = TextWrapping.Wrap,
-            Margin = new Thickness(0, 4, 0, 0)
+            TextWrapping = TextWrapping.NoWrap,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            Margin = new Thickness(0, 3, 0, 0)
         });
         body.Children.Add(new TextBlock
         {
@@ -249,20 +237,11 @@ internal static class RecommendationBoard
             FontWeight = FontWeights.SemiBold,
             TextAlignment = TextAlignment.Center
         });
-        if (select is not null)
-            body.Children.Add(new TextBlock
-            {
-                Text = select,
-                Foreground = OverlayTheme.MutedBrush,
-                FontSize = 10,
-                TextAlignment = TextAlignment.Center,
-                TextWrapping = TextWrapping.Wrap
-            });
         if (commands.Count > 0)
         {
-            var chips = OverlayTheme.Keycaps(commands.Take(2).ToList());
+            var chips = OverlayTheme.Keycaps(commands.Take(1).ToList());
             chips.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
-            chips.SetValue(FrameworkElement.MarginProperty, new Thickness(0, 3, 0, 0));
+            chips.SetValue(FrameworkElement.MarginProperty, new Thickness(0, 2, 0, 0));
             body.Children.Add(chips);
         }
         return new Border
@@ -270,7 +249,7 @@ internal static class RecommendationBoard
             Background = OverlayTheme.RowBrush,
             BorderBrush = current ? OverlayTheme.GoldBrush : OverlayTheme.HairlineBrush,
             BorderThickness = new Thickness(current ? 2 : 1),
-            Padding = new Thickness(6, 6, 6, 6),
+            Padding = new Thickness(5, 4, 5, 4),
             Child = body
         };
     }
@@ -282,7 +261,7 @@ internal static class RecommendationBoard
             Data = Geometry.Parse("M0,0 L8,6 0,12"),
             Stroke = OverlayTheme.GoldBrush,
             StrokeThickness = 2,
-            Margin = new Thickness(6, 0, 6, 28),
+            Margin = new Thickness(6, 0, 6, 20),
             VerticalAlignment = VerticalAlignment.Center
         };
     }
