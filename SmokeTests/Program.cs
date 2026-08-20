@@ -1826,7 +1826,7 @@ Assert(screenSourceMigration.Changed &&
         anonId: "11111111-1111-1111-1111-111111111111",
         appVersion: "0.6.0", mapVersion: "2.314", warcraftVersion: "2.0.4.23745",
         goalUnitId: "yamato_transcendent", navigationMode: "PathOfKings.BountyHunter",
-        goroseiMode: "Nasjuro", buildVariant: "auto",
+        goroseiMode: "Nasjuro", buildVariant: "auto", difficulty: "신",
         finalHand: new List<InventoryEntry>
         {
             new() { UnitId = "luffy_common", Count = 2 },
@@ -1839,6 +1839,7 @@ Assert(screenSourceMigration.Changed &&
         lastObservedUnitCount: 3);
     Assert(record.SchemaVersion == 1 && record.Outcome == "unknown" && record.OutcomeSource == "none",
         "텔레메트리: v1 레코드는 라벨 unknown/none으로 생성");
+    Assert(record.Difficulty == "신", "텔레메트리: 난이도를 레코드에 보존");
     Assert(record.RecordId != Guid.Empty.ToString() && record.AnonId.StartsWith("1111"),
         "텔레메트리: recordId 생성·anonId 보존");
     Assert(record.FinalHand.Count == 2 && record.FinalHand[0].Count == 2,
@@ -1859,7 +1860,7 @@ Assert(screenSourceMigration.Changed &&
     var uploader = new TelemetryUploader("http://127.0.0.1:9/v1/records", queueDir);
     var record = MatchTelemetryRecorder.Build(
         "22222222-2222-2222-2222-222222222222", "0.6.0", "2.314", "2.0.4.23745",
-        "yamato_transcendent", "PathOfKings.BountyHunter", "None", "auto",
+        "yamato_transcendent", "PathOfKings.BountyHunter", "None", "auto", "악몽",
         new List<InventoryEntry> { new() { UnitId = "luffy_common", Count = 1 } },
         new List<string>(), new List<string> { "yamato_transcendent" },
         DateTimeOffset.UtcNow.AddMinutes(-30), DateTimeOffset.UtcNow, 1);
@@ -1998,6 +1999,14 @@ Assert(TelemetryUploader.DefaultEndpoint.StartsWith("https://") &&
         .SettlementCopies == 0, "맵 상태: 정산도 스크립트 원문은 무시");
     Assert(MapStateReader.ScanBuffer(Utf8("마지막 라운드 유닛 점수 : |cffffd700450골드"))
         .SettlementCopies == 0, "맵 상태: 숫자 뒤 '점'이 없으면 정산이 아니다");
+    Assert(MapStateReader.ScanBuffer(Utf8("v|cff00bfff2.314[R]|r |cffffd700신|r ")).Difficulty == "신",
+        "맵 상태: 멀티보드 조합 난이도 신");
+    Assert(MapStateReader.ScanBuffer(Utf8("◎ 난이도 : |c00cc3337악몽|r / ◎ 모드 : 일반")).Difficulty == "악몽",
+        "맵 상태: 정산 줄 조합 난이도 악몽");
+    Assert(MapStateReader.ScanBuffer(Utf8("|cffffd700신|r")).Difficulty == "unknown",
+        "맵 상태: 스크립트 원문 색코드 이름은 난이도가 아니다");
+    Assert(MapStateReader.ScanBuffer(Utf8("난이도 : \"+vN+\"")).Difficulty == "unknown",
+        "맵 상태: 스크립트 원문 난이도 줄은 무시");
 }
 
 // 클리어 판정: 맵의 65라운드 정산("마지막 라운드 유닛 점수")이 곧 클리어 판정이다.
@@ -2094,7 +2103,7 @@ Assert(TelemetryUploader.DefaultEndpoint.StartsWith("https://") &&
         string outcome, string source) =>
         buffer.TryEmit(
             "33333333-3333-3333-3333-333333333333", "0.6.7", "2.314", "2.0.4.23745",
-            "yamato_transcendent", "PathOfKings.BountyHunter", "None", "auto",
+            "yamato_transcendent", "PathOfKings.BountyHunter", "None", "auto", "신",
             ended, outcome, source);
 
     Assert(Emit(new MatchTelemetryBuffer(), t0, "fail", "unitWipe") is null,
