@@ -20,6 +20,7 @@ public sealed class TelemetryRecord
     [JsonPropertyName("navigationMode")] public string NavigationMode { get; init; } = "";
     [JsonPropertyName("goroseiMode")] public string GoroseiMode { get; init; } = "";
     [JsonPropertyName("buildVariant")] public string BuildVariant { get; init; } = "";
+    [JsonPropertyName("difficulty")] public string Difficulty { get; init; } = "unknown";
     [JsonPropertyName("finalHand")] public List<TelemetryHandEntry> FinalHand { get; init; } = [];
     [JsonPropertyName("completedTops")] public List<string> CompletedTops { get; init; } = [];
     [JsonPropertyName("topRecommendations")] public List<string> TopRecommendations { get; init; } = [];
@@ -41,7 +42,7 @@ public static class MatchTelemetryRecorder
     /// <summary>세션 종료 시점 상태로 레코드를 만든다. 순수 함수 — I/O 없음.</summary>
     public static TelemetryRecord Build(string anonId, string appVersion, string mapVersion,
         string warcraftVersion, string goalUnitId, string navigationMode, string goroseiMode,
-        string buildVariant, IReadOnlyList<InventoryEntry> finalHand,
+        string buildVariant, string difficulty, IReadOnlyList<InventoryEntry> finalHand,
         IReadOnlyList<string> completedTops, IReadOnlyList<string> topRecommendations,
         DateTimeOffset sessionStartedAt, DateTimeOffset sessionEndedAt, int lastObservedUnitCount,
         string outcome = "unknown", string outcomeSource = "none") => new()
@@ -56,6 +57,7 @@ public static class MatchTelemetryRecorder
         NavigationMode = navigationMode,
         GoroseiMode = goroseiMode,
         BuildVariant = buildVariant,
+        Difficulty = string.IsNullOrWhiteSpace(difficulty) ? "unknown" : difficulty,
         FinalHand = finalHand.Where(x => x.Count > 0)
             .Select(x => new TelemetryHandEntry { UnitId = x.UnitId, Count = x.Count }).ToList(),
         CompletedTops = completedTops.ToList(),

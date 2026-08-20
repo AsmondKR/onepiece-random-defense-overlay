@@ -38,13 +38,13 @@ public sealed class MatchTelemetryBuffer
     /// <summary>이미 보냈거나 스냅샷이 없으면 null. 호출 성공 시 이 판은 다시 만들지 않는다.</summary>
     public TelemetryRecord? TryEmit(string anonId, string appVersion, string mapVersion,
         string warcraftVersion, string goalUnitId, string navigationMode, string goroseiMode,
-        string buildVariant, DateTimeOffset endedAt, string outcome, string outcomeSource)
+        string buildVariant, string difficulty, DateTimeOffset endedAt, string outcome, string outcomeSource)
     {
         if (_sent || !_hasSnapshot) return null;
         _sent = true;
         return MatchTelemetryRecorder.Build(
             anonId, appVersion, mapVersion, warcraftVersion,
-            goalUnitId, navigationMode, goroseiMode, buildVariant,
+            goalUnitId, navigationMode, goroseiMode, buildVariant, difficulty,
             _hand, _completed, _recommendations,
             _sessionStartedAt, endedAt, _lastObservedUnitCount,
             outcome, outcomeSource);

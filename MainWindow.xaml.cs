@@ -38,6 +38,7 @@ public partial class MainWindow : Window
     private readonly MatchTelemetryBuffer _telemetryBuffer = new();
     private DateTimeOffset _telemetrySessionStart;
     private List<string> _telemetryLastTop = [];
+    private string _matchDifficulty = "unknown";
     private string _lastWarcraftVersion = "";
     private IInventoryRecognizer _recognizer = null!;
     private OverlayWindow _overlay = null!;
@@ -1317,7 +1318,11 @@ public partial class MainWindow : Window
                 _lastWarcraftVersion = result.Diagnostics.ProcessVersion;
             if (result.ShouldReplaceInventory)
             {
-                if (!_liveSessionActive) _telemetrySessionStart = DateTimeOffset.UtcNow;
+                if (!_liveSessionActive)
+                {
+                    _telemetrySessionStart = DateTimeOffset.UtcNow;
+                    _matchDifficulty = "unknown";
+                }
                 _completedTopUnits.Observe(result.Entries);
                 _completedTopUnits.ObserveGoalCraft(_settings.GoalUnitId, result.Entries);
                 _greenBloodUsage.Observe(result.Entries);
@@ -1346,6 +1351,9 @@ public partial class MainWindow : Window
                 {
                     _outcome.ObserveRound(mapState.MaxRound);
                     _outcome.ObserveSettlement(mapState.SettlementCopies);
+                    if (mapState.Difficulty is { Length: > 0 } difficulty &&
+                        difficulty != "unknown")
+                        _matchDifficulty = difficulty;
                 }
             }
             if (_outcome.Outcome is "fail" or "clear")
@@ -1355,6 +1363,7 @@ public partial class MainWindow : Window
                 SendMatchTelemetry();
                 _telemetryBuffer.Reset();
                 _outcome.Reset();
+                _matchDifficulty = "unknown";
                 _liveSessionActive = false;
                 _autoStartApplied = false;
                 _completedTopUnits.Reset();
@@ -1519,7 +1528,9 @@ public partial class MainWindow : Window
                 string.IsNullOrWhiteSpace(_settings.GoalUnitId) ? "unknown" : _settings.GoalUnitId,
                 string.IsNullOrWhiteSpace(_settings.NavigationMode) ? "unknown" : _settings.NavigationMode,
                 string.IsNullOrWhiteSpace(_settings.GoroseiMode) ? "None" : _settings.GoroseiMode,
-                "auto", DateTimeOffset.UtcNow, _outcome.Outcome, _outcome.OutcomeSource);
+                "auto",
+                string.IsNullOrWhiteSpace(_matchDifficulty) ? "unknown" : _matchDifficulty,
+                DateTimeOffset.UtcNow, _outcome.Outcome, _outcome.OutcomeSource);
             if (record is null) return;
             _ = _telemetry.EnqueueAndFlushAsync(record);
         }

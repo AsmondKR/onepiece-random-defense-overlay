@@ -374,7 +374,15 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
         _lastMapStateAt = now;
         try
         {
-            _lastMapState = MapStateReader.TryRead(memory, token) ?? _lastMapState;
+            var next = MapStateReader.TryRead(memory, token);
+            if (next is { } sample)
+            {
+                if (sample.Difficulty is "" or "unknown" &&
+                    _lastMapState is { Difficulty: { Length: > 0 } known } &&
+                    known != "unknown")
+                    sample = sample with { Difficulty = known };
+                _lastMapState = sample;
+            }
         }
         catch (Exception) when (!token.IsCancellationRequested)
         {
