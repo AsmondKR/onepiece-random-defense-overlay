@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
@@ -75,9 +74,9 @@ internal static class RecommendationBoard
             boardPanel.Children.Add(missing);
         }
         var tiles = new WrapPanel();
-        for (var i = 0; i < recs.Count; i++)
-            tiles.Children.Add(BoardTile(recs[i], i + 1,
-                recs[i].Route.Id.Equals(selected.Route.Id, StringComparison.OrdinalIgnoreCase),
+        foreach (var rec in recs)
+            tiles.Children.Add(BoardTile(rec,
+                rec.Route.Id.Equals(selected.Route.Id, StringComparison.OrdinalIgnoreCase),
                 onSelect));
         boardPanel.Children.Add(tiles);
     }
@@ -282,25 +281,13 @@ internal static class RecommendationBoard
         };
     }
 
-    private static UIElement BoardTile(Recommendation item, int rank, bool selected, Action<string> onSelect)
+    private static UIElement BoardTile(Recommendation item, bool selected, Action<string> onSelect)
     {
         var unit = item.CompositionUnits[0];
         var body = new StackPanel { Width = 64 };
-        var iconBox = new Grid();
         var icon = UnitImageFactory.Create(unit.Image, unit.Name, 52, unit.UnitId);
         icon.HorizontalAlignment = HorizontalAlignment.Center;
-        iconBox.Children.Add(icon);
-        iconBox.Children.Add(new TextBlock
-        {
-            Text = rank.ToString(CultureInfo.InvariantCulture),
-            Foreground = OverlayTheme.GoldBrush,
-            FontSize = 10,
-            FontWeight = FontWeights.Bold,
-            HorizontalAlignment = HorizontalAlignment.Left,
-            VerticalAlignment = VerticalAlignment.Top,
-            Margin = new Thickness(2, 0, 0, 0)
-        });
-        body.Children.Add(iconBox);
+        body.Children.Add(icon);
         body.Children.Add(new TextBlock
         {
             Text = RecommendationPresentation.CompletionPercent(item.RecipeProgress),
