@@ -330,7 +330,7 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
             .ToDictionary(group => group.Key, group => group.Sum(x => x.Count),
                 StringComparer.OrdinalIgnoreCase);
         var calculator = new RecipeCompletionCalculator(catalog.Unit);
-        return catalog.AllUnits
+        var rares = catalog.AllUnits
             .Where(unit => unit.Tier.Split('[', 2)[0].Trim() == "희귀함")
             .Where(unit => unit.Recipe.Count > 0)
             .DistinctBy(unit => unit.Id)
@@ -340,6 +340,14 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
             .ThenBy(recommendation => recommendation.RecipeProgress.RequiredLeafCount)
             .Take(Math.Max(1, take))
             .ToList();
+        if (rares.Count == 0) return rares;
+        // 첫 희귀함으로 스토리를 밀려면 그 특별함 재료를 먼저 짜야 한다.
+        var specials = RecipeTierIds(catalog.Unit(rares[0].Route.GoalUnitId), "특별함")
+            .Where(id => counts.GetValueOrDefault(id) <= 0)
+            .Select(id => EvaluateCraft(catalog.Unit(id), counts, calculator))
+            .ToList();
+        if (specials.Count == 0) return rares;
+        return new[] { rares[0] }.Concat(specials).Concat(rares.Skip(1)).ToList();
     }
 
     // 배(해적선 060h·고대의 배 Y50h)는 일반 재료 조합으로 만들 수 없는 특수 획득물이다.
@@ -1155,25 +1163,30 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
     public IReadOnlyList<string> RecipeLegendaryUnitIds(string goalUnitId) =>
         RecipeLegendaryIds(catalog.Unit(goalUnitId));
 
+    public IReadOnlyList<string> RecipeSpecialUnitIds(string unitId) =>
+        RecipeTierIds(catalog.Unit(unitId), "특별함");
+
     /// <summary>
     /// 초월 조합식에 들어 있는 전설(직접 재료와 그 아래 트리).
     /// 스토리 진행을 위해 후보 보드에서 역할 패키지보다 앞에 둔다.
     /// </summary>
-    private List<string> RecipeLegendaryIds(UnitDefinition goal)
+    private List<string> RecipeLegendaryIds(UnitDefinition goal) =>
+        BaseTier(goal.Tier) == "초월" ? RecipeTierIds(goal, "전설") : [];
+
+    private List<string> RecipeTierIds(UnitDefinition root, string tier)
     {
-        if (BaseTier(goal.Tier) != "초월") return [];
         var ids = new List<string>();
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         void Visit(string unitId)
         {
             if (!seen.Add(unitId)) return;
             var unit = catalog.Unit(unitId);
-            if (BaseTier(unit.Tier) == "전설")
+            if (BaseTier(unit.Tier) == tier)
                 ids.Add(unit.Id);
             foreach (var childId in unit.Recipe.Keys)
                 Visit(childId);
         }
-        foreach (var childId in goal.Recipe.Keys)
+        foreach (var childId in root.Recipe.Keys)
             Visit(childId);
         return ids;
     }
