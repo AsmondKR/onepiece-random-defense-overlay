@@ -743,6 +743,25 @@ Assert(negativeMonitorPosition == new OverlayPosition(-1200, 80) &&
        removedMonitorPosition == new OverlayPosition(1530, 570) &&
        nonRectangularPosition.Top >= 1080,
     "좌측 모니터 음수 좌표를 유지하고 제거된 모니터 위치를 화면 안으로 보정");
+var fhd = new OverlayBounds(0, 0, 1920, 1080);
+var leftDocked = new OverlayBounds(0, 48, 300, 700);
+var rightDocked = new OverlayBounds(1620, 48, 300, 700);
+var inner = new OverlayBounds(800, 200, 300, 400);
+Assert(OverlayPositionPolicy.CursorNeedsEdgePanPassThrough(2, 200, leftDocked, fhd, 8),
+    "왼쪽 끝에 붙인 오버레이 위에서 가장자리 카메라는 클릭을 게임에 넘겨야 한다");
+Assert(OverlayPositionPolicy.CursorNeedsEdgePanPassThrough(1917, 200, rightDocked, fhd, 8),
+    "오른쪽 끝에 붙인 오버레이 위에서 가장자리 카메라는 클릭을 게임에 넘겨야 한다");
+Assert(!OverlayPositionPolicy.CursorNeedsEdgePanPassThrough(150, 200, leftDocked, fhd, 8),
+    "오버레이 안쪽(보드·수치)은 그대로 클릭 가능해야 한다");
+Assert(!OverlayPositionPolicy.CursorNeedsEdgePanPassThrough(2, 200, inner, fhd, 8),
+    "화면 한가운데 오버레이는 모니터 끝 커서에 반응하지 않는다");
+Assert(!OverlayPositionPolicy.CursorNeedsEdgePanPassThrough(2, 10, leftDocked, fhd, 8),
+    "오버레이 밖 가장자리 커서는 이 창이 가로채지 않는다");
+Assert(!OverlayPositionPolicy.CursorNeedsEdgePanPassThrough(0, 200, leftDocked, fhd, 0),
+    "여백 0이면 가장자리 통과를 켜지 않는다");
+Assert(OverlayPositionPolicy.ClampToNearestWorkArea(0, 80, 300, 700, [fhd]) ==
+       new OverlayPosition(0, 80),
+    "가장자리 카메라 통과는 창을 모니터에서 밀어내지 않는다");
 var singletonInventory = InventoryMerge.ApplyCorrections(
     [new InventoryEntry { UnitId = "item_greenblood", Count = 1, Confidence = 1 }],
     [new InventoryEntry { UnitId = "item_greenblood", Count = 1, IsManual = true }],
@@ -2212,7 +2231,7 @@ if (Environment.GetEnvironmentVariable("ORAND_DIAG") == "drill")
     return;
 }
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 412/412");
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 419/419");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,

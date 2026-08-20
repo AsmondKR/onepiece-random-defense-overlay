@@ -565,6 +565,12 @@ public readonly record struct OverlayBounds(double Left, double Top, double Widt
 
 public static class OverlayPositionPolicy
 {
+    /// <summary>
+    /// 워크래프트 가장자리 카메라가 쓰는 모니터 끝 픽셀.
+    /// 창을 안쪽으로 밀지 않고, 이 띠 위의 클릭만 게임으로 통과시킨다.
+    /// </summary>
+    public const double EdgePanGutterPx = 8;
+
     public static OverlayPosition ClampToNearestWorkArea(double left, double top, double width, double height,
         IReadOnlyList<OverlayBounds> workAreas)
     {
@@ -592,6 +598,19 @@ public static class OverlayPositionPolicy
             .First().Area;
 
         return Clamp(left, top, width, height, target.Left, target.Top, target.Width, target.Height);
+    }
+
+    public static bool CursorNeedsEdgePanPassThrough(double cursorX, double cursorY,
+        OverlayBounds window, OverlayBounds monitor, double gutterPx)
+    {
+        if (gutterPx <= 0 || !double.IsFinite(gutterPx)) return false;
+        if (cursorX < window.Left || cursorX >= window.Right ||
+            cursorY < window.Top || cursorY >= window.Bottom)
+            return false;
+        return cursorX < monitor.Left + gutterPx
+            || cursorX >= monitor.Right - gutterPx
+            || cursorY < monitor.Top + gutterPx
+            || cursorY >= monitor.Bottom - gutterPx;
     }
 
     public static OverlayPosition Clamp(double left, double top, double width, double height,

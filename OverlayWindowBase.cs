@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Threading;
 using Microsoft.Win32;
 
 namespace OrandOverlay;
@@ -27,10 +28,17 @@ public abstract class OverlayWindowBase : Window
     private const uint SwpFrameChanged = 0x0020;
 
     private bool _clickThrough;
+    private bool _edgePanPassThrough;
+    private bool _dragging;
     private bool _allowClose;
+    private readonly DispatcherTimer _edgePanTimer = new()
+    {
+        Interval = TimeSpan.FromMilliseconds(10)
+    };
 
     protected OverlayWindowBase()
     {
+        _edgePanTimer.Tick += (_, _) => UpdateEdgePanPassThrough();
         SourceInitialized += (_, _) => ApplyClickThroughStyle();
         Loaded += (_, _) =>
         {
@@ -38,6 +46,18 @@ public abstract class OverlayWindowBase : Window
             ClampToVisibleMonitor();
             if (Content is FrameworkElement chrome)
                 OverlayTheme.AttachRoundClip(chrome, OverlayTheme.ChromeRadius);
+            if (IsVisible) _edgePanTimer.Start();
+        };
+        IsVisibleChanged += (_, _) =>
+        {
+            if (IsVisible) _edgePanTimer.Start();
+            else
+            {
+                _edgePanTimer.Stop();
+                if (!_edgePanPassThrough) return;
+                _edgePanPassThrough = false;
+                ApplyClickThroughStyle();
+            }
         };
         DpiChanged += (_, _) => Dispatcher.BeginInvoke(new Action(() =>
         {
@@ -45,7 +65,11 @@ public abstract class OverlayWindowBase : Window
             ClampToVisibleMonitor();
         }));
         Closing += OverlayWindow_OnClosing;
-        Closed += (_, _) => SystemEvents.DisplaySettingsChanged -= DisplaySettingsChanged;
+        Closed += (_, _) =>
+        {
+            _edgePanTimer.Stop();
+            SystemEvents.DisplaySettingsChanged -= DisplaySettingsChanged;
+        };
         SystemEvents.DisplaySettingsChanged += DisplaySettingsChanged;
     }
 
@@ -95,7 +119,8 @@ public abstract class OverlayWindowBase : Window
         var handle = new WindowInteropHelper(this).Handle;
         if (handle == IntPtr.Zero) return;
         var style = GetWindowLong(handle, GwlExStyle);
-        style = _clickThrough
+        var passThrough = _clickThrough || _edgePanPassThrough;
+        style = passThrough
             ? style | WsExTransparent | WsExToolWindow
             : (style & ~WsExTransparent) | WsExToolWindow;
         SetWindowLong(handle, GwlExStyle, style);
@@ -113,18 +138,27 @@ public abstract class OverlayWindowBase : Window
         var startLeft = Left;
         var startTop = Top;
         var handle = new WindowInteropHelper(this).Handle;
-        if (handle != IntPtr.Zero)
+        _dragging = true;
+        try
         {
-            // WPF DragMove can fail after WS_EX_TRANSPARENT was removed because the child
-            // element still owns mouse capture. Hand the press to the native caption move
-            // loop instead; SendMessage returns when the user releases the button.
-            ReleaseCapture();
-            SendMessage(handle, WmNcLButtonDown, (IntPtr)HtCaption, IntPtr.Zero);
+            if (handle != IntPtr.Zero)
+            {
+                // WPF DragMove can fail after WS_EX_TRANSPARENT was removed because the child
+                // element still owns mouse capture. Hand the press to the native caption move
+                // loop instead; SendMessage returns when the user releases the button.
+                ReleaseCapture();
+                SendMessage(handle, WmNcLButtonDown, (IntPtr)HtCaption, IntPtr.Zero);
+            }
+            else
+            {
+                try { DragMove(); }
+                catch (InvalidOperationException) { return; }
+            }
         }
-        else
+        finally
         {
-            try { DragMove(); }
-            catch (InvalidOperationException) { return; }
+            _dragging = false;
+            UpdateEdgePanPassThrough();
         }
 
         // Do not run the monitor clamp after a normal drag. On mixed-DPI desktops it can
@@ -178,6 +212,30 @@ public abstract class OverlayWindowBase : Window
         Top = position.Top / scaleY;
     }
 
+    private void UpdateEdgePanPassThrough()
+    {
+        if (_clickThrough || _dragging || !IsVisible)
+            return;
+        var needed = false;
+        var handle = new WindowInteropHelper(this).Handle;
+        if (handle != IntPtr.Zero &&
+            GetCursorPos(out var cursor) &&
+            GetWindowRect(handle, out var window) &&
+            System.Windows.Forms.Screen.FromHandle(handle) is { } screen)
+        {
+            needed = OverlayPositionPolicy.CursorNeedsEdgePanPassThrough(
+                cursor.X, cursor.Y,
+                new OverlayBounds(window.Left, window.Top,
+                    window.Right - window.Left, window.Bottom - window.Top),
+                new OverlayBounds(screen.Bounds.Left, screen.Bounds.Top,
+                    screen.Bounds.Width, screen.Bounds.Height),
+                OverlayPositionPolicy.EdgePanGutterPx);
+        }
+        if (needed == _edgePanPassThrough) return;
+        _edgePanPassThrough = needed;
+        ApplyClickThroughStyle();
+    }
+
     [DllImport("user32.dll", EntryPoint = "GetWindowLongW")]
     private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
     [DllImport("user32.dll", EntryPoint = "SetWindowLongW")]
@@ -191,4 +249,26 @@ public abstract class OverlayWindowBase : Window
     private static extern bool ReleaseCapture();
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern IntPtr SendMessage(IntPtr hWnd, int message, IntPtr wParam, IntPtr lParam);
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetCursorPos(out NativePoint point);
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetWindowRect(IntPtr hWnd, out NativeRect rect);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativePoint
+    {
+        public int X;
+        public int Y;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativeRect
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
 }
