@@ -197,6 +197,7 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
             .Where(unit => IsRecommendedCraftTier(unit.Tier, navigation.AllowsMultipleTopUnits))
             .Where(unit => !avoidTraitHungryTops ||
                            !unit.Rawcodes.Any(TraitHungryTopRawcodes.Contains))
+            .Where(unit => !AvoidAlvidaWithoutTraitEconomy(goal, navigation, unit))
             .Where(unit => unit.Recipe.Count > 0)
             .Select(unit => new CraftCandidate(unit, EvaluateCraft(unit, counts, calculator),
                 StrategyMetricsFor(unit)))
@@ -327,16 +328,31 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
     private static readonly string[] ShipPrerequisiteRawcodes = ["060h", "Y50h"];
 
     /// <summary>
-    /// 레시피 트리가 배를 요구하는 유닛(모비딕호·갓 에넬=해적선, 토키·킹 제한=고대의 배)은
-    /// 그 배가 실제 패에 있을 때만 지원 후보로 노출한다. 중간 재료를 이미 보유했다면
-    /// 그 하위 트리는 따지지 않는다.
+    /// 레시피 트리가 배·아이템을 요구하는 유닛은 그 재료가 실제 패에 있을 때만
+    /// 지원 후보로 노출한다. 중간 재료를 이미 보유했다면 그 하위 트리는 따지지 않는다.
+    /// 특포(POINT)는 패로 안 잡혀 게이트하지 않고, 카드 경고만 띄운다.
     /// </summary>
     private bool MeetsOwnedPrerequisites(UnitDefinition unit,
         IReadOnlyDictionary<string, int> inventory) =>
-        ShipRequirementSatisfied(unit, inventory,
+        SpecialRequirementSatisfied(unit, inventory,
             new HashSet<string>(StringComparer.OrdinalIgnoreCase));
 
-    private bool ShipRequirementSatisfied(UnitDefinition unit,
+    private static bool AvoidAlvidaWithoutTraitEconomy(
+        UnitDefinition goal, NavigationOption navigation, UnitDefinition unit)
+    {
+        if (!unit.Rawcodes.Contains("Q80h", StringComparer.Ordinal)) return false;
+        if (navigation.Id.Equals("AlliedForces.TraitEngineering",
+                StringComparison.OrdinalIgnoreCase))
+            return false;
+        return goal.Rawcodes.Any(code => TraitHungryTopRawcodes.Contains(code));
+    }
+
+    private static bool IsSpecialPrerequisite(UnitDefinition unit) =>
+        unit.Rawcodes.Any(code =>
+            ShipPrerequisiteRawcodes.Contains(code, StringComparer.Ordinal)) ||
+        BaseTier(unit.Tier) == "아이템";
+
+    private bool SpecialRequirementSatisfied(UnitDefinition unit,
         IReadOnlyDictionary<string, int> inventory, HashSet<string> visiting)
     {
         if (!visiting.Add(unit.Id)) return true;
@@ -344,13 +360,42 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
         {
             var child = catalog.Unit(childId);
             if (IsResourcePseudo(child)) continue;
-            if (inventory.GetValueOrDefault(child.Id) > 0) continue;
-            if (child.Rawcodes.Any(code =>
-                    ShipPrerequisiteRawcodes.Contains(code, StringComparer.Ordinal)))
-                return false;
-            if (!ShipRequirementSatisfied(child, inventory, visiting)) return false;
+            if (inventory.GetValueOrDefault(child.Id) > 0 ||
+                inventory.GetValueOrDefault(childId) > 0) continue;
+            if (IsSpecialPrerequisite(child)) return false;
+            if (!SpecialRequirementSatisfied(child, inventory, visiting)) return false;
         }
         return true;
+    }
+
+    private List<string> CollectMissingSpecials(UnitDefinition unit,
+        IReadOnlyDictionary<string, int> inventory)
+    {
+        var missing = new List<string>();
+        Walk(unit, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+        return missing.Distinct(StringComparer.CurrentCulture).ToList();
+
+        void Walk(UnitDefinition current, HashSet<string> visiting)
+        {
+            if (!visiting.Add(current.Id)) return;
+            foreach (var (childId, required) in current.Recipe)
+            {
+                var child = catalog.Unit(childId);
+                if (child.Rawcodes.Contains("POINT", StringComparer.Ordinal))
+                {
+                    if (inventory.GetValueOrDefault(child.Id) < required)
+                        missing.Add($"특성포인트 {required}개");
+                    continue;
+                }
+                if (IsResourcePseudo(child)) continue;
+                if (inventory.GetValueOrDefault(child.Id) > 0 ||
+                    inventory.GetValueOrDefault(childId) > 0) continue;
+                if (IsSpecialPrerequisite(child))
+                    missing.Add(child.Name);
+                else
+                    Walk(child, visiting);
+            }
+        }
     }
 
     // 후보의 조합 경로가 소비해야 하는 배 코드 목록(보유한 중간재 하위는 제외).
@@ -1140,6 +1185,16 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
         // BuildRecipeTree가 소비하고 남긴 잔여 패 — 아래 순위 완료율 계산의 입력이 된다.
         remainingAfterBuild = availability;
         var remainingSteps = BuildRemainingCraftSteps(recipeTree, inventory, calculator);
+        var missingSpecials = CollectMissingSpecials(unit, inventory);
+        var nextAction = missingSpecials.Count > 0
+            ? "먼저 필요: " + string.Join(" · ", missingSpecials) +
+              " — 없으면 마지막에 조합이 막힙니다"
+            : missing is not null
+                ? "부족한 패: " + string.Join(" · ", progress.MissingLeaves
+                    .Select(leaf => $"{leaf.Name} ×{leaf.MissingCount}"))
+                : remainingSteps.Count > 0
+                    ? $"최하위 재료 확보 — 아래 {remainingSteps.Count}단계를 차례로 조합하면 완성"
+                    : "지금 바로 조합할 수 있습니다.";
         return new Recommendation
         {
             Route = new RouteDefinition
@@ -1150,15 +1205,9 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
             },
             Score = progress.CompletionRatio * 100,
             MissingUnits = progress.MissingLeaves.Select(leaf => leaf.Name).ToList(),
-            // 완성률은 최하위 재료 기준이라, 100%여도 중간 단계(희귀·전설 등)를
-            // 아직 조합하지 않았을 수 있다 — "바로 조합"은 남은 단계가 없을 때만.
-            // 부족 재료는 하나만 아니라 전부 나열한다(부족 많은 순, 유저 요청).
-            NextAction = missing is not null
-                ? "부족한 패: " + string.Join(" · ", progress.MissingLeaves
-                    .Select(leaf => $"{leaf.Name} ×{leaf.MissingCount}"))
-                : remainingSteps.Count > 0
-                    ? $"최하위 재료 확보 — 아래 {remainingSteps.Count}단계를 차례로 조합하면 완성"
-                    : "지금 바로 조합할 수 있습니다.",
+            Warnings = missingSpecials,
+            MissingSpecials = missingSpecials,
+            NextAction = nextAction,
             RecipeProgress = progress,
             CompositionUnits =
             [

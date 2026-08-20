@@ -742,6 +742,15 @@ public partial class OverlayWindow : OverlayWindowBase
             Margin = new Thickness(0, 0, 0, 7),
             TextWrapping = TextWrapping.Wrap
         });
+        foreach (var warning in item.Warnings)
+            stack.Children.Add(new TextBlock
+            {
+                Text = "⚠ " + warning,
+                Foreground = new SolidColorBrush(Color.FromRgb(251, 191, 36)),
+                FontSize = 12,
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 0, 0, 7)
+            });
         stack.Children.Add(DetailSectionTitle("남은 조합 · 전설 먼저"));
         stack.Children.Add(RemainingRecipePanel(item));
         // 드릴다운은 구조 탐색용, 실제 조합 순서는 안흔함부터 번호로 나열(유저 요청).

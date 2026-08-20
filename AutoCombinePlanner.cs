@@ -9,7 +9,8 @@ public sealed class AutoCombinePlanner(DataCatalog catalog, CombineHotkeyCatalog
 {
     public IReadOnlyList<AutoCombineStep> Plan(
         IReadOnlyList<Recommendation> recommendations,
-        IEnumerable<InventoryEntry> inventory)
+        IEnumerable<InventoryEntry> inventory,
+        IEnumerable<string>? completedUnitIds = null)
     {
         if (!hotkeys.HasData || recommendations.Count == 0) return [];
 
@@ -18,6 +19,8 @@ public sealed class AutoCombinePlanner(DataCatalog catalog, CombineHotkeyCatalog
             .GroupBy(entry => entry.UnitId, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.Sum(entry => entry.Count),
                 StringComparer.OrdinalIgnoreCase);
+        var completed = new HashSet<string>(
+            completedUnitIds ?? [], StringComparer.OrdinalIgnoreCase);
 
         var steps = new List<AutoCombineStep>();
         var virtualOwned = new Dictionary<string, int>(owned, StringComparer.OrdinalIgnoreCase);
@@ -27,6 +30,8 @@ public sealed class AutoCombinePlanner(DataCatalog catalog, CombineHotkeyCatalog
         // 재료가 전부 있는 단계만 담는다. 상위 단계는 하위가 완성되면 다음 계획에서 잡힌다.
         foreach (var recommendation in recommendations)
         {
+            if (completed.Contains(recommendation.Route.GoalUnitId)) continue;
+            if (recommendation.MissingSpecials.Count > 0) continue;
             // RemainingCraftSteps는 중간 단계만 담으므로 추천 유닛 자체(루트) 조합
             // 단계를 합성해 함께 검사한다.
             var rootStep = SynthesizeRootStep(recommendation);
@@ -36,6 +41,8 @@ public sealed class AutoCombinePlanner(DataCatalog catalog, CombineHotkeyCatalog
             foreach (var step in craftSteps)
             {
                 if (step.MissingCount <= 0) continue;
+                if (completed.Contains(step.UnitId)) continue;
+                if (virtualOwned.GetValueOrDefault(step.UnitId) > 0) continue;
                 if (!planned.Add(step.UnitId)) continue;
                 if (step.Ingredients.Count == 0) continue;
                 // 목재 같은 자원은 패 인식 대상이 아니므로 보유 조건에서 제외한다.

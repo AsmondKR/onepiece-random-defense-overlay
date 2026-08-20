@@ -761,7 +761,7 @@ public partial class MainWindow : Window
         // "지금 조합 가능"은 1번 우선순위 추천의 조합 단계만 보여준다(사용자 요청).
         // 여러 추천의 단계를 섞어 보여주면 지금 뭘 눌러야 하는지 흐려진다.
         var combinePlan = _combinePlanner.Plan(visibleRecommendations.Take(1).ToList(),
-            recommendationInventory);
+            recommendationInventory, _completedTopUnits.CompletedUnitIds);
         var emergencySummons = navigation.Id.Equals("AlliedForces.EmergencyCall",
             StringComparison.OrdinalIgnoreCase)
             ? _engine.RecommendEmergencySummons(recommendations, recommendationInventory)
@@ -918,6 +918,15 @@ public partial class MainWindow : Window
             Margin = new Thickness(0, 0, 0, 8),
             TextWrapping = TextWrapping.Wrap
         });
+        foreach (var warning in item.Warnings)
+            stack.Children.Add(new TextBlock
+            {
+                Text = "⚠ " + warning,
+                Foreground = new SolidColorBrush(Color.FromRgb(248, 113, 113)),
+                FontSize = 12,
+                Margin = new Thickness(0, 0, 0, 8),
+                TextWrapping = TextWrapping.Wrap
+            });
         stack.Children.Add(BuildDetailSectionTitle("남은 조합 · 전설 먼저"));
         stack.Children.Add(BuildRemainingRecipe(item));
 
@@ -961,16 +970,6 @@ public partial class MainWindow : Window
                        $"{item.ClearEvidence.SampleCount:#,0}판 중 " +
                        $"채용률 {item.ClearEvidence.SharePercent}퍼센트",
                 Foreground = new SolidColorBrush(Color.FromRgb(74, 222, 128)),
-                FontSize = 11,
-                Margin = new Thickness(0, 7, 0, 0),
-                TextWrapping = TextWrapping.Wrap
-            });
-
-        foreach (var warning in item.Warnings)
-            stack.Children.Add(new TextBlock
-            {
-                Text = "⚠ " + warning,
-                Foreground = new SolidColorBrush(Color.FromRgb(248, 113, 113)),
                 FontSize = 11,
                 Margin = new Thickness(0, 7, 0, 0),
                 TextWrapping = TextWrapping.Wrap

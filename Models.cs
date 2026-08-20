@@ -85,6 +85,8 @@ public sealed class Recommendation
     public List<CompositionUnitDetail> CompositionUnits { get; init; } = [];
     public RecipeTreeNode? RecipeTree { get; init; }
     public List<RecipeCraftStep> RemainingCraftSteps { get; init; } = [];
+    /// <summary>해적선·아이템·특포처럼 조합으로 못 만드는 특수 재료 부족.</summary>
+    public List<string> MissingSpecials { get; init; } = [];
     /// <summary>신+ 클리어 데이터 근거(표본·채용률). 표본이 부족하면 null이다.</summary>
     public ClearEvidence? ClearEvidence { get; set; }
 }

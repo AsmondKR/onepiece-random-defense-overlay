@@ -311,6 +311,24 @@ var jinbeMultiTop = engine.RecommendNearestCrafts("rawcode:A90H", [], 8,
 Assert(jinbeMultiTop.Count > 1 &&
        jinbeMultiTop.Any(item => item.Route.GoalUnitId == "rawcode:Q80h"),
     "징베 초월 다상위 항법은 스턴 안정 뒤 최근 암브 시너지의 알비다 제한을 추천");
+var doflamingoBounty = engine.RecommendNearestCrafts("rawcode:E90H", [], 200,
+    "PathOfKings.BountyHunter");
+Assert(doflamingoBounty.All(item => item.Route.GoalUnitId != "rawcode:Q80h"),
+    "도초 바헌은 특포 4개가 필요한 알비다를 추천하지 않음");
+var doflamingoMulti = engine.RecommendNearestCrafts("rawcode:E90H", [], 200,
+    "AlliedForces.DoubleBenefit");
+Assert(doflamingoMulti.Any(item => item.Route.GoalUnitId == "rawcode:Q80h") is false,
+    "도초 다상위도 특성공학이 아니면 알비다 제한을 추천하지 않음");
+var nikaGoal = engine.RecommendNearestCrafts("rawcode:KB0H", [], 1)[0];
+Assert(nikaGoal.Warnings.Any(warning => warning.Contains("태양신", StringComparison.Ordinal)),
+    "니카 목표는 태양신의 흔적이 없으면 먼저 경고");
+var nikaSupports = engine.RecommendNearestCrafts("yamato_transcendent", [], 200,
+    "AlliedForces.DoubleBenefit");
+Assert(nikaSupports.All(item => item.Route.GoalUnitId != "rawcode:KB0H"),
+    "태양신의 흔적 없이 니카를 지원 후보에서 제외");
+var enelGoal = engine.RecommendNearestCrafts("rawcode:E50h", [], 1)[0];
+Assert(enelGoal.Warnings.Any(warning => warning.Contains("해적선", StringComparison.Ordinal)),
+    "갓에넬 목표는 해적선이 없으면 먼저 경고");
 var basilProfile = engine.RecommendNearestCrafts("rawcode:490H", fullYamatoCoreInventory, 8);
 Assert(basilProfile.Skip(1).Count(item => item.CompositionUnits[0].Abilities.Any(ability =>
            ability.Name == "보스 잡기")) >= 2,
@@ -1614,6 +1632,18 @@ Assert(kingPlan.Any(step => step.TargetUnitId.Equals("rawcode:HA0h", StringCompa
     "킹 재료가 모이면 자동조합 계획에 킹(Z)이 잡힘");
 Assert(combinePlanner.Plan(kingCrafts, []).Count == 0,
     "재료가 없으면 자동조합 계획도 비어 있음");
+Assert(combinePlanner.Plan(kingCrafts, Inventory(kingReadyInventory), ["rawcode:HA0h"])
+        .All(step => !step.TargetUnitId.Equals("rawcode:HA0h",
+            StringComparison.OrdinalIgnoreCase)),
+    "이미 만든 유닛은 자동조합 목록에서 빠진다");
+var enelFill = enelGoal.RemainingCraftSteps
+    .SelectMany(step => step.Ingredients)
+    .Select(ingredient => ingredient.UnitId)
+    .Where(id => catalog.Unit(id).Rawcodes.All(code => code is not ("060h" or "Y50h")) &&
+                 catalog.Unit(id).Tier.Split('[', 2)[0].Trim() is not ("아이템" or "자원"))
+    .ToArray();
+Assert(combinePlanner.Plan([enelGoal], Inventory(enelFill)).Count == 0,
+    "해적선 없는 에넬 목표는 중간 조합을 지금 조합 가능으로 안내하지 않음");
 var hotkeyEngine = new RecommendationEngine(catalog, null, combineHotkeys);
 var hotkeyPicks = hotkeyEngine.RecommendNearestCrafts("yamato_transcendent", [], take: 3);
 var keyedStep = hotkeyPicks.SelectMany(item => item.RemainingCraftSteps)
@@ -2037,7 +2067,7 @@ if (Environment.GetEnvironmentVariable("ORAND_DIAG") == "drill")
     return;
 }
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 357/357");
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 363/363");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,
