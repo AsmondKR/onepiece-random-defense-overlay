@@ -306,11 +306,25 @@ Assert(jinbeStunPackage.Sum(item => AbilityValue(item.CompositionUnits[0], "스�
        jinbeOneTop.Count(item => item.CompositionUnits[0].Abilities.Any(ability =>
            ability.Name is "아머브레이크" or "단일아머브레이크")) >= 2,
     "징베 초월 1상위도 스턴 1.4 패키지와 자체 암브 외 스모커 전설 한 기를 확보");
-var jinbeMultiTop = engine.RecommendNearestCrafts("rawcode:A90H", [], 8,
+var jinbeMultiTop = engine.RecommendNearestCrafts("rawcode:A90H", [], 200,
     "AlliedForces.DoubleBenefit");
 Assert(jinbeMultiTop.Count > 1 &&
-       jinbeMultiTop.Any(item => item.Route.GoalUnitId == "rawcode:Q80h"),
-    "징베 초월 다상위 항법은 스턴 안정 뒤 최근 암브 시너지의 알비다 제한을 추천");
+       jinbeMultiTop.All(item => item.Route.GoalUnitId != "rawcode:Q80h"),
+    "징베 다상위는 첫 상위 특강을 전제로 특성공학이 아니면 알비다를 추천하지 않음");
+var jinbeTraitEng = engine.RecommendNearestCrafts("rawcode:A90H", [], 200,
+    "AlliedForces.TraitEngineering");
+Assert(jinbeTraitEng.Any(item => item.Route.GoalUnitId == "rawcode:Q80h"),
+    "징베 특성공학은 특포가 넉넉해서 알비다를 추천한다");
+var jinbeWithSparePoints = engine.RecommendNearestCrafts("rawcode:A90H",
+    [new InventoryEntry { UnitId = "rawcode:POINT", Count = 8 }], 200,
+    "AlliedForces.DoubleBenefit");
+Assert(jinbeWithSparePoints.Any(item => item.Route.GoalUnitId == "rawcode:Q80h"),
+    "특포가 첫 상위 특강(4) 이후에도 알비다(4)만큼 남으면 추천한다");
+var jinbeWithExactEnhance = engine.RecommendNearestCrafts("rawcode:A90H",
+    [new InventoryEntry { UnitId = "rawcode:POINT", Count = 4 }], 200,
+    "AlliedForces.DoubleBenefit");
+Assert(jinbeWithExactEnhance.All(item => item.Route.GoalUnitId != "rawcode:Q80h"),
+    "특포 4개는 첫 상위 특강에 쓰이므로 알비다를 추천하지 않음");
 var doflamingoBounty = engine.RecommendNearestCrafts("rawcode:E90H", [], 200,
     "PathOfKings.BountyHunter");
 Assert(doflamingoBounty.All(item => item.Route.GoalUnitId != "rawcode:Q80h"),
@@ -2149,7 +2163,7 @@ if (Environment.GetEnvironmentVariable("ORAND_DIAG") == "drill")
     return;
 }
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 398/398");
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 401/401");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,

@@ -101,8 +101,8 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
         };
 
     // 2.314 원랜디 갤 최신 징초 대깨 평가(2026-08-14~16): 징초 외 암브 한 기가
-    // 필수이며, 1상위에서는 스모커/베르고/퀸, 다상위에서는 알비다/킹/카벤을
-    // 패 상황에 맞춰 고른다. 점수는 같은 역할 안에서 제작 거리보다 우선한다.
+    // 필수이며, 1상위에서는 스모커/베르고/퀸, 다상위에서는 킹/카벤(특성공학이면
+    // 알비다)을 패 상황에 맞춰 고른다. 점수는 같은 역할 안에서 제작 거리보다 우선한다.
     private static readonly IReadOnlyDictionary<string, int> JinbeCommunityPriority =
         new Dictionary<string, int>(StringComparer.Ordinal)
         {
@@ -197,7 +197,7 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
             .Where(unit => IsRecommendedCraftTier(unit.Tier, navigation.AllowsMultipleTopUnits))
             .Where(unit => !avoidTraitHungryTops ||
                            !unit.Rawcodes.Any(TraitHungryTopRawcodes.Contains))
-            .Where(unit => !AvoidAlvidaWithoutTraitEconomy(goal, navigation, unit))
+            .Where(unit => !AvoidTraitPointCraftWithoutEconomy(navigation, unit, counts))
             .Where(unit => unit.Recipe.Count > 0)
             .Select(unit => new CraftCandidate(unit, EvaluateCraft(unit, counts, calculator),
                 StrategyMetricsFor(unit)))
@@ -337,15 +337,42 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
         SpecialRequirementSatisfied(unit, inventory,
             new HashSet<string>(StringComparer.OrdinalIgnoreCase));
 
-    private static bool AvoidAlvidaWithoutTraitEconomy(
-        UnitDefinition goal, NavigationOption navigation, UnitDefinition unit)
+    /// <summary>
+    /// 조합에 특포가 들어가는 상위(알비다 제한 등)는 첫 상위 특강 예산을 빼고
+    /// 남는 특포가 있을 때만 추천한다. 첫 상위는 거의 특강을 하므로, 특성공학이
+    /// 아니고 특포 잔량이 안 보이면 추천하지 않는다.
+    /// </summary>
+    private bool AvoidTraitPointCraftWithoutEconomy(
+        NavigationOption navigation, UnitDefinition unit,
+        IReadOnlyDictionary<string, int> inventory)
     {
-        if (!unit.Rawcodes.Contains("Q80h", StringComparer.Ordinal)) return false;
+        var needed = TraitPointCost(unit);
+        if (needed <= 0) return false;
         if (navigation.Id.Equals("AlliedForces.TraitEngineering",
                 StringComparison.OrdinalIgnoreCase))
             return false;
-        return goal.Rawcodes.Any(code => TraitHungryTopRawcodes.Contains(code));
+        return OwnedTraitPoints(inventory) - FirstTopTraitEnhanceCost < needed;
     }
+
+    private int TraitPointCost(UnitDefinition unit)
+    {
+        var total = 0;
+        foreach (var (childId, required) in unit.Recipe)
+        {
+            var child = catalog.Unit(childId);
+            if (child.Rawcodes.Contains("POINT", StringComparer.Ordinal) ||
+                childId.Equals("POINT", StringComparison.OrdinalIgnoreCase) ||
+                childId.EndsWith(":POINT", StringComparison.OrdinalIgnoreCase))
+                total += required;
+        }
+        return total;
+    }
+
+    private static int OwnedTraitPoints(IReadOnlyDictionary<string, int> inventory) =>
+        Math.Max(inventory.GetValueOrDefault("POINT"),
+            inventory.GetValueOrDefault("rawcode:POINT"));
+
+    private const int FirstTopTraitEnhanceCost = 4;
 
     private static bool IsSpecialPrerequisite(UnitDefinition unit) =>
         unit.Rawcodes.Any(code =>
