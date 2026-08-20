@@ -7,8 +7,8 @@
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         Topmost="True" ShowInTaskbar="False" ResizeMode="NoResize">
   <!-- 내 패 상태 전용 창. 추천 창과 따로 놓을 수 있어야 시야 가림이 줄어든다. -->
-  <Border Background="#F5121623" BorderBrush="#668B5CF6" BorderThickness="1"
-          CornerRadius="14" Padding="12">
+  <Border Background="#F2111318" BorderBrush="#FF2C313A" BorderThickness="1"
+          CornerRadius="6" Padding="10">
     <Grid>
       <Grid.RowDefinitions>
         <RowDefinition Height="Auto"/>
@@ -25,22 +25,22 @@
       <ScrollViewer Grid.Row="1" Margin="0,10,0,0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
       <StackPanel>
       <!-- 색은 3계열만: 액션=하늘, 정리·판단=호박, 상태=보라 (+달성=초록). -->
-      <TextBlock x:Name="CombineHeader" Text="지금 조합 가능" Foreground="#FF7DD3FC"
-      FontSize="13" FontWeight="SemiBold" Margin="0,0,0,7" Visibility="Collapsed"/>
+      <TextBlock x:Name="CombineHeader" Text="지금 조합 가능" Foreground="#FFE8C547"
+      FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6" Visibility="Collapsed"/>
       <StackPanel x:Name="CombinePanel" Visibility="Collapsed" Margin="0,0,0,8"/>
-      <TextBlock x:Name="EmergencyHeader" Text="긴급소집 와일드카드" Foreground="#FF7DD3FC"
-      FontSize="13" FontWeight="SemiBold" Margin="0,0,0,7" Visibility="Collapsed"/>
+      <TextBlock x:Name="EmergencyHeader" Text="긴급소집 와일드카드" Foreground="#FFE8C547"
+      FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6" Visibility="Collapsed"/>
       <StackPanel x:Name="EmergencyPanel" Visibility="Collapsed" Margin="0,0,0,8"/>
-      <TextBlock Text="현재 패 수치" Foreground="#FFC4B5FD" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,7"/>
+      <TextBlock Text="패 수치" Foreground="#FFB4BBC6" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
       <StackPanel x:Name="CurrentStatsPanel"/>
-      <TextBlock Text="희귀패 정리" Foreground="#FFFBBF24" FontSize="13"
-      FontWeight="SemiBold" Margin="0,15,0,7"/>
+      <TextBlock Text="희귀패 정리" Foreground="#FFE3B341" FontSize="12"
+      FontWeight="SemiBold" Margin="0,12,0,6"/>
       <StackPanel x:Name="RareRerollPanel"/>
-      <TextBlock x:Name="SpecialHeader" Text="특수함 정리" Foreground="#FFFBBF24" FontSize="13"
-      FontWeight="SemiBold" Margin="0,15,0,7" Visibility="Collapsed"/>
+      <TextBlock x:Name="SpecialHeader" Text="특수함 정리" Foreground="#FFE3B341" FontSize="12"
+      FontWeight="SemiBold" Margin="0,12,0,6" Visibility="Collapsed"/>
       <StackPanel x:Name="SpecialPanel" Visibility="Collapsed"/>
-      <TextBlock x:Name="GreenBloodHeader" Text="그린블러드 사용처" Foreground="#FF4ADE80"
-      FontSize="13" FontWeight="SemiBold" Margin="0,15,0,7" Visibility="Collapsed"/>
+      <TextBlock x:Name="GreenBloodHeader" Text="그린블러드 사용처" Foreground="#FF3DDC84"
+      FontSize="12" FontWeight="SemiBold" Margin="0,12,0,6" Visibility="Collapsed"/>
       <StackPanel x:Name="GreenBloodPanel" Visibility="Collapsed"/>
       </StackPanel>
       </ScrollViewer>

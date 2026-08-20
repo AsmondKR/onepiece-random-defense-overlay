@@ -4,18 +4,18 @@
              StartupUri="MainWindow.xaml">
   <Application.Resources>
     <!-- ===== 디자인 토큰: 두 창이 공유하는 단일 시각 시스템 ===== -->
-    <SolidColorBrush x:Key="PanelBrush" Color="#E8151924"/>
-    <SolidColorBrush x:Key="AccentBrush" Color="#FF8B5CF6"/>
-    <SolidColorBrush x:Key="ControlBrush" Color="#FF262C3E"/>
-    <SolidColorBrush x:Key="ControlHoverBrush" Color="#FF313A54"/>
-    <SolidColorBrush x:Key="ControlPressedBrush" Color="#FF3A4364"/>
-    <SolidColorBrush x:Key="BorderTintBrush" Color="#FF343D56"/>
-    <SolidColorBrush x:Key="PopupBrush" Color="#FF1B2030"/>
-    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#FFF2F4FA"/>
-    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#FFB3BAC8"/>
-    <SolidColorBrush x:Key="ThumbBrush" Color="#663D4560"/>
-    <SolidColorBrush x:Key="ThumbSolidBrush" Color="#FF454E6E"/>
-    <SolidColorBrush x:Key="ThumbHoverBrush" Color="#FF57628C"/>
+    <SolidColorBrush x:Key="PanelBrush" Color="#F2111318"/>
+    <SolidColorBrush x:Key="AccentBrush" Color="#FFE8C547"/>
+    <SolidColorBrush x:Key="ControlBrush" Color="#FF1C2028"/>
+    <SolidColorBrush x:Key="ControlHoverBrush" Color="#FF262B35"/>
+    <SolidColorBrush x:Key="ControlPressedBrush" Color="#FF2E3440"/>
+    <SolidColorBrush x:Key="BorderTintBrush" Color="#FF2C313A"/>
+    <SolidColorBrush x:Key="PopupBrush" Color="#FF14171C"/>
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#FFF2F4F7"/>
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#FFB4BBC6"/>
+    <SolidColorBrush x:Key="ThumbBrush" Color="#663A404C"/>
+    <SolidColorBrush x:Key="ThumbSolidBrush" Color="#FF3A404C"/>
+    <SolidColorBrush x:Key="ThumbHoverBrush" Color="#FF4A5160"/>
 
     <!-- ===== 스크롤바: 트랙 없는 슬림 썸(8px) ===== -->
     <Style x:Key="SlimThumb" TargetType="Thumb">
@@ -116,8 +116,8 @@
       </Setter>
     </Style>
     <Style x:Key="SubtleButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-      <Setter Property="Background" Value="#FF20263A"/>
-      <Setter Property="Foreground" Value="#FFC7CCDA"/>
+      <Setter Property="Background" Value="#FF1C2028"/>
+      <Setter Property="Foreground" Value="#FFB4BBC6"/>
       <Setter Property="Padding" Value="9,5"/>
       <Setter Property="FontSize" Value="11"/>
     </Style>
@@ -139,7 +139,7 @@
                         Value="{StaticResource ControlHoverBrush}"/>
               </Trigger>
               <Trigger Property="IsSelected" Value="True">
-                <Setter TargetName="ItemBody" Property="Background" Value="#553F2E77"/>
+                <Setter TargetName="ItemBody" Property="Background" Value="#33E8C547"/>
               </Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>

@@ -22,7 +22,7 @@ public partial class OverlayWindow : OverlayWindowBase
     {
         InitializeComponent();
         var appVersion = UpdateService.CurrentVersion;
-        OverlayVersionText.Text = $"v{appVersion.Major}.{appVersion.Minor}.{appVersion.Build}";
+        OverlayVersionText.Text = $"v{appVersion.Major}.{appVersion.Minor}.{appVersion.Build} 테스트";
         // 패 상태 창은 추천 창과 함께 뜨고 함께 사라진다(위치만 각자 기억).
         IsVisibleChanged += (_, e) =>
         {
@@ -137,20 +137,31 @@ public partial class OverlayWindow : OverlayWindowBase
             stack.Children.Add(new TextBlock
             {
                 Text = step.TargetName,
-                Foreground = new SolidColorBrush(Color.FromRgb(186, 230, 253)),
+                Foreground = OverlayTheme.GoldBrush,
                 FontSize = 11,
                 FontWeight = FontWeights.SemiBold,
                 TextWrapping = TextWrapping.Wrap
             });
-            stack.Children.Add(new TextBlock
+            if (step.Commands.Count > 0)
             {
-                Text = step.Commands.Count > 0
-                    ? $"{step.TriggerName} 선택 → {string.Join(" / ", step.Commands)}"
-                    : $"{step.TriggerName} 선택 → {step.Key} 키",
-                Foreground = new SolidColorBrush(Color.FromRgb(166, 177, 196)),
-                FontSize = 11,
-                TextWrapping = TextWrapping.Wrap
-            });
+                stack.Children.Add(new TextBlock
+                {
+                    Text = step.TriggerName + " 선택",
+                    Foreground = OverlayTheme.MutedBrush,
+                    FontSize = 11
+                });
+                stack.Children.Add(OverlayTheme.CommandChips(step.Commands));
+            }
+            else
+            {
+                stack.Children.Add(new TextBlock
+                {
+                    Text = $"{step.TriggerName} 선택 → {step.Key} 키",
+                    Foreground = OverlayTheme.MutedBrush,
+                    FontSize = 11,
+                    TextWrapping = TextWrapping.Wrap
+                });
+            }
             CombinePanel.Children.Add(stack);
         }
         if (plan.Count > 6)
@@ -465,7 +476,7 @@ public partial class OverlayWindow : OverlayWindowBase
     private static UIElement CoreStatCard(string name, double current, double target, string detail)
     {
         var reached = current + 0.0001 >= target;
-        var accent = reached ? Color.FromRgb(74, 222, 128) : Color.FromRgb(251, 191, 36);
+        var accent = reached ? OverlayTheme.Ok : OverlayTheme.Warn;
         var title = new Grid();
         title.ColumnDefinitions.Add(new ColumnDefinition());
         title.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -473,40 +484,32 @@ public partial class OverlayWindow : OverlayWindowBase
         {
             Text = name,
             Foreground = Brushes.White,
-            FontSize = 13,
+            FontSize = 12,
             FontWeight = FontWeights.SemiBold
         });
-        // 게임 중 흘끗 보는 핵심 숫자 — 카드에서 가장 커야 한다.
         var value = new TextBlock
         {
             Text = $"{FormatNumber(current)} / {FormatNumber(target)}",
             Foreground = new SolidColorBrush(accent),
-            FontSize = 14,
+            FontSize = 13,
             FontWeight = FontWeights.Bold
         };
         Grid.SetColumn(value, 1);
         title.Children.Add(value);
 
-        var stack = new StackPanel();
+        var stack = new StackPanel { Margin = new Thickness(0, 0, 0, 6) };
         stack.Children.Add(title);
         stack.Children.Add(StatBar(current, target, accent));
         if (!string.IsNullOrWhiteSpace(detail))
             stack.Children.Add(new TextBlock
             {
                 Text = detail,
-                Foreground = new SolidColorBrush(Color.FromRgb(166, 177, 196)),
+                Foreground = OverlayTheme.MutedBrush,
                 FontSize = 10.5,
                 TextWrapping = TextWrapping.Wrap,
-                Margin = new Thickness(0, 4, 0, 0)
+                Margin = new Thickness(0, 2, 0, 0)
             });
-        return new Border
-        {
-            Background = new SolidColorBrush(Color.FromArgb(160, 12, 16, 26)),
-            CornerRadius = new CornerRadius(6),
-            Padding = new Thickness(8),
-            Margin = new Thickness(0, 0, 0, 6),
-            Child = stack
-        };
+        return stack;
     }
 
     private static UIElement StatBar(double current, double target, Color accent)
@@ -538,7 +541,7 @@ public partial class OverlayWindow : OverlayWindowBase
         var number = new TextBlock
         {
             Text = FormatNumber(value),
-            Foreground = new SolidColorBrush(Color.FromRgb(196, 181, 253)),
+            Foreground = OverlayTheme.GoldBrush,
             FontSize = 12,
             FontWeight = FontWeights.SemiBold
         };
@@ -566,9 +569,7 @@ public partial class OverlayWindow : OverlayWindowBase
         var value = new TextBlock
         {
             Text = $"{providers}기",
-            Foreground = providers > 0
-                ? new SolidColorBrush(Color.FromRgb(74, 222, 128))
-                : new SolidColorBrush(Color.FromRgb(166, 177, 196)),
+            Foreground = providers > 0 ? OverlayTheme.OkBrush : OverlayTheme.MutedBrush,
             FontSize = 12,
             FontWeight = FontWeights.SemiBold
         };
@@ -589,7 +590,7 @@ public partial class OverlayWindow : OverlayWindowBase
     private static TextBlock SectionLabel(string text) => new()
     {
         Text = text,
-        Foreground = new SolidColorBrush(Color.FromRgb(178, 154, 255)),
+        Foreground = OverlayTheme.MutedBrush,
         FontSize = 12,
         FontWeight = FontWeights.SemiBold,
         Margin = new Thickness(2, 10, 0, 4)
@@ -617,101 +618,85 @@ public partial class OverlayWindow : OverlayWindowBase
 
     private UIElement RecommendationCard(Recommendation item, int rank)
     {
-        var headerStack = new StackPanel();
-        var title = new Grid();
-        title.ColumnDefinitions.Add(new ColumnDefinition());
-        title.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        title.Children.Add(new TextBlock
+        var unit = item.CompositionUnits[0];
+        var row = new Grid { Margin = new Thickness(0, 1, 0, 1) };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.ColumnDefinitions.Add(new ColumnDefinition());
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var icon = UnitImageFactory.Create(unit.Image, unit.Name, 40, unit.UnitId);
+        icon.Margin = new Thickness(0, 0, 8, 0);
+        icon.VerticalAlignment = VerticalAlignment.Center;
+        row.Children.Add(icon);
+        var name = new TextBlock
         {
-            Text = $"{rank}. {RecommendationPresentation.CraftUnitName(item.CompositionUnits[0])}",
+            Text = $"{rank}  {RecommendationPresentation.CraftUnitName(unit)}",
             Foreground = Brushes.White,
-            FontSize = 15,
+            FontSize = 13,
             FontWeight = FontWeights.SemiBold,
+            VerticalAlignment = VerticalAlignment.Center,
             TextWrapping = TextWrapping.Wrap
-        });
+        };
+        Grid.SetColumn(name, 1);
+        row.Children.Add(name);
+        if (item.CombineCommands.Count > 0)
+        {
+            var chips = OverlayTheme.CommandChips(item.CombineCommands);
+            Grid.SetColumn(chips, 2);
+            row.Children.Add(chips);
+        }
         var score = new TextBlock
         {
             Text = RecommendationPresentation.CompletionPercent(item.RecipeProgress),
-            Foreground = new SolidColorBrush(Color.FromRgb(178, 154, 255)),
-            FontSize = 14,
+            Foreground = OverlayTheme.GoldBrush,
+            FontSize = 13,
             FontWeight = FontWeights.Bold,
+            VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(8, 0, 0, 0)
         };
-        Grid.SetColumn(score, 1);
-        title.Children.Add(score);
-        headerStack.Children.Add(title);
-        headerStack.Children.Add(new Border
-        {
-            Background = new SolidColorBrush(Color.FromArgb(110, 55, 43, 90)),
-            CornerRadius = new CornerRadius(5),
-            Padding = new Thickness(7, 4, 7, 4),
-            Margin = new Thickness(0, 6, 0, 0),
-            Child = new TextBlock
-            {
-                Text = RecommendationPresentation.RecommendationEffectLine(item.CompositionUnits[0]),
-                Foreground = new SolidColorBrush(Color.FromRgb(216, 206, 255)),
-                FontSize = 11,
-                FontWeight = FontWeights.Medium,
-                TextWrapping = TextWrapping.Wrap
-            }
-        });
-        if (RecommendationPresentation.OverlayCommandLine(item) is { } commandLine)
-            headerStack.Children.Add(new TextBlock
-            {
-                Text = commandLine,
-                Foreground = Brushes.White,
-                FontSize = 12,
-                FontWeight = FontWeights.SemiBold,
-                TextWrapping = TextWrapping.Wrap,
-                Margin = new Thickness(0, 6, 0, 0)
-            });
-        if (item.ClearEvidence is not null)
-            headerStack.Children.Add(new TextBlock
-            {
-                Text = item.ClearEvidence.Scope switch
-                       {
-                           TopScope.SoloTop => "신+ 1상위 ",
-                           TopScope.MultiTop => "신+ 다상위 ",
-                           _ => "신+ 클리어 "
-                       } +
-                       (item.ClearEvidence.AnchorLabel is null
-                           ? ""
-                           : $"· {item.ClearEvidence.AnchorLabel} 동반 ") +
-                       $"{item.ClearEvidence.SampleCount:#,0}판 · " +
-                       $"채용률 {item.ClearEvidence.SharePercent}퍼센트",
-                Foreground = new SolidColorBrush(Color.FromRgb(74, 222, 128)),
-                FontSize = 11,
-                Margin = new Thickness(0, 5, 0, 0)
-            });
-        headerStack.Children.Add(CountBar(item.RecipeProgress));
+        Grid.SetColumn(score, 3);
+        row.Children.Add(score);
 
+        UIElement header = row;
         if (item.Warnings.Count > 0)
-            headerStack.Children.Add(new TextBlock
+        {
+            var stack = new StackPanel();
+            stack.Children.Add(row);
+            stack.Children.Add(new TextBlock
             {
-                Text = "⚠ " + item.Warnings[0], Foreground = new SolidColorBrush(Color.FromRgb(251, 191, 36)),
-                FontSize = 12, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0)
+                Text = item.Warnings[0],
+                Foreground = OverlayTheme.WarnBrush,
+                FontSize = 11,
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(48, 2, 0, 0)
             });
+            header = stack;
+        }
 
         var expander = new Expander
         {
-            Header = headerStack,
+            Header = header,
             Content = RecommendationDetailsPanel(item),
             IsExpanded = _expandedRouteIds.Contains(item.Route.Id),
             Foreground = Brushes.White,
             HorizontalContentAlignment = HorizontalAlignment.Stretch
         };
         AutomationProperties.SetName(expander,
-            $"{RecommendationPresentation.CraftUnitName(item.CompositionUnits[0])}, " +
-            $"{RecommendationPresentation.RecommendationEffectLine(item.CompositionUnits[0])}, " +
+            $"{RecommendationPresentation.CraftUnitName(unit)}, " +
+            $"{RecommendationPresentation.RecommendationEffectLine(unit)}, " +
             $"{RecommendationPresentation.CompletionPercent(item.RecipeProgress)}, 조합식과 부족 패 상세");
         expander.Expanded += (_, _) => _expandedRouteIds.Add(item.Route.Id);
         expander.Collapsed += (_, _) => _expandedRouteIds.Remove(item.Route.Id);
 
         return new Border
         {
-            Background = new SolidColorBrush(Color.FromArgb(215, 33, 38, 52)),
-            CornerRadius = new CornerRadius(9), Padding = new Thickness(12),
-            Margin = new Thickness(0, 0, 0, 9), Child = expander
+            Background = OverlayTheme.RowBrush,
+            BorderBrush = OverlayTheme.HairlineBrush,
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(4),
+            Padding = new Thickness(6, 5, 6, 5),
+            Margin = new Thickness(0, 0, 0, 4),
+            Child = expander
         };
     }
 

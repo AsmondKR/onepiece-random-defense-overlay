@@ -7,8 +7,8 @@
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         Topmost="True" ShowInTaskbar="False" ResizeMode="NoResize">
   <!-- 게임 화면 위 가독성: 배경 투과를 줄이고 본문 대비를 확보한다. -->
-  <Border Background="#F5121623" BorderBrush="#668B5CF6" BorderThickness="1"
-          CornerRadius="14" Padding="14">
+  <Border Background="#F2111318" BorderBrush="#FF2C313A" BorderThickness="1"
+          CornerRadius="6" Padding="10">
     <Grid>
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="*"/>
@@ -21,7 +21,7 @@
       <Grid  Background="Transparent" Cursor="SizeAll" MouseLeftButtonDown="DragArea_OnMouseLeftButtonDown">
         <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
         <StackPanel>
-          <TextBlock x:Name="GoalText" Text="야마토 초월" Foreground="White" FontSize="22" FontWeight="SemiBold"/>
+          <TextBlock x:Name="GoalText" Text="야마토 초월" Foreground="White" FontSize="16" FontWeight="SemiBold"/>
           <TextBlock x:Name="PhaseHintText" Foreground="#FFFBBF24" FontSize="11.5"
                      TextWrapping="Wrap" Margin="0,4,0,0" Visibility="Collapsed"/>
         </StackPanel>

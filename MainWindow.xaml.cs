@@ -103,7 +103,7 @@ public partial class MainWindow : Window
         DataVersionText.Text = $"데이터 {_catalog.Data.DataVersion} · {_catalog.Data.Disclaimer}" +
                                ClearStatsSummary();
         var appVersion = UpdateService.CurrentVersion;
-        VersionText.Text = $"v{appVersion.Major}.{appVersion.Minor}.{appVersion.Build}";
+        VersionText.Text = $"v{appVersion.Major}.{appVersion.Minor}.{appVersion.Build} 테스트";
 
         _overlay = new OverlayWindow();
         _overlay.RestorePosition(_settings.OverlayLeft, _settings.OverlayTop);
@@ -811,57 +811,45 @@ public partial class MainWindow : Window
 
     private UIElement BuildRecommendationCard(Recommendation item, int rank)
     {
+        var unit = item.CompositionUnits[0];
         var headerBody = new StackPanel();
         var header = new Grid();
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         header.ColumnDefinitions.Add(new ColumnDefinition());
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        header.Children.Add(new TextBlock
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var icon = UnitImageFactory.Create(unit.Image, unit.Name, 44, unit.UnitId);
+        icon.Margin = new Thickness(0, 0, 10, 0);
+        header.Children.Add(icon);
+        var title = new TextBlock
         {
-            Text = $"{rank}. {RecommendationPresentation.CraftUnitName(item.CompositionUnits[0])}",
-            FontSize = 17,
+            Text = $"{rank}  {RecommendationPresentation.CraftUnitName(unit)}",
+            FontSize = 15,
             FontWeight = FontWeights.SemiBold,
             Foreground = Brushes.White,
+            VerticalAlignment = VerticalAlignment.Center,
             TextWrapping = TextWrapping.Wrap
-        });
-        var score = new Border
-        {
-            Background = new SolidColorBrush(Color.FromRgb(75, 55, 135)), CornerRadius = new CornerRadius(12), Padding = new Thickness(10, 3, 10, 3),
-            Child = new TextBlock
-            {
-                Text = RecommendationPresentation.CompletionPercent(item.RecipeProgress),
-                Foreground = Brushes.White,
-                FontWeight = FontWeights.Bold
-            }
         };
-        Grid.SetColumn(score, 1);
+        Grid.SetColumn(title, 1);
+        header.Children.Add(title);
+        if (item.CombineCommands.Count > 0)
+        {
+            var chips = OverlayTheme.CommandChips(item.CombineCommands);
+            Grid.SetColumn(chips, 2);
+            header.Children.Add(chips);
+        }
+        var score = new TextBlock
+        {
+            Text = RecommendationPresentation.CompletionPercent(item.RecipeProgress),
+            Foreground = OverlayTheme.GoldBrush,
+            FontSize = 15,
+            FontWeight = FontWeights.Bold,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(10, 0, 0, 0)
+        };
+        Grid.SetColumn(score, 3);
         header.Children.Add(score);
         headerBody.Children.Add(header);
-        headerBody.Children.Add(new Border
-        {
-            Background = new SolidColorBrush(Color.FromArgb(125, 55, 43, 90)),
-            CornerRadius = new CornerRadius(6),
-            Padding = new Thickness(8, 5, 8, 5),
-            Margin = new Thickness(0, 8, 0, 0),
-            Child = new TextBlock
-            {
-                Text = RecommendationPresentation.RecommendationEffectLine(item.CompositionUnits[0]),
-                Foreground = new SolidColorBrush(Color.FromRgb(216, 206, 255)),
-                FontSize = 12,
-                FontWeight = FontWeights.Medium,
-                TextWrapping = TextWrapping.Wrap
-            }
-        });
-        if (RecommendationPresentation.OverlayCommandLine(item) is { } commandLine)
-            headerBody.Children.Add(new TextBlock
-            {
-                Text = commandLine,
-                Foreground = Brushes.White,
-                FontSize = 13,
-                FontWeight = FontWeights.SemiBold,
-                TextWrapping = TextWrapping.Wrap,
-                Margin = new Thickness(0, 8, 0, 0)
-            });
-        headerBody.Children.Add(BuildCountBar(item.RecipeProgress, 7, new Thickness(0, 10, 0, 0)));
 
         var expander = new Expander
         {
@@ -880,10 +868,12 @@ public partial class MainWindow : Window
 
         return new Border
         {
-            Background = new SolidColorBrush(Color.FromArgb(235, 24, 29, 41)),
-            CornerRadius = new CornerRadius(12),
-            Padding = new Thickness(16),
-            Margin = new Thickness(0, 0, 0, 11),
+            Background = OverlayTheme.RowBrush,
+            BorderBrush = OverlayTheme.HairlineBrush,
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(4),
+            Padding = new Thickness(10, 8, 10, 8),
+            Margin = new Thickness(0, 0, 0, 6),
             Child = expander
         };
     }
@@ -1672,7 +1662,7 @@ public partial class MainWindow : Window
         _ = DwmSetWindowAttribute(handle, 35, ref caption, sizeof(int));
         var text = 0x00FAF4F2; // 본문 밝은 텍스트 #F2F4FA
         _ = DwmSetWindowAttribute(handle, 36, ref text, sizeof(int));
-        var border = 0x00F65C8B; // 브랜드 보라 #8B5CF6
+        var border = 0x0047C5E8; // 테스트 금색 #E8C547
         _ = DwmSetWindowAttribute(handle, 34, ref border, sizeof(int));
     }
 
