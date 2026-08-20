@@ -28,7 +28,7 @@ public sealed class UnitDefinition
     public string Image { get; init; } = "";
     public List<UnitAbilityDisplay> OfficialAbilities { get; init; } = [];
     public string Description { get; init; } = "";
-    /// <summary>초월 이상 채팅 조합 명령어(한글·영문). 없으면 빈 목록.</summary>
+    /// <summary>채팅 조합 명령어(한글·영문). 초월·히든·해적선 등. 없으면 빈 목록.</summary>
     public List<string> CombineCommands { get; init; } = [];
 }
 
@@ -104,7 +104,7 @@ public sealed class RecipeCraftStep
     public List<RecipeCraftIngredient> Ingredients { get; init; } = [];
     // 맵에서 추출한 이 유닛의 조합 스킬 단축키(미상이면 null).
     public string? CombineKey { get; init; }
-    /// <summary>초월 이상 채팅 조합 명령어. 없으면 빈 목록.</summary>
+    /// <summary>채팅 조합 명령어. 없으면 빈 목록.</summary>
     public IReadOnlyList<string> CombineCommands { get; init; } = [];
     // 현재 패 기준 이 단계(남은 수량)의 재료 완성률(0~1). 드릴다운 % 표시용.
     public double CompletionRatio { get; init; }

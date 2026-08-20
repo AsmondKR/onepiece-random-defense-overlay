@@ -1672,6 +1672,12 @@ Assert(jinbeUnit.CombineCommands.SequenceEqual(["바다의협객", "jinbe tr"]),
 Assert(catalog.Unit("rawcode:HA0h").CombineCommands.Count == 0 &&
        catalog.Unit("rawcode:Q80h").CombineCommands.Count == 0,
     "전설·제한됨은 채팅 명령어가 없다");
+Assert(catalog.Unit("rawcode:O30h").CombineCommands.SequenceEqual(["봉쿠레조합", "bonkurei"]),
+    "봉쿠레 히든 조합 명령어는 봉쿠레조합 / bonkurei");
+Assert(catalog.Unit("rawcode:Q30h").CombineCommands.SequenceEqual(["모비딕호조합", "mobydick"]),
+    "모비딕호 조합 명령어는 모비딕호조합 / mobydick");
+Assert(catalog.RawcodeCatalog.Values.Count(entry => entry.Commands.Count > 0) >= 70,
+    "조합 명령어가 있는 유닛은 초월·히든·해적선까지 전부 실림");
 var jinbeGoalCard = new RecommendationEngine(catalog, null, combineHotkeys)
     .RecommendNearestCrafts("rawcode:A90H", [], 1)[0];
 var jinbeCraftStep = jinbeGoalCard.RemainingCraftSteps.First(step =>
@@ -2190,7 +2196,7 @@ if (Environment.GetEnvironmentVariable("ORAND_DIAG") == "drill")
     return;
 }
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 406/406");
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 409/409");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,

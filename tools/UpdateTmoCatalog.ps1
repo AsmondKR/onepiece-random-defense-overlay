@@ -32,11 +32,8 @@ $mergedUnits = foreach ($unit in $catalog.units) {
     }
     $official = $officialById[$unit.rawcode]
 
-    $tierBase = ($unit.tier -split '\[', 2)[0].Trim()
     $commands = @()
-    if ($tierBase -in @('초월', '불멸', '영원') -and $official.commands) {
-        $commands = @($official.commands)
-    }
+    if ($official.commands) { $commands = @($official.commands) }
 
     $row = [ordered]@{
         rawcode = $unit.rawcode

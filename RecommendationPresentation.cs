@@ -45,7 +45,7 @@ public static class RecommendationPresentation
         var select = CraftSelectUnitName(step);
         if (select is null) return "조합할 하위 유닛 없음";
         var line = $"선택할 유닛: {select}";
-        // 초월 이상은 채팅 명령어, 그 아래는 맵 단축키. 영문 명령어(jinbe tr)는 그대로 둔다.
+        // 채팅 명령어가 있으면 그걸 우선하고, 없으면 맵 단축키. 영문 명령어는 그대로 둔다.
         if (step.CombineCommands.Count > 0)
             return line + "\n조합 명령어: " + string.Join(" / ", step.CombineCommands);
         if (step.CombineKey is { Length: > 0 } key)
