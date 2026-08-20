@@ -2169,11 +2169,20 @@ Assert(TelemetryUploader.DefaultEndpoint.StartsWith("https://") &&
     detector.Observe(localUnits: 5, foreignUnits: 300);
     Assert(detector.Outcome == "fail", "패배 판정: 한 번 확정되면 세션 내내 유지");
 
-    // 판 자체가 끝난 경우(풀 전체가 사라짐)는 패배로 단정하지 않는다.
+    // 로비로 나가며 풀이 한 틱 비는 것은 패배가 아니다. 연속 전멸만 확정한다.
     var ended = new MatchOutcomeDetector();
     ended.Observe(localUnits: 8, foreignUnits: 300);
     ended.Observe(localUnits: 0, foreignUnits: 0);
-    Assert(ended.Outcome == "unknown", "패배 판정: 풀 전체 소멸(게임 종료·나가기)은 판정 보류");
+    Assert(ended.Outcome == "unknown", "패배 판정: 풀 전체 소멸 1회(게임 종료·나가기)는 판정 보류");
+
+    var solo = new MatchOutcomeDetector();
+    solo.Observe(localUnits: 8, foreignUnits: 0);
+    solo.Observe(localUnits: 12, foreignUnits: 0);
+    solo.Observe(localUnits: 0, foreignUnits: 0);
+    Assert(solo.Outcome == "unknown", "패배 판정: 솔로 전멸 1회만으로는 확정하지 않음");
+    solo.Observe(localUnits: 0, foreignUnits: 0);
+    Assert(solo.Outcome == "fail" && solo.OutcomeSource == "unitWipe",
+        "패배 판정: 솔로는 남의 유닛이 없어도 연속 전멸이면 패배");
 
     // 순간적인 0은 무시한다(스캔 경합·리롤 사이 등).
     // 0이 연속이 아니면(중간에 다시 잡히면) 카운터가 초기화된다.

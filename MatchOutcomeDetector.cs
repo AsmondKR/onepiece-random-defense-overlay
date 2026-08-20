@@ -5,8 +5,9 @@ namespace OrandOverlay;
 ///
 /// 패배: 어떤 이유로 지든(유닛 카운트 초과, 65라운드 포함 보스 라운드에서 시간 내 미격파,
 /// 스토리 파괴) 전부 탈락 함수 m0E → 트리거 s → myN으로 모이고, myN이 그 플레이어의
-/// 유닛을 전부 제거한다(GroupEnumUnitsOfPlayer + RemoveUnit 필터). 즉 맵의 패배 판정
-/// 결과가 곧 "내 유닛 전멸 · 남의 유닛은 잔존"이다. (실측: 패배 직후 로컬 0 · 타 소유 265)
+/// 유닛을 전부 제거한다(GroupEnumUnitsOfPlayer + RemoveUnit 필터). 멀티 실측은
+/// 패배 직후 로컬 0 · 타 소유 265. 솔로는 타 소유가 0일 수 있어, 패를 가진 뒤
+/// 내 유닛 연속 전멸이면 패배로 본다.
 ///
 /// 클리어: 65라운드 정산 블록(BQN==65)이 그 시점 생존자에게만 "마지막 라운드 유닛 점수"
 /// 문자열을 조합한다 — 이것이 맵의 클리어 판정이다. 단 JASS는 모든 클라이언트에서 같은
@@ -71,13 +72,16 @@ public sealed class MatchOutcomeDetector(int requiredZeroScans = 2)
 
     public void Observe(int localUnits, int foreignUnits, DateTimeOffset at)
     {
+        _ = foreignUnits;
         if (_defeated) return;
         _lastObservedAt = at;
         _peakLocalUnits = Math.Max(_peakLocalUnits, localUnits);
         if (_settlementSeenAt is not null && localUnits > 0) _aliveScansAfterSettlement++;
 
-        // 풀에 남의 유닛도 없으면 판이 끝났거나 읽기가 흔들린 것 — 패배로 단정하지 않는다.
-        if (localUnits > 0 || foreignUnits <= 0 || _peakLocalUnits < MinimumPeakUnits)
+        // 멀티는 내 유닛만 사라지고 남은 유닛이 있다. 솔로는 풀에 남이 원래 없을 수
+        // 있다. 패를 가진 뒤 내 유닛이 연속 전멸이면 패배. 로비·종료는 세션 경계에서
+        // Reset 하므로 여기서 남 0을 막아 두면 솔로 패배가 unknown으로 새어 나간다.
+        if (localUnits > 0 || _peakLocalUnits < MinimumPeakUnits)
         {
             _consecutiveZeroScans = 0;
             return;
