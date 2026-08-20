@@ -1685,6 +1685,10 @@ Assert(keyedStep is not null &&
        RecommendationPresentation.CraftIngredientLine(keyedStep)
            .Contains("유닛 조합 키: ", StringComparison.Ordinal),
     "조합 키를 아는 단계는 선택할 유닛과 조합 키로 안내");
+Assert(keyedStep is not null &&
+       RecommendationPresentation.CraftSelectUnitName(keyedStep) is { Length: > 0 } &&
+       RecommendationPresentation.CraftActionKeys(keyedStep) is [{ Length: 1 }],
+    "흐름 칸은 선택할 유닛과 한 글자 단축키를 우선 보여준다");
 var jinbeUnit = catalog.Unit("rawcode:A90H");
 Assert(jinbeUnit.CombineCommands.SequenceEqual(["바다의협객", "jinbe tr"]),
     "징베 초월 조합 명령어는 바다의협객 / jinbe tr");
@@ -1713,6 +1717,10 @@ Assert(jinbeLine.Contains("조합 명령어", StringComparison.Ordinal) &&
        jinbeLine.Contains("바다의협객", StringComparison.Ordinal) &&
        jinbeLine.Contains("jinbe tr", StringComparison.Ordinal),
     "초월 조합 안내에 한글·영문 명령어를 그대로 보여준다");
+Assert(RecommendationPresentation.CraftActionKeys(jinbeCraftStep)
+           .SequenceEqual(["바다의협객", "jinbe tr"]) &&
+       RecommendationPresentation.CraftSelectUnitName(jinbeCraftStep) is { Length: > 0 },
+    "단축키가 없는 초월은 채팅 명령어와 선택 유닛을 흐름에 보여준다");
 var jinbeReady = jinbeUnit.Recipe.Keys
     .SelectMany(id => Enumerable.Repeat(id, jinbeUnit.Recipe[id]))
     .Where(id => catalog.Unit(id).Tier.Split('[', 2)[0].Trim() is not "자원")
@@ -2231,7 +2239,7 @@ if (Environment.GetEnvironmentVariable("ORAND_DIAG") == "drill")
     return;
 }
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 419/419");
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 421/421");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,

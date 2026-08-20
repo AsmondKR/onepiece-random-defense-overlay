@@ -32,7 +32,7 @@ public partial class OverlayWindow : OverlayWindowBase
         };
     }
 
-    protected override double DesignWidth => 800;
+    protected override double DesignWidth => 540;
     protected override double DesignHeight => 740;
     protected override UIElement? ClickThroughIndicator => ClickThroughBadge;
 

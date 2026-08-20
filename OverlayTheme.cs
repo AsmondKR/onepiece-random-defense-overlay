@@ -248,7 +248,7 @@ internal static class OverlayTheme
     {
         var ok = current + 0.0001 >= target;
         var accent = ok ? Ok : Warn;
-        var stack = new StackPanel { Margin = new Thickness(6, 8, 6, 8) };
+        var stack = new StackPanel { Margin = new Thickness(4, 7, 4, 7) };
         stack.Children.Add(new TextBlock
         {
             Text = label,
@@ -261,7 +261,7 @@ internal static class OverlayTheme
         {
             Text = Num(current),
             Foreground = new SolidColorBrush(accent),
-            FontSize = 20,
+            FontSize = 18,
             FontWeight = FontWeights.Bold
         });
         numbers.Children.Add(new TextBlock

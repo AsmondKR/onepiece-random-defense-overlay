@@ -67,6 +67,16 @@ public static class RecommendationPresentation
         return IngredientName(step.Ingredients.OrderBy(i => i.SelectionOrder).First());
     }
 
+    /// <summary>
+    /// 흐름 칸에 띄울 입력. 맵 단축키(Z/X/C)가 있으면 그걸 우선하고,
+    /// 초월처럼 키가 없으면 채팅 명령어를 쓴다.
+    /// </summary>
+    public static IReadOnlyList<string> CraftActionKeys(RecipeCraftStep step)
+    {
+        if (step.CombineKey is { Length: > 0 } key) return [key];
+        return step.CombineCommands;
+    }
+
     /// <summary>조합 키가 없을 때 함께 조합할 나머지 재료 목록("A / B"). 없으면 null.</summary>
     public static string? CraftCompanionNames(RecipeCraftStep step)
     {

@@ -13,6 +13,9 @@ namespace OrandOverlay;
 /// </summary>
 internal static class RecommendationBoard
 {
+    /// <summary>창 폭은 이 칸 3개가 한 화면에 들어오는 크기로 맞춘다.</summary>
+    public const int FlowVisibleSteps = 3;
+    public const double FlowNodeWidth = 140;
     public static void Fill(
         Panel nowPanel,
         Panel flowPanel,
@@ -84,7 +87,7 @@ internal static class RecommendationBoard
     private static UIElement NowBlock(Recommendation selected, IReadOnlyList<AutoCombineStep> plan)
     {
         var unit = selected.CompositionUnits[0];
-        var icon = UnitImageFactory.Create(unit.Image, unit.Name, 56, unit.UnitId);
+        var icon = UnitImageFactory.Create(unit.Image, unit.Name, 48, unit.UnitId);
         icon.VerticalAlignment = VerticalAlignment.Center;
 
         var text = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
@@ -99,11 +102,11 @@ internal static class RecommendationBoard
         {
             Text = RecommendationPresentation.CraftUnitName(unit),
             Foreground = OverlayTheme.WhiteBrush,
-            FontSize = 18,
+            FontSize = 16,
             FontWeight = FontWeights.Bold,
             TextWrapping = TextWrapping.Wrap,
             TextTrimming = TextTrimming.CharacterEllipsis,
-            MaxHeight = 48
+            MaxHeight = 42
         });
 
         if (plan.Count > 0)
@@ -151,8 +154,8 @@ internal static class RecommendationBoard
         {
             Text = RecommendationPresentation.CompletionPercent(selected.RecipeProgress),
             Foreground = OverlayTheme.GoldBrush,
-            FontSize = 28,
-            MinWidth = 64,
+            FontSize = 24,
+            MinWidth = 52,
             TextAlignment = TextAlignment.Right,
             FontWeight = FontWeights.Bold,
             VerticalAlignment = VerticalAlignment.Center,
@@ -177,7 +180,7 @@ internal static class RecommendationBoard
         var stack = new StackPanel();
         stack.Children.Add(new TextBlock
         {
-            Text = "조합 흐름  ·  안흔함부터",
+            Text = "조합 흐름",
             Foreground = OverlayTheme.MutedBrush,
             FontSize = 10,
             FontWeight = FontWeights.SemiBold,
@@ -200,21 +203,12 @@ internal static class RecommendationBoard
             var row = new StackPanel { Orientation = Orientation.Horizontal };
             var currentId = steps.FirstOrDefault(step => step.MissingCount > 0)?.UnitId
                             ?? steps[0].UnitId;
-            var shown = steps.Take(8).ToList();
-            for (var i = 0; i < shown.Count; i++)
+            for (var i = 0; i < steps.Count; i++)
             {
                 if (i > 0) row.Children.Add(Arrow());
-                row.Children.Add(FlowNode(shown[i],
-                    shown[i].UnitId.Equals(currentId, StringComparison.OrdinalIgnoreCase)));
+                row.Children.Add(FlowNode(steps[i],
+                    steps[i].UnitId.Equals(currentId, StringComparison.OrdinalIgnoreCase)));
             }
-            if (steps.Count > shown.Count)
-                row.Children.Add(new TextBlock
-                {
-                    Text = $"  +{steps.Count - shown.Count}",
-                    Foreground = OverlayTheme.MutedBrush,
-                    FontSize = 12,
-                    VerticalAlignment = VerticalAlignment.Center
-                });
             stack.Children.Add(row);
         }
 
@@ -223,11 +217,12 @@ internal static class RecommendationBoard
 
     private static UIElement FlowNode(RecipeCraftStep step, bool current)
     {
-        var commands = step.CombineCommands.Count > 0
-            ? step.CombineCommands
-            : step.CombineKey is { Length: > 0 } key ? (IReadOnlyList<string>)[key] : [];
-        var body = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center, Width = 92 };
-        var icon = UnitImageFactory.Create(step.Image, step.Name, 44, step.UnitId);
+        var keys = RecommendationPresentation.CraftActionKeys(step);
+        var selectName = RecommendationPresentation.CraftSelectUnitName(step);
+        var companions = RecommendationPresentation.CraftCompanionNames(step);
+        var select = step.Ingredients.OrderBy(item => item.SelectionOrder).FirstOrDefault();
+        var body = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center, Width = FlowNodeWidth };
+        var icon = UnitImageFactory.Create(step.Image, step.Name, 40, step.UnitId);
         icon.HorizontalAlignment = HorizontalAlignment.Center;
         body.Children.Add(icon);
         body.Children.Add(new TextBlock
@@ -239,7 +234,7 @@ internal static class RecommendationBoard
             TextAlignment = TextAlignment.Center,
             TextWrapping = TextWrapping.Wrap,
             TextTrimming = TextTrimming.CharacterEllipsis,
-            MaxHeight = 32,
+            MaxHeight = 30,
             Margin = new Thickness(0, 3, 0, 0)
         });
         body.Children.Add(new TextBlock
@@ -250,11 +245,56 @@ internal static class RecommendationBoard
             FontWeight = FontWeights.SemiBold,
             TextAlignment = TextAlignment.Center
         });
-        if (commands.Count > 0)
+        if (selectName is { Length: > 0 } && select is not null)
         {
-            var chips = OverlayTheme.Keycaps(commands.Take(1).ToList());
+            var pick = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Margin = new Thickness(0, 5, 0, 0)
+            };
+            var pickIcon = UnitImageFactory.Create("", select.Name, 18, select.UnitId);
+            pickIcon.VerticalAlignment = VerticalAlignment.Center;
+            pickIcon.Margin = new Thickness(0, 0, 4, 0);
+            pick.Children.Add(pickIcon);
+            pick.Children.Add(new TextBlock
+            {
+                Text = selectName,
+                Foreground = current ? OverlayTheme.GoldBrush : OverlayTheme.WhiteBrush,
+                FontSize = 10,
+                FontWeight = FontWeights.SemiBold,
+                VerticalAlignment = VerticalAlignment.Center,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                MaxWidth = 88
+            });
+            pick.Children.Add(new TextBlock
+            {
+                Text = " 선택",
+                Foreground = OverlayTheme.MutedBrush,
+                FontSize = 10,
+                VerticalAlignment = VerticalAlignment.Center
+            });
+            body.Children.Add(pick);
+        }
+        else if (companions is { Length: > 0 })
+        {
+            body.Children.Add(new TextBlock
+            {
+                Text = "함께 " + companions,
+                Foreground = OverlayTheme.MutedBrush,
+                FontSize = 10,
+                TextAlignment = TextAlignment.Center,
+                TextWrapping = TextWrapping.Wrap,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                MaxHeight = 28,
+                Margin = new Thickness(0, 4, 0, 0)
+            });
+        }
+        if (keys.Count > 0)
+        {
+            var chips = OverlayTheme.Keycaps(keys.Take(1).ToList());
             chips.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
-            chips.SetValue(FrameworkElement.MarginProperty, new Thickness(0, 2, 0, 0));
+            chips.SetValue(FrameworkElement.MarginProperty, new Thickness(0, 4, 0, 0));
             body.Children.Add(chips);
         }
         return new Border
@@ -263,8 +303,8 @@ internal static class RecommendationBoard
             BorderBrush = current ? OverlayTheme.GoldBrush : OverlayTheme.HairlineBrush,
             BorderThickness = new Thickness(current ? 2 : 1),
             CornerRadius = new CornerRadius(OverlayTheme.TileRadius),
-            Padding = new Thickness(6, 6, 6, 6),
-            ToolTip = RecommendationPresentation.SafeText(step.Name).Trim(),
+            Padding = new Thickness(5, 6, 5, 6),
+            ToolTip = RecommendationPresentation.CraftIngredientLine(step),
             Child = body
         };
     }
@@ -273,10 +313,10 @@ internal static class RecommendationBoard
     {
         return new System.Windows.Shapes.Path
         {
-            Data = Geometry.Parse("M0,0 L8,6 0,12"),
+            Data = Geometry.Parse("M0,0 L7,5 0,10"),
             Stroke = OverlayTheme.GoldBrush,
             StrokeThickness = 2,
-            Margin = new Thickness(6, 0, 6, 20),
+            Margin = new Thickness(4, 0, 4, 0),
             VerticalAlignment = VerticalAlignment.Center
         };
     }

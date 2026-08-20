@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:OrandOverlay"
-        Width="800" Height="740" Top="48" Left="1100"
+        Width="540" Height="740" Top="48" Left="1360"
         FontFamily="Malgun Gothic"
         UseLayoutRounding="True" SnapsToDevicePixels="True"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
@@ -17,14 +17,14 @@
         <RowDefinition Height="Auto"/>
       </Grid.RowDefinitions>
       <Grid Background="Transparent" Cursor="SizeAll" MouseLeftButtonDown="DragArea_OnMouseLeftButtonDown"
-            Margin="12,10,12,0">
+            Margin="10,8,10,0">
         <Grid.ColumnDefinitions>
           <ColumnDefinition/>
           <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
         <StackPanel>
           <TextBlock x:Name="GoalText" Text="야마토 초월" Foreground="#FFF0C75E"
-                     FontSize="16" FontWeight="Bold" TextWrapping="Wrap"/>
+                     FontSize="15" FontWeight="Bold" TextWrapping="Wrap"/>
           <TextBlock x:Name="PhaseHintText" Foreground="#FFB4BBC6" FontSize="11"
                      TextWrapping="Wrap" Margin="0,2,0,0" Visibility="Collapsed"/>
         </StackPanel>
@@ -42,17 +42,17 @@
         </StackPanel>
       </Grid>
       <Border x:Name="NowWell" Grid.Row="1" Background="#FF12151C" BorderBrush="#66F0C75E"
-              BorderThickness="1" CornerRadius="12" Margin="12,10,12,0" Padding="12,10">
+              BorderThickness="1" CornerRadius="12" Margin="10,8,10,0" Padding="10,8">
         <StackPanel x:Name="NowPanel"/>
       </Border>
       <Border x:Name="FlowWell" Grid.Row="2" Background="#FF0C0E14" CornerRadius="12"
-              Margin="12,8,12,0" Padding="10,8">
-        <ScrollViewer MaxHeight="160" HorizontalScrollBarVisibility="Auto"
+              Margin="10,6,10,0" Padding="8,6">
+        <ScrollViewer MaxHeight="178" HorizontalScrollBarVisibility="Auto"
                       VerticalScrollBarVisibility="Disabled">
           <StackPanel x:Name="FlowPanel"/>
         </ScrollViewer>
       </Border>
-      <Border x:Name="BoardWell" Grid.Row="3" Background="#FF0C0E14" CornerRadius="12" Margin="12,8,12,0" Padding="10,8">
+      <Border x:Name="BoardWell" Grid.Row="3" Background="#FF0C0E14" CornerRadius="12" Margin="10,6,10,0" Padding="8,6">
         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
           <StackPanel>
             <TextBlock Text="후보 보드  ·  눌러서 흐름 전환" Foreground="#FF8B93A7" FontSize="10"
@@ -61,7 +61,7 @@
           </StackPanel>
         </ScrollViewer>
       </Border>
-      <Grid Grid.Row="4" Margin="14,8,14,10">
+      <Grid Grid.Row="4" Margin="12,6,12,8">
         <Grid.ColumnDefinitions>
           <ColumnDefinition/>
           <ColumnDefinition Width="Auto"/>
