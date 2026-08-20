@@ -157,6 +157,17 @@ internal static class RecommendationBoard
             TextTrimming = TextTrimming.CharacterEllipsis,
             MaxHeight = 42
         });
+        var hostLine = RecommendationPresentation.GreenBloodHostLine(selected, compact: false);
+        if (hostLine is not null)
+            text.Children.Add(new TextBlock
+            {
+                Text = hostLine,
+                Foreground = OverlayTheme.GoldBrush,
+                FontSize = 12,
+                FontWeight = FontWeights.SemiBold,
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 1, 0, 0)
+            });
 
         if (plan.Count > 0)
         {
@@ -199,17 +210,33 @@ internal static class RecommendationBoard
                 Margin = new Thickness(0, 4, 0, 0)
             });
 
-        var score = new TextBlock
+        var meta = new StackPanel
+        {
+            VerticalAlignment = VerticalAlignment.Center,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Margin = new Thickness(12, 0, 0, 0),
+            MinWidth = 72,
+            MaxWidth = 132
+        };
+        meta.Children.Add(new TextBlock
         {
             Text = RecommendationPresentation.CompletionPercent(selected.RecipeProgress),
             Foreground = OverlayTheme.GoldBrush,
             FontSize = 24,
-            MinWidth = 52,
-            TextAlignment = TextAlignment.Right,
             FontWeight = FontWeights.Bold,
-            VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(12, 0, 0, 0)
-        };
+            TextAlignment = TextAlignment.Right
+        });
+        foreach (var line in RecommendationPresentation.NowAbilityLines(unit))
+            meta.Children.Add(new TextBlock
+            {
+                Text = line,
+                Foreground = OverlayTheme.WhiteBrush,
+                FontSize = 11,
+                FontWeight = FontWeights.SemiBold,
+                TextAlignment = TextAlignment.Right,
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 2, 0, 0)
+            });
 
         var row = new Grid();
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -219,8 +246,8 @@ internal static class RecommendationBoard
         row.Children.Add(icon);
         Grid.SetColumn(text, 1);
         row.Children.Add(text);
-        Grid.SetColumn(score, 2);
-        row.Children.Add(score);
+        Grid.SetColumn(meta, 2);
+        row.Children.Add(meta);
         return row;
     }
 
@@ -435,6 +462,7 @@ internal static class RecommendationBoard
             TextAlignment = TextAlignment.Center,
             Margin = new Thickness(0, 3, 0, 0)
         });
+        AddGreenBloodCaption(body, item, 9, size + 8);
         var hit = new Border
         {
             Background = Brushes.Transparent,
@@ -442,8 +470,8 @@ internal static class RecommendationBoard
             Child = body,
             Margin = new Thickness(0, 0, 4, 0)
         };
-        hit.ToolTip = RecommendationPresentation.CraftUnitName(unit);
-        AutomationProperties.SetName(hit, RecommendationPresentation.CraftUnitName(unit));
+        hit.ToolTip = BoardTooltip(item);
+        AutomationProperties.SetName(hit, BoardTooltip(item).Replace('\n', ' '));
         hit.MouseEnter += (_, _) => ring.BorderBrush = OverlayTheme.GoldBrush;
         hit.MouseLeave += (_, _) =>
             ring.BorderBrush = selected ? OverlayTheme.GoldBrush : OverlayTheme.HairlineBrush;
@@ -471,6 +499,7 @@ internal static class RecommendationBoard
             TextAlignment = TextAlignment.Center,
             Margin = new Thickness(0, 3, 0, 0)
         });
+        AddGreenBloodCaption(body, item, 9, 64);
         var tile = new Border
         {
             Background = selected ? OverlayTheme.FeaturedBrush : OverlayTheme.RowBrush,
@@ -482,8 +511,8 @@ internal static class RecommendationBoard
             Cursor = Cursors.Hand,
             Child = body
         };
-        tile.ToolTip = RecommendationPresentation.CraftUnitName(unit);
-        AutomationProperties.SetName(tile, RecommendationPresentation.CraftUnitName(unit));
+        tile.ToolTip = BoardTooltip(item);
+        AutomationProperties.SetName(tile, BoardTooltip(item).Replace('\n', ' '));
         tile.MouseEnter += (_, _) =>
         {
             if (!selected) tile.BorderBrush = OverlayTheme.GoldBrush;
@@ -500,5 +529,31 @@ internal static class RecommendationBoard
             onSelect(item.Route.Id);
         };
         return tile;
+    }
+
+    private static void AddGreenBloodCaption(Panel body, Recommendation item, double fontSize, double maxWidth)
+    {
+        var line = RecommendationPresentation.GreenBloodHostLine(item, compact: true);
+        if (line is null) return;
+        body.Children.Add(new TextBlock
+        {
+            Text = line,
+            Foreground = OverlayTheme.GoldBrush,
+            FontSize = fontSize,
+            FontWeight = FontWeights.SemiBold,
+            TextAlignment = TextAlignment.Center,
+            TextWrapping = TextWrapping.Wrap,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            MaxWidth = maxWidth,
+            MaxHeight = fontSize * 2.6,
+            Margin = new Thickness(0, 1, 0, 0)
+        });
+    }
+
+    private static string BoardTooltip(Recommendation item)
+    {
+        var name = RecommendationPresentation.CraftUnitName(item.CompositionUnits[0]);
+        var host = RecommendationPresentation.GreenBloodHostLine(item, compact: false);
+        return host is null ? name : name + "\n" + host;
     }
 }

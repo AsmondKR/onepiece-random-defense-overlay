@@ -221,7 +221,8 @@ public partial class OverlayWindow : OverlayWindowBase
         GreenBloodHeader.Visibility = visible;
         GreenBloodPanel.Visibility = visible;
         foreach (var item in advice)
-            GreenBloodPanel.Children.Add(AdviceChip(item.Name, OverlayTheme.OkBrush));
+            GreenBloodPanel.Children.Add(AdviceChip(item.Name,
+                item.Seraphim ? OverlayTheme.GoldBrush : OverlayTheme.OkBrush));
     }
 
     private void RenderRareRerolls(IReadOnlyList<RareRerollAdvice> advice, bool hasPlan)

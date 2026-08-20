@@ -592,6 +592,21 @@ Assert(!dragonRecommendationEffect.StartsWith("효과", StringComparison.Ordinal
        dragonRecommendationEffect.Contains("스턴 0.9", StringComparison.Ordinal) &&
        dragonRecommendationEffect.Contains("방깎 10", StringComparison.Ordinal),
     "추천 카드를 펼치지 않아도 기물의 실제 효과 요약을 접두어 없이 표시");
+var dragonNowLines = RecommendationPresentation.NowAbilityLines(new CompositionUnitDetail
+{
+    UnitId = "dragon_legend",
+    Name = "드래곤 전설",
+    Abilities = catalog.Unit("dragon_legend").OfficialAbilities
+});
+Assert(dragonNowLines.Count > 0 &&
+       dragonNowLines.Any(line => line.Contains("스턴", StringComparison.Ordinal)) &&
+       dragonNowLines.Any(line => line.Contains("방깎", StringComparison.Ordinal)),
+    "지금 할 일 카드 오른쪽에는 효과를 줄 단위로 띄운다");
+Assert(RecommendationPresentation.NowAbilityLines(new CompositionUnitDetail
+{
+    UnitId = "empty",
+    Name = "빈칸"
+}).Count == 0, "효과가 없는 유닛은 오른쪽 능력 줄을 비운다");
 Assert(!dragonAbilityText.Contains('%') && !KoreanLabels.ContainsLatin(dragonAbilityText),
     "능력 표시에 백분율과 영문 내부 키를 노출하지 않음");
 var safeOfficialDescriptions = catalog.RawcodeCatalog.Keys
@@ -947,17 +962,38 @@ Assert(evidenceCrafts.Count > 1 &&
 
 var greenBloodAdvisor = new GreenBloodAdvisor(catalog);
 var yamatoGoal = catalog.Unit("yamato_transcendent");
+var hawkGbRec = new Recommendation
+{
+    Route = new RouteDefinition { Id = "craft:rawcode:3A0h", GoalUnitId = "rawcode:3A0h", Name = "S-호크" }
+};
 var planAdvice = greenBloodAdvisor.Evaluate(yamatoGoal, Inventory("mihawk_hidden"), [], null);
-Assert(planAdvice.Count == 1 && planAdvice[0].UnitId == "mihawk_hidden" &&
+Assert(planAdvice.Count >= 1 && planAdvice[0].UnitId == "rawcode:3A0h" && planAdvice[0].Seraphim &&
        !GreenBloodAdvisor.HasUnusedGreenBlood(catalog, Inventory("mihawk_hidden")) &&
        GreenBloodAdvisor.HasUnusedGreenBlood(catalog, Inventory("item_greenblood")),
-    "신 기준 획득 확정: 그린블러드 미보유여도 사용 계획을 항상 표시");
+    "호스트가 있으면 그린블러드는 세라핌이 최우선");
 var greenBloodAdvice = greenBloodAdvisor.Evaluate(yamatoGoal,
     Inventory("item_greenblood", "mihawk_hidden", "rawcode:030h"), [], null);
-Assert(greenBloodAdvice.Count == 2 && greenBloodAdvice[0].UnitId == "mihawk_hidden",
-    "그린블러드 우선 태그 유닛을 먼저 추천");
-Assert(greenBloodAdvice[^1].UnitId == "rawcode:030h" && greenBloodAdvice[^1].Warning is not null,
-    "쿠마에는 스턴 소실 경고를 붙이고 후순위");
+Assert(greenBloodAdvice.All(item => item.Seraphim) &&
+       greenBloodAdvice[0].UnitId == "rawcode:3A0h" &&
+       greenBloodAdvice.Any(item => item.UnitId == "rawcode:1A0h"),
+    "보유 호스트가 있는 세라핌을 전설 부여보다 앞에 둔다");
+Assert(greenBloodAdvice.All(item => item.Warning is null),
+    "세라핌 변환이면 쿠마 스턴 소실 경고를 붙이지 않는다");
+var ownedLegendFallback = greenBloodAdvisor.Evaluate(yamatoGoal,
+    Inventory("dragon_legend"), [hawkGbRec], null);
+Assert(ownedLegendFallback.Count == 1 && ownedLegendFallback[0].UnitId == "dragon_legend" &&
+       !ownedLegendFallback[0].Seraphim,
+    "세라핌 패가 모자라면 이미 가진 전설에 사용처를 표시한다");
+var seraphimBeatsOwnedLegend = greenBloodAdvisor.Evaluate(yamatoGoal,
+    Inventory("mihawk_hidden", "dragon_legend"), [hawkGbRec], null);
+Assert(seraphimBeatsOwnedLegend[0].UnitId == "rawcode:3A0h" && seraphimBeatsOwnedLegend[0].Seraphim,
+    "호스트와 전설을 같이 들고 있어도 세라핌이 앞선다");
+var kumaBuffPlan = greenBloodAdvisor.Evaluate(yamatoGoal, [],
+    [new Recommendation { Route = new RouteDefinition { Id = "kuma-plan", GoalUnitId = "rawcode:030h", Name = "쿠마" } }],
+    null);
+Assert(kumaBuffPlan.Count == 1 && kumaBuffPlan[0].UnitId == "rawcode:030h" &&
+       kumaBuffPlan[0].Warning is not null && !kumaBuffPlan[0].Seraphim,
+    "쿠마를 부여 계획으로 쓸 때만 스턴 소실 경고를 붙인다");
 var distortionRecommendations = new List<Recommendation>
 {
     new() { Route = new RouteDefinition { Id = "warp-test", GoalUnitId = "rawcode:V30h", Name = "코알라 왜곡" } },
@@ -965,8 +1001,9 @@ var distortionRecommendations = new List<Recommendation>
 };
 var legendHiddenOnly = greenBloodAdvisor.Evaluate(yamatoGoal,
     Inventory("item_greenblood", "mihawk_hidden"), distortionRecommendations, null);
-Assert(legendHiddenOnly.Count == 1 && legendHiddenOnly[0].UnitId == "mihawk_hidden",
-    "그린블러드는 전설·히든 부여 대상만 추천(왜곡 유닛 조합과 무관)");
+Assert(legendHiddenOnly.Count >= 1 && legendHiddenOnly[0].UnitId == "rawcode:3A0h" &&
+       legendHiddenOnly[0].Seraphim,
+    "그린블러드는 왜곡이 아니라 세라핌·전설·히든 사용처만 추천");
 var plannedFallback = greenBloodAdvisor.Evaluate(yamatoGoal, [],
     [new Recommendation { Route = new RouteDefinition { Id = "gb-plan", GoalUnitId = "mihawk_hidden", Name = "미호크" } }],
     null);
@@ -1339,6 +1376,47 @@ Assert(!seraphimEngine.RecommendNearestCrafts("rawcode:A90H", [], 8,
         navigationMode: "AlliedForces.EmergencyCall", suppressSeraphim: true)
     .Any(rec => catalog.Unit(rec.Route.GoalUnitId).Tier.Split('[', 2)[0].Trim() == "세라핌"),
     "그린블러드를 이미 썼으면 세라핌을 추천하지 않음");
+
+static HashSet<string> ClusterIds(RecommendationEngine engine, string unitId) =>
+    engine.StoryClusterChildren(unitId, [])
+        .Select(item => item.Route.GoalUnitId)
+        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+var hawkChildren = seraphimEngine.StoryClusterChildren("rawcode:3A0h", []);
+Assert(hawkChildren.Count == 1 &&
+       hawkChildren[0].Route.GoalUnitId.Equals("mihawk_hidden", StringComparison.OrdinalIgnoreCase) &&
+       hawkChildren[0].ClusterParentUnitId == "rawcode:3A0h" &&
+       hawkChildren[0].RemainingCraftSteps.Count > 0,
+    "S-호크를 고르면 하위패로 검호 히든이 붙고 그 조합 흐름이 있다");
+var hawkRec = jinbeWithBlood.First(rec =>
+    rec.Route.GoalUnitId.Equals("rawcode:3A0h", StringComparison.OrdinalIgnoreCase));
+Assert(BoardSelection.Resolve([hawkRec], hawkChildren, hawkChildren[0].Route.Id)!
+           .Route.GoalUnitId == "mihawk_hidden" &&
+       BoardSelection.ClusterHeadId([hawkRec], hawkChildren, hawkChildren[0].Route.Id,
+           hawkRec.Route.Id) == hawkRec.Route.Id,
+    "S-호크 클러스터에서 검호 히든을 눌러도 호크 묶음은 유지된다");
+Assert(ClusterIds(seraphimEngine, "rawcode:0A0h").SetEquals(["rawcode:G30h"]),
+    "S-샤크 하위패는 징베 전설");
+Assert(ClusterIds(seraphimEngine, "rawcode:Y90h").SetEquals(["rawcode:230h"]),
+    "S-스네이크 하위패는 핸콕 전설");
+Assert(ClusterIds(seraphimEngine, "rawcode:1A0h").SetEquals(["rawcode:030h"]),
+    "S-베어 하위패는 쿠마 전설");
+Assert(RecommendationPresentation.GreenBloodHostLine(hawkRec, compact: true) == "미호크에게 그블" &&
+       RecommendationPresentation.GreenBloodHostLine(hawkRec, compact: false) == "미호크에게 그린블러드",
+    "세라핌 칸에 그린블러드 부여 대상을 텍스트로 보여 준다");
+Assert(RecommendationPresentation.GreenBloodHostLine(jinbeWithBlood[0], compact: true) is null,
+    "세라핌이 아니면 그린블러드 대상 문구를 붙이지 않는다");
+Assert(ClusterIds(engine, "rawcode:V50h").SetEquals(["rawcode:O20h"]),
+    "에이스 변화된 하위패는 에이스 전설");
+Assert(ClusterIds(engine, "rawcode:J70h").SetEquals(["rawcode:L70h"]),
+    "캐럿 변화된 하위패는 캐럿 히든");
+Assert(ClusterIds(engine, "rawcode:E90H").Contains("rawcode:W30h"),
+    "도플라밍고 초월 하위패에 베르고 히든이 있다");
+Assert(ClusterIds(engine, "yamato_transcendent")
+           .IsSupersetOf(["rawcode:S30h", "rawcode:780h"]) &&
+       ClusterIds(engine, "yamato_transcendent").All(id =>
+           catalog.Unit(id).Tier.Split('[', 2)[0].Trim() is "전설" or "히든" or "변화된"),
+    "야마토 초월 클러스터는 전설급만 두고 희귀함은 넣지 않는다");
 
 // 클리어 정산: 인식 유닛을 티어별로 세고, 흔함 등 정산 외 티어는 제외한다.
 var settlement = SettlementReport.Build(catalog,
@@ -2328,7 +2406,7 @@ if (Environment.GetEnvironmentVariable("ORAND_DIAG") == "drill")
     return;
 }
 
-Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 440/440");
+Console.WriteLine("PASS: 추천/메모리 연동 스모크 테스트 통과");
 return;
 
 static ClearSample GodClear(string id, int unitCount, DateTimeOffset at,

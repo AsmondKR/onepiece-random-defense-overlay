@@ -381,8 +381,9 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
     }
 
     /// <summary>
-    /// 선택한 후보의 스토리 하위 재료. 초월→전설, 전설→희귀함, 희귀함→특별함.
-    /// 후보 보드 클러스터는 목록 첫 칸이 아니라 지금 고른 칸에 붙인다.
+    /// 선택한 후보의 바로 아래 조합 재료. 레시피에서 가장 높은 등급 묶음만 붙인다.
+    /// 세라핌→전설/히든, 초월→전설급, 전설/히든→희귀함(호스트가 전설이면 전설),
+    /// 희귀함→특별함. 후보 보드 클러스터는 지금 고른 칸에 붙인다.
     /// </summary>
     public IReadOnlyList<Recommendation> StoryClusterChildren(
         string unitId, IEnumerable<InventoryEntry> inventory)
@@ -392,10 +393,8 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
             .ToDictionary(group => group.Key, group => group.Sum(entry => entry.Count),
                 StringComparer.OrdinalIgnoreCase);
         var unit = catalog.Unit(unitId);
-        var childTier = StoryChildTier(unit.Tier);
-        if (childTier is null) return [];
         var calculator = new RecipeCompletionCalculator(catalog.Unit);
-        return RecipeTierIds(unit, childTier)
+        return StoryClusterChildIds(unit)
             .Where(id => counts.GetValueOrDefault(id) <= 0)
             .Select(id =>
             {
@@ -406,12 +405,32 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
             .ToList();
     }
 
-    private static string? StoryChildTier(string tier) => BaseTier(tier) switch
+    private List<string> StoryClusterChildIds(UnitDefinition root)
     {
-        "초월" or "불멸" or "영원" or "제한됨" or "신비함" => "전설",
-        "전설" or "히든" or "변화된" or "왜곡됨" => "희귀함",
-        "희귀함" => "특별함",
-        _ => null
+        var materials = root.Recipe.Keys
+            .Select(catalog.Unit)
+            .Where(unit => ClusterBand(unit.Tier) > 0)
+            .ToList();
+        if (materials.Count == 0) return [];
+        var top = materials.Max(unit => ClusterBand(unit.Tier));
+        return materials
+            .Where(unit => ClusterBand(unit.Tier) == top)
+            .Select(unit => unit.Id)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    /// <summary>
+    /// 보드에 묶을 재료 등급. 높을수록 우선. 0은 흔함·아이템처럼 클러스터에서 제외.
+    /// </summary>
+    private static int ClusterBand(string tier) => BaseTier(tier) switch
+    {
+        "초월" or "불멸" or "영원" or "제한됨" or "신비함" => 5,
+        "전설" or "히든" or "변화된" or "왜곡됨" or "세라핌" => 4,
+        "해적선" or "함선" => 3,
+        "희귀함" => 2,
+        "특별함" => 1,
+        _ => 0
     };
 
     // 배(해적선 060h·고대의 배 Y50h)는 일반 재료 조합으로 만들 수 없는 특수 획득물이다.
@@ -1231,11 +1250,23 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
         RecipeTierIds(catalog.Unit(unitId), "특별함");
 
     /// <summary>
-    /// 초월 조합식에 들어 있는 전설(직접 재료와 그 아래 트리).
+    /// 초월 조합식의 전설급 직접 재료. 전설이 없으면 히든을 쓴다.
     /// 스토리 진행을 위해 후보 보드에서 역할 패키지보다 앞에 둔다.
     /// </summary>
-    private List<string> RecipeLegendaryIds(UnitDefinition goal) =>
-        BaseTier(goal.Tier) == "초월" ? RecipeTierIds(goal, "전설") : [];
+    private List<string> RecipeLegendaryIds(UnitDefinition goal)
+    {
+        if (BaseTier(goal.Tier) != "초월") return [];
+        var legends = DirectRecipeIds(goal, "전설");
+        return legends.Count > 0 ? legends : DirectRecipeIds(goal, "히든");
+    }
+
+    private List<string> DirectRecipeIds(UnitDefinition root, string tier) =>
+        root.Recipe.Keys
+            .Select(catalog.Unit)
+            .Where(unit => BaseTier(unit.Tier) == tier)
+            .Select(unit => unit.Id)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
     private List<string> RecipeTierIds(UnitDefinition root, string tier)
     {

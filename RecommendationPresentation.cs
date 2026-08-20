@@ -34,6 +34,14 @@ public static class RecommendationPresentation
     public static string RecommendationEffectLine(CompositionUnitDetail unit) =>
         AbilitySummary(unit);
 
+    /// <summary>지금 할 일 카드 오른쪽에 줄 단위로 띄울 효과. 없으면 빈 목록.</summary>
+    public static IReadOnlyList<string> NowAbilityLines(CompositionUnitDetail unit) =>
+        unit.Abilities
+            .Select(ability => $"{ShortAbilityName(ability.Name)} {SafeText(ability.DisplayValue)}".Trim())
+            .Where(line => line.Length > 0)
+            .Take(5)
+            .ToList();
+
     /// <summary>접힌 추천 카드에 띄울 조합 명령어. 없으면 null.</summary>
     public static string? OverlayCommandLine(Recommendation item) =>
         item.CombineCommands.Count == 0
@@ -59,6 +67,23 @@ public static class RecommendationPresentation
         if (string.IsNullOrWhiteSpace(baseTier)) return name;
         name = RemoveTierSuffix(name, baseTier);
         return $"{name} - {baseTier}";
+    }
+
+    /// <summary>
+    /// 세라핌을 만들 때 그린블러드를 줄 유닛. 보드에는 짧게, 지금 할 일에는 풀 문구.
+    /// </summary>
+    public static string? GreenBloodHostLine(Recommendation rec, bool compact)
+    {
+        if (rec.CompositionUnits.Count == 0) return null;
+        if (rec.CompositionUnits[0].Tier.Split('[', 2)[0].Trim() != "세라핌") return null;
+        var host = rec.RecipeTree?.Children.FirstOrDefault(child =>
+            !child.UnitId.Equals("item_greenblood", StringComparison.OrdinalIgnoreCase) &&
+            child.Tier.Split('[', 2)[0].Trim() is not ("아이템" or "자원"));
+        if (host is null) return null;
+        var tier = host.Tier.Split('[', 2)[0].Trim();
+        var name = RemoveTierSuffix(SafeText(host.Name).Trim(), tier);
+        if (string.IsNullOrWhiteSpace(name)) return null;
+        return compact ? $"{name}에게 그블" : $"{name}에게 그린블러드";
     }
 
     public static string CraftIngredientLine(RecipeCraftStep step)
