@@ -34,8 +34,17 @@ internal static class RecommendationBoard
             {
                 Text = "패 인식 대기 중",
                 Foreground = OverlayTheme.MutedBrush,
-                FontSize = 13,
-                Margin = new Thickness(4, 8, 0, 8)
+                FontSize = 15,
+                FontWeight = FontWeights.SemiBold,
+                Margin = new Thickness(4, 10, 0, 10)
+            });
+            nowPanel.Children.Add(new TextBlock
+            {
+                Text = "게임이 잡히면 지금 할 일과 후보 보드가 여기에 뜹니다.",
+                Foreground = OverlayTheme.MutedBrush,
+                FontSize = 12,
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(4, 0, 0, 4)
             });
             return;
         }
@@ -91,9 +100,11 @@ internal static class RecommendationBoard
         {
             Text = RecommendationPresentation.CraftUnitName(unit),
             Foreground = OverlayTheme.WhiteBrush,
-            FontSize = 16,
+            FontSize = 18,
             FontWeight = FontWeights.Bold,
-            TextWrapping = TextWrapping.Wrap
+            TextWrapping = TextWrapping.Wrap,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            MaxHeight = 48
         });
 
         if (plan.Count > 0)
@@ -141,7 +152,9 @@ internal static class RecommendationBoard
         {
             Text = RecommendationPresentation.CompletionPercent(selected.RecipeProgress),
             Foreground = OverlayTheme.GoldBrush,
-            FontSize = 26,
+            FontSize = 28,
+            MinWidth = 64,
+            TextAlignment = TextAlignment.Right,
             FontWeight = FontWeights.Bold,
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(12, 0, 0, 0)
@@ -214,8 +227,8 @@ internal static class RecommendationBoard
         var commands = step.CombineCommands.Count > 0
             ? step.CombineCommands
             : step.CombineKey is { Length: > 0 } key ? (IReadOnlyList<string>)[key] : [];
-        var body = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center, Width = 76 };
-        var icon = UnitImageFactory.Create(step.Image, step.Name, 40, step.UnitId);
+        var body = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center, Width = 92 };
+        var icon = UnitImageFactory.Create(step.Image, step.Name, 44, step.UnitId);
         icon.HorizontalAlignment = HorizontalAlignment.Center;
         body.Children.Add(icon);
         body.Children.Add(new TextBlock
@@ -225,8 +238,9 @@ internal static class RecommendationBoard
             FontSize = 11,
             FontWeight = FontWeights.SemiBold,
             TextAlignment = TextAlignment.Center,
-            TextWrapping = TextWrapping.NoWrap,
+            TextWrapping = TextWrapping.Wrap,
             TextTrimming = TextTrimming.CharacterEllipsis,
+            MaxHeight = 32,
             Margin = new Thickness(0, 3, 0, 0)
         });
         body.Children.Add(new TextBlock
@@ -251,6 +265,7 @@ internal static class RecommendationBoard
             BorderThickness = new Thickness(current ? 2 : 1),
             CornerRadius = new CornerRadius(OverlayTheme.TileRadius),
             Padding = new Thickness(6, 6, 6, 6),
+            ToolTip = RecommendationPresentation.SafeText(step.Name).Trim(),
             Child = body
         };
     }
@@ -306,6 +321,7 @@ internal static class RecommendationBoard
             Cursor = Cursors.Hand,
             Child = body
         };
+        tile.ToolTip = RecommendationPresentation.CraftUnitName(unit);
         AutomationProperties.SetName(tile, RecommendationPresentation.CraftUnitName(unit));
         tile.MouseEnter += (_, _) =>
         {

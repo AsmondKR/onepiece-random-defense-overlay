@@ -19,6 +19,12 @@ public partial class OverlayWindow : OverlayWindowBase
         InitializeComponent();
         var appVersion = UpdateService.CurrentVersion;
         OverlayVersionText.Text = $"v{appVersion.Major}.{appVersion.Minor}.{appVersion.Build} 테스트3";
+        Loaded += (_, _) =>
+        {
+            OverlayTheme.AttachRoundClip(NowWell, OverlayTheme.WellRadius);
+            OverlayTheme.AttachRoundClip(FlowWell, OverlayTheme.WellRadius);
+            OverlayTheme.AttachRoundClip(BoardWell, OverlayTheme.WellRadius);
+        };
         IsVisibleChanged += (_, e) =>
         {
             if ((bool)e.NewValue) Stats.Show();
@@ -26,8 +32,8 @@ public partial class OverlayWindow : OverlayWindowBase
         };
     }
 
-    protected override double DesignWidth => 760;
-    protected override double DesignHeight => 680;
+    protected override double DesignWidth => 800;
+    protected override double DesignHeight => 740;
     protected override UIElement? ClickThroughIndicator => ClickThroughBadge;
 
     public StatsOverlayWindow Stats { get; } = new();

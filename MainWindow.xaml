@@ -121,7 +121,8 @@
           <RowDefinition Height="Auto"/>
           <RowDefinition Height="*" MinHeight="220"/>
         </Grid.RowDefinitions>
-        <Border Background="#FF12151C" CornerRadius="12" Padding="12,10">
+        <Border Background="#FF12151C" BorderBrush="#66F0C75E" BorderThickness="1"
+                CornerRadius="12" Padding="12,10">
           <StackPanel x:Name="NowPanel"/>
         </Border>
         <Border Grid.Row="1" Background="#FF0C0E14" CornerRadius="12" Padding="10,8" Margin="0,10,0,0">
