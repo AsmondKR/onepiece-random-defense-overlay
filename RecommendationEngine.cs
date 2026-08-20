@@ -229,11 +229,30 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
                 navigation.AllowsMultipleTopUnits, navigation.CanCraftTopUnits)
             : OrderByCraftDistance(candidates).Take(maximumSupports).Select(x => x.Recommendation).ToList();
 
+        // 초월은 하위 전설을 먼저 짜야 스토리를 민다. 역할 패키지보다 후보 보드 앞에 둔다.
+        var recipeLegendaryIds = RecipeLegendaryIds(goal);
+        if (recipeLegendaryIds.Count > 0)
+        {
+            var missingLegendaries = recipeLegendaryIds
+                .Where(id => counts.GetValueOrDefault(id) <= 0)
+                .Select(id => EvaluateCraft(catalog.Unit(id), counts, calculator))
+                .ToList();
+            var pinned = new HashSet<string>(missingLegendaries.Select(item => item.Route.GoalUnitId),
+                StringComparer.OrdinalIgnoreCase);
+            nearest = missingLegendaries
+                .Concat(nearest.Where(item => !pinned.Contains(item.Route.GoalUnitId)))
+                .Take(maximumSupports)
+                .ToList();
+        }
+
         // 어떤 유닛을 조합할지는 역할 로직이 고르고, 화면 순서는 신+ 채용률(또는
         // 수작업 우선도)이 높은 순으로 보여준다. 동점은 역할 파이프라인 순서 유지.
+        // 초월의 하위 전설은 채용률보다 스토리 진행이 앞선다.
         nearest = nearest
             .Select((recommendation, index) => (recommendation, index))
             .OrderByDescending(pair =>
+                recipeLegendaryIds.Contains(pair.recommendation.Route.GoalUnitId) ? 1 : 0)
+            .ThenByDescending(pair =>
                 CommunityPriorityScore(goal, catalog.Unit(pair.recommendation.Route.GoalUnitId)))
             .ThenBy(pair => pair.index)
             .Select(pair => pair.recommendation)
@@ -267,8 +286,9 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
                 var insertAt = results.Count;
                 for (var i = showGoal ? 1 : 0; i < results.Count; i++)
                 {
-                    if (CommunityPriorityScore(goal,
-                            catalog.Unit(results[i].Route.GoalUnitId)) >= seraphimScore) continue;
+                    var supportId = results[i].Route.GoalUnitId;
+                    if (recipeLegendaryIds.Contains(supportId)) continue;
+                    if (CommunityPriorityScore(goal, catalog.Unit(supportId)) >= seraphimScore) continue;
                     insertAt = i;
                     break;
                 }
@@ -285,6 +305,8 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
             results[i] = EvaluateCraft(catalog.Unit(results[i].Route.GoalUnitId),
                 cascadeInventory, calculator, out var remainingAfterBuild);
             cascadeInventory = remainingAfterBuild;
+            if (recipeLegendaryIds.Contains(results[i].Route.GoalUnitId))
+                results[i].ClusterParentUnitId = goal.Id;
         }
 
         foreach (var recommendation in results)
@@ -295,6 +317,41 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
                 catalog.Unit(recommendation.Route.GoalUnitId).Rawcodes);
         }
         return results;
+    }
+
+    /// <summary>
+    /// 후보 보드에서 고른 칸이 재료를 먼저 쓰도록 완료율을 다시 계산한다.
+    /// 칸 순서는 그대로 두고, 퍼센트만 선택한 패 기준으로 바꾼다.
+    /// </summary>
+    public IReadOnlyList<Recommendation> Recascade(
+        IReadOnlyList<Recommendation> recs,
+        IEnumerable<InventoryEntry> inventory,
+        string? consumeFirstRouteId)
+    {
+        if (recs.Count == 0) return recs;
+        var counts = inventory
+            .GroupBy(entry => entry.UnitId, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.Sum(entry => entry.Count),
+                StringComparer.OrdinalIgnoreCase);
+        var calculator = new RecipeCompletionCalculator(catalog.Unit);
+        var selected = recs.FirstOrDefault(item =>
+            item.Route.Id.Equals(consumeFirstRouteId, StringComparison.OrdinalIgnoreCase));
+        var consumeOrder = selected is null
+            ? recs
+            : new[] { selected }.Concat(recs.Where(item =>
+                !item.Route.Id.Equals(selected.Route.Id, StringComparison.OrdinalIgnoreCase)));
+        var remaining = counts;
+        var rebuilt = new Dictionary<string, Recommendation>(StringComparer.OrdinalIgnoreCase);
+        foreach (var rec in consumeOrder)
+        {
+            var crafted = EvaluateCraft(catalog.Unit(rec.Route.GoalUnitId), remaining, calculator,
+                out var leftover);
+            remaining = leftover;
+            crafted.ClusterParentUnitId = rec.ClusterParentUnitId;
+            crafted.ClearEvidence = rec.ClearEvidence;
+            rebuilt[rec.Route.Id] = crafted;
+        }
+        return recs.Select(item => rebuilt[item.Route.Id]).ToList();
     }
 
     /// <summary>
@@ -310,7 +367,7 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
             .ToDictionary(group => group.Key, group => group.Sum(x => x.Count),
                 StringComparer.OrdinalIgnoreCase);
         var calculator = new RecipeCompletionCalculator(catalog.Unit);
-        return catalog.AllUnits
+        var rares = catalog.AllUnits
             .Where(unit => unit.Tier.Split('[', 2)[0].Trim() == "희귀함")
             .Where(unit => unit.Recipe.Count > 0)
             .DistinctBy(unit => unit.Id)
@@ -320,7 +377,42 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
             .ThenBy(recommendation => recommendation.RecipeProgress.RequiredLeafCount)
             .Take(Math.Max(1, take))
             .ToList();
+        return rares;
     }
+
+    /// <summary>
+    /// 선택한 후보의 스토리 하위 재료. 초월→전설, 전설→희귀함, 희귀함→특별함.
+    /// 후보 보드 클러스터는 목록 첫 칸이 아니라 지금 고른 칸에 붙인다.
+    /// </summary>
+    public IReadOnlyList<Recommendation> StoryClusterChildren(
+        string unitId, IEnumerable<InventoryEntry> inventory)
+    {
+        var counts = inventory
+            .GroupBy(entry => entry.UnitId, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.Sum(entry => entry.Count),
+                StringComparer.OrdinalIgnoreCase);
+        var unit = catalog.Unit(unitId);
+        var childTier = StoryChildTier(unit.Tier);
+        if (childTier is null) return [];
+        var calculator = new RecipeCompletionCalculator(catalog.Unit);
+        return RecipeTierIds(unit, childTier)
+            .Where(id => counts.GetValueOrDefault(id) <= 0)
+            .Select(id =>
+            {
+                var child = EvaluateCraft(catalog.Unit(id), counts, calculator);
+                child.ClusterParentUnitId = unit.Id;
+                return child;
+            })
+            .ToList();
+    }
+
+    private static string? StoryChildTier(string tier) => BaseTier(tier) switch
+    {
+        "초월" or "불멸" or "영원" or "제한됨" or "신비함" => "전설",
+        "전설" or "히든" or "변화된" or "왜곡됨" => "희귀함",
+        "희귀함" => "특별함",
+        _ => null
+    };
 
     // 배(해적선 060h·고대의 배 Y50h)는 일반 재료 조합으로 만들 수 없는 특수 획득물이다.
     // 좀비·토큰·확장팩·초월쿠마 같은 기타 재료는 게임 안에서 정상 획득 루트가 있으므로
@@ -1131,6 +1223,37 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
     }
 
     private static string BaseTier(string tier) => tier.Split('[', 2)[0].Trim();
+
+    public IReadOnlyList<string> RecipeLegendaryUnitIds(string goalUnitId) =>
+        RecipeLegendaryIds(catalog.Unit(goalUnitId));
+
+    public IReadOnlyList<string> RecipeSpecialUnitIds(string unitId) =>
+        RecipeTierIds(catalog.Unit(unitId), "특별함");
+
+    /// <summary>
+    /// 초월 조합식에 들어 있는 전설(직접 재료와 그 아래 트리).
+    /// 스토리 진행을 위해 후보 보드에서 역할 패키지보다 앞에 둔다.
+    /// </summary>
+    private List<string> RecipeLegendaryIds(UnitDefinition goal) =>
+        BaseTier(goal.Tier) == "초월" ? RecipeTierIds(goal, "전설") : [];
+
+    private List<string> RecipeTierIds(UnitDefinition root, string tier)
+    {
+        var ids = new List<string>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        void Visit(string unitId)
+        {
+            if (!seen.Add(unitId)) return;
+            var unit = catalog.Unit(unitId);
+            if (BaseTier(unit.Tier) == tier)
+                ids.Add(unit.Id);
+            foreach (var childId in unit.Recipe.Keys)
+                Visit(childId);
+        }
+        foreach (var childId in root.Recipe.Keys)
+            Visit(childId);
+        return ids;
+    }
 
     // 아이템(흑도 슈스이 방깎 6 등)도 완성 전력으로 역할 목표에 합산한다.
     private static bool CountsAsCompletedSupport(string tier) =>

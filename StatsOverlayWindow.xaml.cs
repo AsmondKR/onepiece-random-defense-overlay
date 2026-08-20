@@ -10,7 +10,7 @@ public partial class StatsOverlayWindow : OverlayWindowBase
 {
     public StatsOverlayWindow() => InitializeComponent();
 
-    protected override double DesignWidth => 260;
+    protected override double DesignWidth => 228;
     protected override double DesignHeight => 700;
     protected override UIElement? ClickThroughIndicator => ClickThroughBadge;
 }

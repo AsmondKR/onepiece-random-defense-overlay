@@ -2,28 +2,31 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:OrandOverlay"
-        Width="520" Height="700" Top="48" Left="1460"
+        Width="540" Height="740" Top="48" Left="1360"
         FontFamily="Malgun Gothic"
+        UseLayoutRounding="True" SnapsToDevicePixels="True"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         Topmost="True" ShowInTaskbar="False" ResizeMode="NoResize">
-  <!-- 게임 화면 위 가독성: 배경 투과를 줄이고 본문 대비를 확보한다. -->
-  <Border Background="#F5121623" BorderBrush="#668B5CF6" BorderThickness="1"
-          CornerRadius="14" Padding="14">
-    <Grid>
-      <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="*"/>
-      </Grid.ColumnDefinitions>
+  <Border CornerRadius="16" Background="#F2080A0E" BorderBrush="#FF2A3140" BorderThickness="1">
+    <Grid Margin="4">
       <Grid.RowDefinitions>
         <RowDefinition Height="Auto"/>
-        <RowDefinition Height="*"/>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="*" MinHeight="340"/>
         <RowDefinition Height="Auto"/>
       </Grid.RowDefinitions>
-      <Grid  Background="Transparent" Cursor="SizeAll" MouseLeftButtonDown="DragArea_OnMouseLeftButtonDown">
-        <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+      <Grid Background="Transparent" Cursor="SizeAll" MouseLeftButtonDown="DragArea_OnMouseLeftButtonDown"
+            Margin="10,8,10,0">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition/>
+          <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
         <StackPanel>
-          <TextBlock x:Name="GoalText" Text="야마토 초월" Foreground="White" FontSize="22" FontWeight="SemiBold"/>
-          <TextBlock x:Name="PhaseHintText" Foreground="#FFFBBF24" FontSize="11.5"
-                     TextWrapping="Wrap" Margin="0,4,0,0" Visibility="Collapsed"/>
+          <TextBlock x:Name="GoalText" Text="야마토 초월" Foreground="#FFF0C75E"
+                     FontSize="15" FontWeight="Bold" TextWrapping="Wrap"/>
+          <TextBlock x:Name="PhaseHintText" Foreground="#FFB4BBC6" FontSize="11"
+                     TextWrapping="Wrap" Margin="0,2,0,0" Visibility="Collapsed"/>
         </StackPanel>
         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
           <Button Content="정산" Click="SettlementButton_OnClick"
@@ -33,22 +36,38 @@
                   Style="{StaticResource SubtleButton}" Margin="0,0,6,0"
                   ToolTip="지금 패 기준으로 조합이 가장 가까운 학습 상위를 다시 계산해 추천합니다."/>
           <Border x:Name="ClickThroughBadge" Visibility="Collapsed"
-                  Background="#33334155" CornerRadius="9" Padding="8,3" VerticalAlignment="Center">
-            <TextBlock Text="클릭 통과" Foreground="#FF9CA3AF" FontSize="10"/>
+                  Background="#331C2028" CornerRadius="8" Padding="8,3" VerticalAlignment="Center">
+            <TextBlock Text="클릭 통과" Foreground="#FF8B93A7" FontSize="10"/>
           </Border>
         </StackPanel>
       </Grid>
-      <ScrollViewer Grid.Row="1" x:Name="RecommendationScroll"
-                    VerticalScrollBarVisibility="Auto" Margin="0,12,0,0">
-        <StackPanel x:Name="RecommendationPanel"/>
-      </ScrollViewer>
-      <Grid Grid.Row="2"  Margin="2,10,2,0">
+      <Border x:Name="NowWell" Grid.Row="1" Background="#FF12151C" BorderBrush="#66F0C75E"
+              BorderThickness="1" CornerRadius="12" Margin="10,8,10,0" Padding="10,8">
+        <StackPanel x:Name="NowPanel"/>
+      </Border>
+      <Border x:Name="FlowWell" Grid.Row="2" Background="#FF0C0E14" CornerRadius="12"
+              Margin="10,6,10,0" Padding="8,6">
+        <ScrollViewer MaxHeight="178" HorizontalScrollBarVisibility="Auto"
+                      VerticalScrollBarVisibility="Disabled">
+          <StackPanel x:Name="FlowPanel"/>
+        </ScrollViewer>
+      </Border>
+      <Border x:Name="BoardWell" Grid.Row="3" Background="#FF0C0E14" CornerRadius="12" Margin="10,6,10,0" Padding="8,6">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+          <StackPanel>
+            <TextBlock Text="후보 보드  ·  눌러서 흐름 전환" Foreground="#FF8B93A7" FontSize="10"
+                       FontWeight="SemiBold" Margin="0,0,0,8"/>
+            <StackPanel x:Name="BoardPanel"/>
+          </StackPanel>
+        </ScrollViewer>
+      </Border>
+      <Grid Grid.Row="4" Margin="12,6,12,8">
         <Grid.ColumnDefinitions>
           <ColumnDefinition/>
           <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
-        <TextBlock x:Name="StatusText" Foreground="#FFB3BAC8" FontSize="12"/>
-        <TextBlock Grid.Column="1" x:Name="OverlayVersionText" Foreground="#FF7F8796" FontSize="10.5"
+        <TextBlock x:Name="StatusText" Foreground="#FF8B93A7" FontSize="11" TextWrapping="Wrap"/>
+        <TextBlock Grid.Column="1" x:Name="OverlayVersionText" Foreground="#FF6B7384" FontSize="10.5"
                    VerticalAlignment="Bottom" Margin="10,0,0,0"/>
       </Grid>
     </Grid>

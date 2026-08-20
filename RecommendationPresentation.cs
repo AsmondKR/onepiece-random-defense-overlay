@@ -5,6 +5,21 @@ public static class RecommendationPresentation
     public static string CompletionPercent(RecipeProgress progress) =>
         $"{Math.Round(progress.CompletionRatio * 100, MidpointRounding.AwayFromZero):0}%";
 
+    /// <summary>
+    /// 하위패를 고르면 그 패를 짜는 데 부족한 흔함을 먼저 보여 준다.
+    /// 흔함 부족이 없으면 남은 하위 재료를 그대로 둔다.
+    /// </summary>
+    public static IReadOnlyList<RecipeLeafProgress> BoardMissingLeaves(
+        RecipeProgress progress, bool preferCommons)
+    {
+        var missing = progress.MissingLeaves;
+        if (!preferCommons) return missing;
+        var commons = missing
+            .Where(leaf => leaf.Tier.Split('[', 2)[0].Trim() == "흔함")
+            .ToList();
+        return commons.Count > 0 ? commons : missing;
+    }
+
     public static string AbilitySummary(CompositionUnitDetail unit)
     {
         if (unit.Abilities.Count == 0)
@@ -65,6 +80,16 @@ public static class RecommendationPresentation
     {
         if (step.Ingredients.Count == 0) return null;
         return IngredientName(step.Ingredients.OrderBy(i => i.SelectionOrder).First());
+    }
+
+    /// <summary>
+    /// 흐름 칸에 띄울 입력. 맵 단축키(Z/X/C)가 있으면 그걸 우선하고,
+    /// 초월처럼 키가 없으면 채팅 명령어를 쓴다.
+    /// </summary>
+    public static IReadOnlyList<string> CraftActionKeys(RecipeCraftStep step)
+    {
+        if (step.CombineKey is { Length: > 0 } key) return [key];
+        return step.CombineCommands;
     }
 
     /// <summary>조합 키가 없을 때 함께 조합할 나머지 재료 목록("A / B"). 없으면 null.</summary>
