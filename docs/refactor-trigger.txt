@@ -1,1 +1,1 @@
-Temporary trigger for the PR refactor workflow. Retry 2; the workflow removes this file in its final commit.
+Temporary trigger for the robust final PR refactor workflow. The workflow removes this file.
