@@ -67,16 +67,39 @@ jobs:
           end = workflow.index('\n      - name: Commit patched files', start)
           block = workflow[start:end]
           lines = [line[10:] if line.startswith('          ') else line for line in block.splitlines()]
-          Path('/tmp/apply_remaining_refactor.py').write_text('\n'.join(lines) + '\n', encoding='utf-8')
+          script = '\n'.join(lines) + '\n'
+
+          faulty_start = script.index('old_priority_lookup =')
+          faulty_end = script.index('\ncascade_marker =', faulty_start)
+          replacement = '''priority_pattern = re.compile(
+              r'        IReadOnlyDictionary<string, int>\\? priorities = null;\\n'
+              r'.*?'
+              r'        if \\(priorities is null\\) return 0;',
+              re.S,
+          )
+          engine, priority_count = priority_pattern.subn(
+              '        var priorities = RecommendationCommunityPriorities.ForGoal(goal);\\n'
+              '        if (priorities is null) return 0;',
+              engine,
+              count=1,
+          )
+          if priority_count != 1:
+              raise SystemExit(
+                  f"community priority lookup: expected one match, found {priority_count}")
+
+          '''.replace('\n          ', '\n')
+          script = script[:faulty_start] + replacement + script[faulty_end + 1:]
+          Path('/tmp/apply_remaining_refactor.py').write_text(script, encoding='utf-8')
           PY
 
           python /tmp/apply_remaining_refactor.py
+          rm -f docs/refactor-trigger.txt
 
       - name: Commit final changes
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- RecommendationEngine.cs RecommendationResultPolicy.cs RecommendationCommunityPriorities.cs MainWindow.xaml.cs WarcraftMemoryRecognitionService.cs App.xaml.cs OrandOverlay.csproj OrandOverlay.Tests .github/workflows/ci.yml .github/workflows/apply-remaining-refactor.yml
+          git add -- RecommendationEngine.cs RecommendationResultPolicy.cs RecommendationCommunityPriorities.cs MainWindow.xaml.cs WarcraftMemoryRecognitionService.cs App.xaml.cs OrandOverlay.csproj OrandOverlay.Tests .github/workflows/ci.yml .github/workflows/apply-remaining-refactor.yml docs/refactor-trigger.txt
           git commit -m "Complete stability and test refactor [remaining-refactor-applied]"
           git push origin HEAD:chore/stability-refactor-20260822
