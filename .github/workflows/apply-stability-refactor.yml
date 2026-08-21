@@ -1,0 +1,81 @@
+name: Apply stability refactor
+
+on:
+  push:
+    branches:
+      - chore/stability-refactor-20260822
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[stability-refactor-applied]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chore/stability-refactor-20260822
+
+      - name: Patch RecommendationEngine
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          path = Path('RecommendationEngine.cs')
+          text = path.read_text(encoding='utf-8')
+
+          for name in (
+              'YamatoCommunityPriority',
+              'UsoppCommunityPriority',
+              'ZoroCommunityPriority',
+              'JinbeCommunityPriority',
+          ):
+              pattern = rf'\n\s*private static readonly IReadOnlyDictionary<string, int> {name}\s*=.*?\n\s*\}};\n'
+              text, count = re.subn(pattern, '\n', text, count=1, flags=re.S)
+              if count != 1:
+                  raise SystemExit(f'failed to remove {name}: {count}')
+
+          old_policy = '''        IReadOnlyDictionary<string, int>? priorities = null;
+          if (goal.Id.Equals("yamato_transcendent", StringComparison.OrdinalIgnoreCase) ||
+              goal.Rawcodes.Contains("DB0H", StringComparer.Ordinal))
+              priorities = YamatoCommunityPriority;
+          else if (goal.Rawcodes.Contains("B90H", StringComparer.Ordinal))
+              priorities = UsoppCommunityPriority;
+          else if (goal.Rawcodes.Contains("F90H", StringComparer.Ordinal))
+              priorities = ZoroCommunityPriority;
+          else if (goal.Rawcodes.Contains("A90H", StringComparer.Ordinal))
+              priorities = JinbeCommunityPriority;
+          if (priorities is null) return 0;'''
+          new_policy = '''        var priorities = RecommendationCommunityPriorities.ForGoal(goal);
+          if (priorities is null) return 0;'''
+          if old_policy not in text:
+              raise SystemExit('community priority selection block not found')
+          text = text.replace(old_policy, new_policy, 1)
+
+          marker = '''        // 유저는 1번부터 순서대로 조합한다 — 위 순위 빌드가 소비할 패를 차감한 잔여
+          // 패로 아래 순위의 완료율·남은 조합을 다시 계산해, 같은 카드가 여러 순위에
+          // 이중 집계되지 않게 한다(1번 완료 시 2번 %가 부풀어 보이던 문제).'''
+          clamp = '''        // 세라핌은 초기 take 제한 뒤에 삽입될 수 있으므로 최종 목록에서도 계약을 다시 지킨다.
+          if (results.Count > Math.Max(1, take))
+              results = results.Take(Math.Max(1, take)).ToList();
+
+'''
+          if marker not in text:
+              raise SystemExit('cascade marker not found')
+          text = text.replace(marker, clamp + marker, 1)
+          path.write_text(text, encoding='utf-8')
+
+      - name: Remove one-time workflow
+        shell: bash
+        run: rm .github/workflows/apply-stability-refactor.yml
+
+      - name: Commit changes
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add RecommendationEngine.cs .github/workflows/apply-stability-refactor.yml
+          git commit -m "Refactor recommendation priorities and cap results [stability-refactor-applied]"
+          git push origin HEAD:chore/stability-refactor-20260822
