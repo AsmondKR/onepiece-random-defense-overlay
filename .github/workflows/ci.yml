@@ -1,37 +1,42 @@
-name: Apply remaining refactor
+name: CI
 
 on:
   push:
     branches:
-      - chore/stability-refactor-20260822
-
-permissions:
-  contents: write
+      - main
+      - 'chore/**'
+      - 'fix/**'
+      - 'feature/**'
+  pull_request:
 
 jobs:
-  apply-refactor:
-    runs-on: ubuntu-latest
+  build-and-test:
+    runs-on: windows-latest
+    timeout-minutes: 20
 
     steps:
-      - name: Checkout branch
+      - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
         with:
-          ref: chore/stability-refactor-20260822
+          dotnet-version: '8.0.x'
 
-      - name: Apply code changes
-        run: python scripts/apply_remaining_refactor.py
+      - name: Restore app
+        run: dotnet restore OrandOverlay.csproj
 
-      - name: Remove temporary patch files
-        shell: bash
-        run: |
-          rm -f scripts/apply_remaining_refactor.py
-          rm -f docs/refactor-trigger.txt
+      - name: Build app
+        run: dotnet build OrandOverlay.csproj -c Release --no-restore
 
-      - name: Commit code changes
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- RecommendationEngine.cs RecommendationResultPolicy.cs RecommendationCommunityPriorities.cs MainWindow.xaml.cs WarcraftMemoryRecognitionService.cs App.xaml.cs OrandOverlay.csproj OrandOverlay.Tests scripts/apply_remaining_refactor.py docs/refactor-trigger.txt
-          git commit -m "Complete stability and test refactor [remaining-refactor-applied]"
-          git push origin HEAD:chore/stability-refactor-20260822
+      - name: Restore smoke tests
+        run: dotnet restore SmokeTests/OrandOverlay.SmokeTests.csproj
+
+      - name: Run smoke tests
+        run: dotnet run --project SmokeTests/OrandOverlay.SmokeTests.csproj -c Release
+
+      - name: Restore unit tests
+        run: dotnet restore OrandOverlay.Tests/OrandOverlay.Tests.csproj
+
+      - name: Run unit tests
+        run: dotnet test OrandOverlay.Tests/OrandOverlay.Tests.csproj -c Release --no-restore
