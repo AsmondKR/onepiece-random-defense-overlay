@@ -40,7 +40,10 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
 
             using var process = FindNewestProcess("Warcraft III");
             if (process is null)
+            {
+                ResetSessionCaches();
                 return Failure(RecognitionState.Waiting, "워크 미실행 · 기존 패 유지", "Warcraft III 프로세스를 기다리는 중입니다.");
+            }
 
             var mainModule = process.MainModule;
             var version = mainModule?.FileVersionInfo.FileVersion ?? "unknown";
@@ -93,8 +96,11 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
             var measuredSlot = StructuralUnitPoolScanner.TryReadLocalPlayerSlot(memory, moduleBase, profile);
             // 앵커가 있는데 로컬 플레이어가 없으면 대전 중이 아니다. 비싼 구조 스캔을 돌리지 않는다.
             if (profile.HasLocalPlayerAnchor && measuredSlot is null)
+            {
+                ResetSessionCaches();
                 return Failure(RecognitionState.Waiting, "대전 대기 중 · 기존 패 유지",
                     "게임에 입장하면 인식을 시작합니다.", baseDiagnostics);
+            }
             var localSlot = measuredSlot ?? profile.LocalPlayerSlot;
             var locatorAddress = GetLocatorAddress(memory, process, processStarted, module, profile, loaded.Generation, token);
             var listAddress = FollowPointerPath(memory, locatorAddress, profile.PointerOffsets);
@@ -147,6 +153,8 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
                              : "")
             };
             if (profile.RequireNonEmptyInventory && snapshot.OwnedObjects == 0)
+            {
+                ResetSessionCaches();
                 return new RecognitionResult
                 {
                     State = RecognitionState.Waiting,
@@ -154,10 +162,13 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
                     ConfirmsSessionBoundary = true,
                     Diagnostics = diagnostics
                 };
+            }
             var catalogMatches = mapped.KnownCount + mapped.CatalogNamedCount;
             // 뽑기 전에는 로컬 소유 객체가 맵 컨트롤러·헬퍼뿐이라 카드가 0장이다.
             // 이것은 읽기 오류가 아니라 아직 패가 없는 상태다. 이전 판 목표를 여기서 푼다.
             if (catalogMatches == 0)
+            {
+                ResetSessionCaches();
                 return new RecognitionResult
                 {
                     State = RecognitionState.Waiting,
@@ -165,6 +176,7 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
                     ConfirmsSessionBoundary = true,
                     Diagnostics = diagnostics
                 };
+            }
             var catalogRatio = (double)catalogMatches / Math.Max(1, diagnostics.ObservedObjects);
             if (catalogRatio < profile.MinimumCatalogMatchRatio)
                 return new RecognitionResult
@@ -201,7 +213,7 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
         catch (PoolNotReadyException exception)
         {
             // 맵 로딩·대전 준비 단계에는 유닛이 아직 없다. 오류가 아니라 대기 상태로 알린다.
-            lock (_cacheGate) _locatorCache = null;
+            ResetSessionCaches();
             return Failure(RecognitionState.Waiting, "대전 준비 중 · 기존 패 유지", exception.Message);
         }
         catch (Exception exception) when (exception is Win32Exception or InvalidDataException or InvalidOperationException
@@ -211,6 +223,18 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
             lock (_cacheGate) _locatorCache = null;
             return Failure(RecognitionState.TransientReadError, "워크 메모리 읽기 실패 · 기존 패 유지", exception.Message);
         }
+    }
+
+    /// <summary>
+    /// 한 판이 끝나면 같은 Warcraft 프로세스라도 다음 판의 유닛 풀 주소가 달라질 수 있다.
+    /// 이전 판 locator/map-state 캐시를 그대로 재사용하면 다음 판에서 옛 패를 읽을 수 있으므로
+    /// 확정된 대기/세션 경계에서는 반드시 둘 다 비운다.
+    /// </summary>
+    private void ResetSessionCaches()
+    {
+        lock (_cacheGate) _locatorCache = null;
+        _lastMapState = null;
+        _lastMapStateAt = DateTimeOffset.MinValue;
     }
 
     private ulong GetLocatorAddress(ReadOnlyProcessMemory memory, Process process, long processStarted,
