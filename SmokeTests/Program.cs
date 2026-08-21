@@ -1375,10 +1375,10 @@ var seraphimEngine = new RecommendationEngine(catalog, bundledStats);
 var jinbeWithBlood = seraphimEngine.RecommendNearestCrafts("rawcode:A90H",
     [new InventoryEntry { UnitId = "item_greenblood", Count = 1, Confidence = 1 }], 8,
     navigationMode: "AlliedForces.EmergencyCall");
-Assert(jinbeWithBlood.Any(rec =>
+Assert(jinbeWithBlood.Count <= 8 && jinbeWithBlood.Any(rec =>
         rec.Route.GoalUnitId.Equals("rawcode:3A0h", StringComparison.OrdinalIgnoreCase) &&
         rec.RecipeProgress.CompletionRatio < 1),
-    "징베는 S-호크 세라핌을 추천하되 그린블러드만으로 100퍼센트가 되지 않음");
+    "징베는 8개 제한 안에서 S-호크를 추천하고 그린블러드만으로 100퍼센트가 되지 않음");
 var hawkRecipe = catalog.Unit("rawcode:3A0h").Recipe;
 Assert(hawkRecipe.ContainsKey("item_greenblood") && hawkRecipe.ContainsKey("mihawk_hidden"),
     "S-호크 재료는 미호크 히든 + 그린블러드");
@@ -1659,9 +1659,10 @@ var kizaruReversePicks = sanjiClearEngine.RecommendNearestCrafts("rawcode:5B0H",
     navigationMode: "BestHelp.ReverseThinking");
 var kizaruReverseSupports = kizaruReversePicks.Skip(1)
     .Select(item => catalog.Unit(item.Route.GoalUnitId)).ToList();
-Assert(kizaruReverseSupports.Any(unit => SupportAbility(unit, "단일") > 0) &&
+Assert(kizaruReversePicks.Count <= 10 &&
+       kizaruReverseSupports.Any(unit => SupportAbility(unit, "단일") > 0) &&
        kizaruReverseSupports.Any(unit => SupportAbility(unit, "끝딜") > 0),
-    "역발상 키자루는 특포 부족을 단일·끝딜 보강으로 메움");
+    "역발상 키자루는 추천 제한 안에서 특포 부족을 단일·끝딜 보강으로 메움");
 // 특공 키자루: 특포 반복 소모(스킬강화) 때문에 특강(필수) 상위와 경합 —
 // 핸콕·오뎅·알비다 같은 특포 의존 상위를 추가 상위 후보에서 제외한다.
 var kizaruTraitPicks = sanjiClearEngine.RecommendNearestCrafts("rawcode:5B0H", [], take: 10,

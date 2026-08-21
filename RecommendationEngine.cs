@@ -38,10 +38,6 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
     // 채용률 정렬에 맡긴다.
     private const double MagicArmorSourceTarget = 1;
 
-
-
-
-
     public IReadOnlyList<Recommendation> Recommend(
         string goalUnitId,
         IEnumerable<InventoryEntry> inventory,
@@ -227,7 +223,8 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
         // 패로 아래 순위의 완료율·남은 조합을 다시 계산해, 같은 카드가 여러 순위에
         // 이중 집계되지 않게 한다(1번 완료 시 2번 %가 부풀어 보이던 문제).
         // 세라핌은 초기 제한 뒤에 삽입될 수 있으므로 최종 목록에서도 take 계약을 지킨다.
-        results = RecommendationResultPolicy.Limit(results, take);
+        results = LimitRecommendationsPreservingStrategy(
+            results, take, goal, counts, strategy, showGoal, recipeLegendaryIds);
 
         IReadOnlyDictionary<string, int> cascadeInventory = counts;
         for (var i = 0; i < results.Count; i++)
@@ -910,6 +907,98 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
             "O80h", // 마르코(인간폼) 제한
             "Q80h"  // 알비다 제한(조합에 특포 4개 필요)
         };
+
+
+    /// <summary>
+    /// 세라핌처럼 후삽입되는 후보가 있어도 take 제한을 지키되, 현재 전략의 필수
+    /// 역할(스턴·이감·깎기·단일·끝딜 등)을 담당하는 후보를 단순히 꼬리에서 자르지 않는다.
+    /// 같은 역할 충족도를 유지하는 후보 중 채용률이 가장 낮은 항목부터 제거한다.
+    /// </summary>
+    private List<Recommendation> LimitRecommendationsPreservingStrategy(
+        List<Recommendation> results,
+        int take,
+        UnitDefinition goal,
+        IReadOnlyDictionary<string, int> inventory,
+        GoalStrategyProfile? strategy,
+        bool showGoal,
+        IReadOnlyCollection<string> protectedUnitIds)
+    {
+        var limit = Math.Max(1, take);
+        if (results.Count <= limit) return results;
+        if (strategy is null) return RecommendationResultPolicy.Limit(results, limit);
+
+        while (results.Count > limit)
+        {
+            var fullMetrics = ProjectedMetrics(results, excludedIndex: -1);
+            var removable = Enumerable.Range(0, results.Count)
+                .Select(index =>
+                {
+                    var recommendation = results[index];
+                    var unit = catalog.Unit(recommendation.Route.GoalUnitId);
+                    var without = ProjectedMetrics(results, index);
+                    return new
+                    {
+                        Index = index,
+                        Unit = unit,
+                        CoverageLoss = StrategyCoverageLoss(fullMetrics, without, strategy.Value),
+                        CommunityPriority = CommunityPriorityScore(goal, unit),
+                        IsSeraphim = BaseTier(unit.Tier) == "세라핌"
+                    };
+                })
+                .Where(item => !item.Unit.Id.Equals(goal.Id, StringComparison.OrdinalIgnoreCase))
+                .Where(item => !protectedUnitIds.Contains(item.Unit.Id,
+                    StringComparer.OrdinalIgnoreCase))
+                .Where(item => !IsCommunityCore(goal, item.Unit))
+                .OrderBy(item => item.CoverageLoss)
+                .ThenBy(item => item.CommunityPriority)
+                // 같은 손실·채용률이면 세라핌보다 일반 후보를 먼저 정리한다.
+                .ThenBy(item => item.IsSeraphim ? 1 : 0)
+                .ThenByDescending(item => item.Index)
+                .ToList();
+
+            if (removable.Count == 0)
+                return RecommendationResultPolicy.Limit(results, limit);
+            results.RemoveAt(removable[0].Index);
+        }
+        return results;
+
+        StrategyMetrics ProjectedMetrics(IReadOnlyList<Recommendation> items, int excludedIndex)
+        {
+            var projected = AggregateStrategyMetrics(inventory);
+            if (showGoal) projected += StrategyMetricsFor(goal);
+            for (var index = 0; index < items.Count; index++)
+            {
+                if (index == excludedIndex) continue;
+                var unitId = items[index].Route.GoalUnitId;
+                if (unitId.Equals(goal.Id, StringComparison.OrdinalIgnoreCase)) continue;
+                projected += StrategyMetricsFor(catalog.Unit(unitId));
+            }
+            return projected;
+        }
+    }
+
+    private static double StrategyCoverageLoss(StrategyMetrics before,
+        StrategyMetrics after, GoalStrategyProfile strategy) =>
+        Loss(before.Slow, after.Slow, strategy.SlowTarget) +
+        Loss(before.Stun, after.Stun, strategy.StunTarget) +
+        Loss(before.ArmorReduction, after.ArmorReduction, strategy.ArmorReductionTarget) +
+        Loss(before.ArmorBreak, after.ArmorBreak, strategy.ArmorBreakTarget) +
+        Loss(before.AirMovement, after.AirMovement, strategy.AirMovementTarget) +
+        Loss(before.BossControl, after.BossControl, strategy.BossControlTarget) +
+        Loss(before.BerserkBossControl, after.BerserkBossControl,
+            strategy.BerserkBossControlTarget) +
+        Loss(before.MagicArmorReduction, after.MagicArmorReduction,
+            strategy.MagicArmorReductionTarget) +
+        Loss(before.SingleDamage, after.SingleDamage, strategy.SingleDamageTarget) +
+        Loss(before.FinisherDamage, after.FinisherDamage, strategy.FinisherDamageTarget);
+
+    private static double Loss(double before, double after, double target)
+    {
+        if (target <= 0) return 0;
+        var beforeCovered = Math.Min(Math.Max(0, before), target);
+        var afterCovered = Math.Min(Math.Max(0, after), target);
+        return Math.Max(0, beforeCovered - afterCovered) / target;
+    }
 
     private ClearEvidence? BuildClearEvidence(IReadOnlyList<string> candidateRawcodes)
     {

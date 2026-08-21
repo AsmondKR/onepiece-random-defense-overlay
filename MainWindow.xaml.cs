@@ -708,10 +708,9 @@ public partial class MainWindow : Window
         var gorosei = (GoroseiCombo.SelectedItem as GoroseiOption)?.Mode
                       ?? GoroseiEffects.Parse(_settings.GoroseiMode);
         _settings.GoroseiMode = gorosei.ToString();
-        var buildVariant = (BuildVariantCombo.SelectedItem as BuildVariant)?.Id
-                           ?? BuildVariants.AutoId;
+        // 니카 이감/노이감은 별도 토글 없이 현재 패의 스턴을 기준으로 자동 판정한다.
         var recommendations = _engine.RecommendNearestCrafts(goal.Id, recommendationInventory,
-            navigationMode: navigation.Id, gorosei: gorosei, buildVariant: buildVariant,
+            navigationMode: navigation.Id, gorosei: gorosei, buildVariant: BuildVariants.AutoId,
             suppressSeraphim: _greenBloodUsage.Used);
         _telemetryLastTop = recommendations.Take(5).Select(x => x.Route.GoalUnitId).ToList();
         CaptureMatchTelemetry();
@@ -985,30 +984,27 @@ public partial class MainWindow : Window
         RefreshAll();
     }
 
-    // 같은 상위라도 빌드 방향이 갈리는 유닛(니카 이감/노이감)만 선택 UI를 노출한다.
-    private void RepopulateBuildVariants()
-    {
-        _updatingSelections = true;
-        try
-        {
-            IReadOnlyList<BuildVariant> variants = SelectedGoal is { } goal
-                ? BuildVariants.For(goal)
-                : Array.Empty<BuildVariant>();
-            var visible = variants.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-            BuildVariantLabel.Visibility = visible;
-            BuildVariantCombo.Visibility = visible;
-            BuildVariantSummaryText.Visibility = visible;
-            BuildVariantCombo.ItemsSource = variants;
-            BuildVariantCombo.SelectedItem = variants.FirstOrDefault();
-            BuildVariantSummaryText.Text = variants.FirstOrDefault()?.Summary ?? "";
-        }
-        finally
-        {
-            _updatingSelections = false;
-        }
-    }
 
-    private void BuildVariantCombo_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+// 니카 이감/노이감은 추천 엔진이 패 기준으로 자동 판정한다. 사용자 토글은 노출하지 않는다.
+private void RepopulateBuildVariants()
+{
+    _updatingSelections = true;
+    try
+    {
+        BuildVariantLabel.Visibility = Visibility.Collapsed;
+        BuildVariantCombo.Visibility = Visibility.Collapsed;
+        BuildVariantSummaryText.Visibility = Visibility.Collapsed;
+        BuildVariantCombo.ItemsSource = null;
+        BuildVariantCombo.SelectedItem = null;
+        BuildVariantSummaryText.Text = "";
+    }
+    finally
+    {
+        _updatingSelections = false;
+    }
+}
+
+private void BuildVariantCombo_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_updatingSelections) return;
         if (BuildVariantCombo.SelectedItem is BuildVariant variant)
