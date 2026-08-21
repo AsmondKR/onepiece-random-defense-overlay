@@ -1,4 +1,373 @@
-name: CI
+name: Apply remaining refactor
+
+on:
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  apply-refactor:
+    if: github.head_ref == 'chore/stability-refactor-20260822'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source branch
+        uses: actions/checkout@v4
+        with:
+          ref: chore/stability-refactor-20260822
+
+      - name: Apply code and test refactor
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected one match, found {count}")
+              return text.replace(old, new, 1)
+
+          def remove_priority_section(text: str, marker: str, name: str) -> str:
+              start = text.find(marker)
+              if start < 0:
+                  raise SystemExit(f"priority marker not found: {name}")
+              declaration = f"    private static readonly IReadOnlyDictionary<string, int> {name}"
+              declaration_at = text.find(declaration, start)
+              if declaration_at < 0:
+                  raise SystemExit(f"priority declaration not found: {name}")
+              end_match = re.search(r"\n        \};\n", text[declaration_at:])
+              if end_match is None:
+                  raise SystemExit(f"priority end not found: {name}")
+              return text[:start] + text[declaration_at + end_match.end():]
+
+          engine_path = Path("RecommendationEngine.cs")
+          engine = engine_path.read_text(encoding="utf-8")
+          for marker, name in (
+              ("    // 2.314 이후(2026-07-17~08-16) 야마토", "YamatoCommunityPriority"),
+              ("    // TMO public clears, 2026-07-18~08-16:", "UsoppCommunityPriority"),
+              ("    // 2.314 원랜디 갤 최신 조초 평가", "ZoroCommunityPriority"),
+              ("    // 2.314 원랜디 갤 최신 징초 대깨 평가", "JinbeCommunityPriority"),
+          ):
+              engine = remove_priority_section(engine, marker, name)
+
+          old_priority_lookup = '''        IReadOnlyDictionary<string, int>? priorities = null;
+          if (goal.Id.Equals("yamato_transcendent", StringComparison.OrdinalIgnoreCase) ||
+              goal.Rawcodes.Contains("DB0H", StringComparer.Ordinal))
+              priorities = YamatoCommunityPriority;
+          else if (goal.Rawcodes.Contains("B90H", StringComparer.Ordinal))
+              priorities = UsoppCommunityPriority;
+          else if (goal.Rawcodes.Contains("F90H", StringComparer.Ordinal))
+              priorities = ZoroCommunityPriority;
+          else if (goal.Rawcodes.Contains("A90H", StringComparer.Ordinal))
+              priorities = JinbeCommunityPriority;
+          if (priorities is null) return 0;'''
+          engine = replace_once(
+              engine, old_priority_lookup,
+              '''        var priorities = RecommendationCommunityPriorities.ForGoal(goal);
+          if (priorities is null) return 0;''',
+              "community priority lookup")
+
+          cascade_marker = '''        // 유저는 1번부터 순서대로 조합한다 — 위 순위 빌드가 소비할 패를 차감한 잔여
+          // 패로 아래 순위의 완료율·남은 조합을 다시 계산해, 같은 카드가 여러 순위에
+          // 이중 집계되지 않게 한다(1번 완료 시 2번 %가 부풀어 보이던 문제).'''
+          engine = replace_once(
+              engine, cascade_marker,
+              '''        // 세라핌은 초기 제한 뒤에 삽입될 수 있으므로 최종 목록에서도 take 계약을 지킨다.
+          results = RecommendationResultPolicy.Limit(results, take);
+
+''' + cascade_marker,
+              "final recommendation limit")
+          engine_path.write_text(engine, encoding="utf-8")
+
+          Path("RecommendationResultPolicy.cs").write_text('''namespace OrandOverlay;
+
+/// <summary>후보를 뒤늦게 삽입해도 추천 API의 최대 개수 계약을 지킨다.</summary>
+public static class RecommendationResultPolicy
+{
+    public static List<T> Limit<T>(IEnumerable<T> items, int take) =>
+        items.Take(Math.Max(1, take)).ToList();
+}
+''', encoding="utf-8")
+
+          main_path = Path("MainWindow.xaml.cs")
+          main = main_path.read_text(encoding="utf-8")
+          main = replace_once(
+              main,
+              '''            if (RecognitionPolicy.ShouldResetMatch(result))
+            {
+                SendMatchTelemetry();
+                _telemetryBuffer.Reset();
+                _outcome.Reset();
+                _matchDifficulty = "unknown";
+                _liveSessionActive = false;
+                _autoStartApplied = false;
+                _completedTopUnits.Reset();
+                _greenBloodUsage.Reset();
+            }''',
+              '''            if (RecognitionPolicy.ShouldResetMatch(result))
+                ResetMatchSession();''',
+              "match reset call")
+
+          handler_marker = '''    private void GoalCombo_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+'''
+          reset_method = '''    /// <summary>
+    /// 확정된 세션 경계에서 이전 판의 패·추천 선택·추적 상태를 한 번에 비운다.
+    /// 일부 필드만 초기화하면 다음 판에 이전 패나 선택 카드가 다시 나타날 수 있다.
+    /// </summary>
+    private void ResetMatchSession()
+    {
+        SendMatchTelemetry();
+        _automatic.Clear();
+        _automaticStale = false;
+        _automaticDisconnected = true;
+        _telemetryBuffer.Reset();
+        _outcome.Reset();
+        _telemetrySessionStart = default;
+        _telemetryLastTop = [];
+        _matchDifficulty = "unknown";
+        _liveSessionActive = false;
+        _autoStartApplied = false;
+        _completedTopUnits.Reset();
+        _greenBloodUsage.Reset();
+        _selectedRouteId = null;
+        _clusterHeadRouteId = null;
+        _boardRecs = [];
+        _boardPlan = [];
+        _boardBanner = null;
+        _lastScanSignature = null;
+    }
+
+'''
+          main = replace_once(main, handler_marker, reset_method + handler_marker,
+                              "match reset method insertion")
+          main_path.write_text(main, encoding="utf-8")
+
+          memory_path = Path("WarcraftMemoryRecognitionService.cs")
+          memory = memory_path.read_text(encoding="utf-8")
+          memory = replace_once(
+              memory,
+              '''    private DateTimeOffset _lastMapStateAt = DateTimeOffset.MinValue;
+    private MapStateSample? _lastMapState;
+''',
+              '''    private DateTimeOffset _lastMapStateAt = DateTimeOffset.MinValue;
+    private MapStateSample? _lastMapState;
+    private static readonly TimeSpan WaitingLocatorRescanInterval = TimeSpan.FromSeconds(5);
+    private bool _sessionBoundaryCachesCleared;
+    private DateTimeOffset _nextWaitingLocatorRescanAt = DateTimeOffset.MinValue;
+''',
+              "waiting cache fields")
+          memory = replace_once(
+              memory,
+              '''                ResetSessionCaches();
+                return Failure(RecognitionState.Waiting, "워크 미실행''',
+              '''                ResetSessionCaches(force: true);
+                return Failure(RecognitionState.Waiting, "워크 미실행''',
+              "process-exit cache reset")
+          memory = replace_once(
+              memory,
+              '''                ResetSessionCaches();
+                return Failure(RecognitionState.Waiting, "대전 대기 중''',
+              '''                ResetSessionCaches(force: true);
+                return Failure(RecognitionState.Waiting, "대전 대기 중''',
+              "lobby cache reset")
+
+          waiting_inventory = '''                ResetSessionCaches();
+                return new RecognitionResult'''
+          if memory.count(waiting_inventory) != 2:
+              raise SystemExit(f"waiting inventory resets: expected two, found {memory.count(waiting_inventory)}")
+          memory = memory.replace(
+              waiting_inventory,
+              '''                ResetSessionCaches(allowPeriodicRescan: true);
+                return new RecognitionResult''')
+          memory = replace_once(
+              memory,
+              '''            ResetSessionCaches();
+            return Failure(RecognitionState.Waiting, "대전 준비 중''',
+              '''            ResetSessionCaches(allowPeriodicRescan: true);
+            return Failure(RecognitionState.Waiting, "대전 준비 중''',
+              "pool-not-ready cache reset")
+          memory = replace_once(
+              memory,
+              '''            var suffix = mapped.UnknownCount > 0 ? $" · 미등록 {mapped.UnknownCount}" : "";
+            return new RecognitionResult''',
+              '''            var suffix = mapped.UnknownCount > 0 ? $" · 미등록 {mapped.UnknownCount}" : "";
+            MarkSessionReady();
+            return new RecognitionResult''',
+              "ready cache marker")
+          memory = replace_once(
+              memory,
+              '''    private void ResetSessionCaches()
+    {
+        lock (_cacheGate) _locatorCache = null;
+        _lastMapState = null;
+        _lastMapStateAt = DateTimeOffset.MinValue;
+    }
+''',
+              '''    private void ResetSessionCaches(bool allowPeriodicRescan = false, bool force = false)
+    {
+        var now = DateTimeOffset.UtcNow;
+        if (!force && _sessionBoundaryCachesCleared &&
+            (!allowPeriodicRescan || now < _nextWaitingLocatorRescanAt))
+            return;
+
+        lock (_cacheGate) _locatorCache = null;
+        _lastMapState = null;
+        _lastMapStateAt = DateTimeOffset.MinValue;
+        _sessionBoundaryCachesCleared = true;
+        _nextWaitingLocatorRescanAt = allowPeriodicRescan
+            ? now + WaitingLocatorRescanInterval
+            : DateTimeOffset.MinValue;
+    }
+
+    private void MarkSessionReady()
+    {
+        _sessionBoundaryCachesCleared = false;
+        _nextWaitingLocatorRescanAt = DateTimeOffset.MinValue;
+    }
+''',
+              "cache reset method")
+          memory_path.write_text(memory, encoding="utf-8")
+
+          app_path = Path("App.xaml.cs")
+          app = app_path.read_text(encoding="utf-8")
+          app = replace_once(
+              app,
+              '''        // 워크3 패치가 앱 릴리스보다 먼저 나와도 최신 검증 프로필을 받을 수 있게 한다.
+        // 최대 3초만 기다리며, 실패하면 기존 사용자 캐시/번들 프로필을 그대로 사용한다.
+        MemoryProfileRefreshService.TryRefreshAsync().GetAwaiter().GetResult();''',
+              '''        // 워크3 패치가 앱 릴리스보다 먼저 나와도 최신 검증 프로필을 비동기로 갱신한다.
+        // 시작 화면은 네트워크를 기다리지 않고, 실패하면 기존 캐시/번들 프로필을 사용한다.
+        _ = MemoryProfileRefreshService.TryRefreshAsync();''',
+              "non-blocking profile refresh")
+          app_path.write_text(app, encoding="utf-8")
+
+          project_path = Path("OrandOverlay.csproj")
+          project = project_path.read_text(encoding="utf-8")
+          project = replace_once(
+              project,
+              '''    <Compile Remove="SmokeTests\\**\\*.cs" />
+    <Compile Remove="MemoryDiagnostics\\**\\*.cs" />''',
+              '''    <Compile Remove="SmokeTests\\**\\*.cs" />
+    <Compile Remove="MemoryDiagnostics\\**\\*.cs" />
+    <Compile Remove="OrandOverlay.Tests\\**\\*.cs" />''',
+              "test source exclusion")
+          project_path.write_text(project, encoding="utf-8")
+
+          tests = Path("OrandOverlay.Tests")
+          tests.mkdir(exist_ok=True)
+          (tests / "OrandOverlay.Tests.csproj").write_text('''<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\\OrandOverlay.csproj" />
+  </ItemGroup>
+</Project>
+''', encoding="utf-8")
+          (tests / "RecommendationResultPolicyTests.cs").write_text('''using Xunit;
+
+namespace OrandOverlay.Tests;
+
+public sealed class RecommendationResultPolicyTests
+{
+    [Fact]
+    public void Limit_CapsItemsAddedAfterInitialRanking()
+    {
+        var result = RecommendationResultPolicy.Limit(Enumerable.Range(1, 9), 8);
+        Assert.Equal(Enumerable.Range(1, 8), result);
+    }
+
+    [Fact]
+    public void Limit_AlwaysReturnsAtLeastOneSlot()
+    {
+        Assert.Single(RecommendationResultPolicy.Limit(new[] { "first", "second" }, 0));
+    }
+
+    [Fact]
+    public void Limit_PreservesRankingOrder()
+    {
+        Assert.Equal(new[] { "goal", "support" },
+            RecommendationResultPolicy.Limit(new[] { "goal", "support", "extra" }, 2));
+    }
+}
+''', encoding="utf-8")
+          (tests / "RecommendationCommunityPrioritiesTests.cs").write_text('''using Xunit;
+
+namespace OrandOverlay.Tests;
+
+public sealed class RecommendationCommunityPrioritiesTests
+{
+    [Theory]
+    [InlineData("DB0H", "Q30h", 12)]
+    [InlineData("B90H", "M30h", 21)]
+    [InlineData("F90H", "F50h", 30)]
+    [InlineData("A90H", "Q80h", 40)]
+    public void ForGoal_ReturnsExtractedPolicy(string goalRawcode, string candidateRawcode, int expected)
+    {
+        var goal = new UnitDefinition { Id = "goal", Name = "목표", Rawcodes = [goalRawcode] };
+        var priorities = RecommendationCommunityPriorities.ForGoal(goal);
+        Assert.NotNull(priorities);
+        Assert.Equal(expected, priorities![candidateRawcode]);
+    }
+
+    [Fact]
+    public void ForGoal_ReturnsNullForUnmappedGoal()
+    {
+        var goal = new UnitDefinition { Id = "other", Name = "기타", Rawcodes = ["0000"] };
+        Assert.Null(RecommendationCommunityPriorities.ForGoal(goal));
+    }
+}
+''', encoding="utf-8")
+          (tests / "RecognitionPolicyTests.cs").write_text('''using Xunit;
+
+namespace OrandOverlay.Tests;
+
+public sealed class RecognitionPolicyTests
+{
+    [Fact]
+    public void ShouldResetMatch_RequiresConfirmedWaitingBoundary()
+    {
+        var confirmed = new RecognitionResult
+        {
+            State = RecognitionState.Waiting,
+            ConfirmsSessionBoundary = true
+        };
+        var unconfirmed = new RecognitionResult
+        {
+            State = RecognitionState.Waiting,
+            ConfirmsSessionBoundary = false
+        };
+        Assert.True(RecognitionPolicy.ShouldResetMatch(confirmed));
+        Assert.False(RecognitionPolicy.ShouldResetMatch(unconfirmed));
+    }
+
+    [Theory]
+    [InlineData(RecognitionState.TransientReadError, true)]
+    [InlineData(RecognitionState.Waiting, false)]
+    [InlineData(RecognitionState.Unsupported, false)]
+    public void MayUseLastGoodForRecommendations_IsLimitedToReadRaces(
+        RecognitionState state, bool expected)
+    {
+        Assert.Equal(expected, RecognitionPolicy.MayUseLastGoodForRecommendations(state));
+    }
+}
+''', encoding="utf-8")
+
+          Path(".github/workflows/ci.yml").write_text('''name: CI
 
 on:
   push:
@@ -10,9 +379,9 @@ on:
   pull_request:
 
 jobs:
-  build-and-smoke:
+  build-and-test:
     runs-on: windows-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
@@ -34,3 +403,21 @@ jobs:
 
       - name: Run smoke tests
         run: dotnet run --project SmokeTests/OrandOverlay.SmokeTests.csproj -c Release
+
+      - name: Restore unit tests
+        run: dotnet restore OrandOverlay.Tests/OrandOverlay.Tests.csproj
+
+      - name: Run unit tests
+        run: dotnet test OrandOverlay.Tests/OrandOverlay.Tests.csproj -c Release --no-restore
+''', encoding="utf-8")
+
+          Path(".github/workflows/apply-remaining-refactor.yml").unlink(missing_ok=True)
+
+      - name: Commit final changes
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- RecommendationEngine.cs RecommendationResultPolicy.cs RecommendationCommunityPriorities.cs MainWindow.xaml.cs WarcraftMemoryRecognitionService.cs App.xaml.cs OrandOverlay.csproj OrandOverlay.Tests .github/workflows/ci.yml .github/workflows/apply-remaining-refactor.yml
+          git commit -m "Complete stability and test refactor [remaining-refactor-applied]"
+          git push origin HEAD:chore/stability-refactor-20260822
