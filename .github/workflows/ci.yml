@@ -1,15 +1,14 @@
 name: Apply remaining refactor
 
 on:
-  push:
-    branches:
-      - chore/stability-refactor-20260822
+  pull_request:
 
 permissions:
   contents: write
 
 jobs:
   apply-refactor:
+    if: github.head_ref == 'chore/stability-refactor-20260822'
     runs-on: ubuntu-latest
 
     steps:
