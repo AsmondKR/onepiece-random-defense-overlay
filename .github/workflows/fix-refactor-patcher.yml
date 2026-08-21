@@ -17,22 +17,25 @@ jobs:
         with:
           ref: chore/stability-refactor-20260822
 
-      - name: Correct path escaping
+      - name: Make test source exclusion idempotent
         shell: python
         run: |
           from pathlib import Path
 
           path = Path('.github/workflows/ci.yml')
           text = path.read_text(encoding='utf-8')
-          old_memory = r'MemoryDiagnostics\\**\\*.cs'
-          new_memory = r'MemoryDiagnostics\**\*.cs'
-          old_tests = r'OrandOverlay.Tests\\**\\*.cs'
-          new_tests = r'OrandOverlay.Tests\**\*.cs'
-          if text.count(old_memory) != 2:
-              raise SystemExit(f'expected two MemoryDiagnostics escaped paths, found {text.count(old_memory)}')
-          if text.count(old_tests) != 1:
-              raise SystemExit(f'expected one test escaped path, found {text.count(old_tests)}')
-          text = text.replace(old_memory, new_memory).replace(old_tests, new_tests)
+          start = text.index('          project = replace_once(')
+          end = text.index('          project_path.write_text', start)
+          replacement = '''          if "OrandOverlay.Tests" not in project:
+              memory_line = project.index('    <Compile Remove="MemoryDiagnostics')
+              insert_at = project.index("\\n", memory_line) + 1
+              slash = chr(92)
+              project = (project[:insert_at]
+                         + f'    <Compile Remove="OrandOverlay.Tests{slash}**{slash}*.cs" />\\n'
+                         + project[insert_at:])
+
+          '''
+          text = text[:start] + replacement + text[end:]
           path.write_text(text, encoding='utf-8')
           Path('.github/workflows/fix-refactor-patcher.yml').unlink()
 
@@ -42,5 +45,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -- .github/workflows/ci.yml .github/workflows/fix-refactor-patcher.yml
-          git commit -m "Fix refactor patch path escaping"
+          git commit -m "Make test exclusion patch idempotent"
           git push origin HEAD:chore/stability-refactor-20260822
