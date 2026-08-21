@@ -20,6 +20,9 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
     private static readonly TimeSpan MapStateEndgameInterval = TimeSpan.FromSeconds(15);
     private DateTimeOffset _lastMapStateAt = DateTimeOffset.MinValue;
     private MapStateSample? _lastMapState;
+    private static readonly TimeSpan WaitingLocatorRescanInterval = TimeSpan.FromSeconds(5);
+    private bool _sessionBoundaryCachesCleared;
+    private DateTimeOffset _nextWaitingLocatorRescanAt = DateTimeOffset.MinValue;
 
     public WarcraftMemoryRecognitionService(DataCatalog catalog) => _unitMap = new RawcodeUnitMap(catalog);
 
@@ -41,7 +44,7 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
             using var process = FindNewestProcess("Warcraft III");
             if (process is null)
             {
-                ResetSessionCaches();
+                ResetSessionCaches(force: true);
                 return Failure(RecognitionState.Waiting, "워크 미실행 · 기존 패 유지", "Warcraft III 프로세스를 기다리는 중입니다.");
             }
 
@@ -97,7 +100,7 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
             // 앵커가 있는데 로컬 플레이어가 없으면 대전 중이 아니다. 비싼 구조 스캔을 돌리지 않는다.
             if (profile.HasLocalPlayerAnchor && measuredSlot is null)
             {
-                ResetSessionCaches();
+                ResetSessionCaches(force: true);
                 return Failure(RecognitionState.Waiting, "대전 대기 중 · 기존 패 유지",
                     "게임에 입장하면 인식을 시작합니다.", baseDiagnostics);
             }
@@ -154,7 +157,7 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
             };
             if (profile.RequireNonEmptyInventory && snapshot.OwnedObjects == 0)
             {
-                ResetSessionCaches();
+                ResetSessionCaches(allowPeriodicRescan: true);
                 return new RecognitionResult
                 {
                     State = RecognitionState.Waiting,
@@ -168,7 +171,7 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
             // 이것은 읽기 오류가 아니라 아직 패가 없는 상태다. 이전 판 목표를 여기서 푼다.
             if (catalogMatches == 0)
             {
-                ResetSessionCaches();
+                ResetSessionCaches(allowPeriodicRescan: true);
                 return new RecognitionResult
                 {
                     State = RecognitionState.Waiting,
@@ -200,6 +203,7 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
                     }
                 };
             var suffix = mapped.UnknownCount > 0 ? $" · 미등록 {mapped.UnknownCount}" : "";
+            MarkSessionReady();
             return new RecognitionResult
             {
                 Entries = mapped.Entries,
@@ -213,7 +217,7 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
         catch (PoolNotReadyException exception)
         {
             // 맵 로딩·대전 준비 단계에는 유닛이 아직 없다. 오류가 아니라 대기 상태로 알린다.
-            ResetSessionCaches();
+            ResetSessionCaches(allowPeriodicRescan: true);
             return Failure(RecognitionState.Waiting, "대전 준비 중 · 기존 패 유지", exception.Message);
         }
         catch (Exception exception) when (exception is Win32Exception or InvalidDataException or InvalidOperationException
@@ -230,11 +234,27 @@ public sealed class WarcraftMemoryRecognitionService : IInventoryRecognizer
     /// 이전 판 locator/map-state 캐시를 그대로 재사용하면 다음 판에서 옛 패를 읽을 수 있으므로
     /// 확정된 대기/세션 경계에서는 반드시 둘 다 비운다.
     /// </summary>
-    private void ResetSessionCaches()
+
+    private void ResetSessionCaches(bool allowPeriodicRescan = false, bool force = false)
     {
+        var now = DateTimeOffset.UtcNow;
+        if (!force && _sessionBoundaryCachesCleared &&
+            (!allowPeriodicRescan || now < _nextWaitingLocatorRescanAt))
+            return;
+
         lock (_cacheGate) _locatorCache = null;
         _lastMapState = null;
         _lastMapStateAt = DateTimeOffset.MinValue;
+        _sessionBoundaryCachesCleared = true;
+        _nextWaitingLocatorRescanAt = allowPeriodicRescan
+            ? now + WaitingLocatorRescanInterval
+            : DateTimeOffset.MinValue;
+    }
+
+    private void MarkSessionReady()
+    {
+        _sessionBoundaryCachesCleared = false;
+        _nextWaitingLocatorRescanAt = DateTimeOffset.MinValue;
     }
 
     private ulong GetLocatorAddress(ReadOnlyProcessMemory memory, Process process, long processStarted,

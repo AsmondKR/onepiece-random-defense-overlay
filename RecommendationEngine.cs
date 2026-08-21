@@ -38,82 +38,9 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
     // 채용률 정렬에 맡긴다.
     private const double MagicArmorSourceTarget = 1;
 
-    // 2.314 이후(2026-07-17~08-16) 야마토 성공 조합과 명시적 추천을 집계한 점수다.
-    // 단순 언급은 제외하고 성공 구성 +2, 명시 추천 +2, 조건부 추천 +1,
-    // 명시 비추천 -2로 정리했다. 같은 역할 후보 안에서는 이 점수가 제작 거리보다 우선한다.
-    private static readonly IReadOnlyDictionary<string, int> YamatoCommunityPriority =
-        new Dictionary<string, int>(StringComparer.Ordinal)
-        {
-            ["Q30h"] = 12, // 모비딕호
-            ["V50h"] = 11, // 에이스 왜곡
-            ["F30h"] = 10, // 카르가라
-            ["HA0h"] = 10, // 킹
-            ["830h"] = 9,  // 시저
-            ["M30h"] = 9,  // 사보 히든
-            ["W50h"] = 8,  // 비비 변화
-            ["630h"] = 8,  // 센고쿠 전설
-            ["B30h"] = 7,  // 흰수염 전설
-            ["N30h"] = 7,  // 료쿠규 히든
-            ["O30h"] = 6,  // 봉쿠레 히든
-            ["W20h"] = 6,  // 드래곤 전설
-            ["Z20h"] = 5,  // 바르톨로메오 전설
-            ["V20h"] = 1   // 스모커 전설: 최근 글에서는 대부분 최후의 보루로 평가
-        };
 
-    // TMO public clears, 2026-07-18~08-16: 1,626 God/Nightmare stratified samples,
-    // 40 Usopp-transcendent clears. Raw co-occurrence is adjusted only where a frequent
-    // unit duplicates Usopp's built-in boss/berserk control instead of advancing the
-    // 102 slow / 1.4 stun / 211 armor core. This keeps community evidence subordinate
-    // to the user's stated role completion order.
-    private static readonly IReadOnlyDictionary<string, int> UsoppCommunityPriority =
-        new Dictionary<string, int>(StringComparer.Ordinal)
-        {
-            ["M30h"] = 21, // Sabo hidden: 21/40, slow + armor.
-            ["W20h"] = 20, // Dragon: 14/40, exact 0.9 stun + slow + armor.
-            ["IC0h"] = 20, // Queen: 14/40, 0.4 stun alternative (often paired with Bartolomeo 1.0).
-            ["630h"] = 18, // Sengoku: 12/40, slow + triggered armor.
-            ["W50h"] = 16, // Vivi changed: 11/40, slow + armor.
-            ["Q30h"] = 15, // Moby Dick: 10/40, only when pirate ship is owned.
-            ["N30h"] = 15, // Ryokugyu: 10/40, triggered slow + armor.
-            ["HA0h"] = 14, // King: 7/40, slow + fixed/triggered armor.
-            ["830h"] = 14, // Caesar: 10/40, strong pure armor finish.
-            ["H30h"] = 13, // Cracker: 11/40, armor finish.
-            ["Z20h"] = 12, // Bartolomeo: 12/40, stun alternative.
-            ["O30h"] = 11, // Bon Clay: 9/40, 0.5 stun alternative.
-            ["V20h"] = 10, // Smoker: 8/40, large slow + armor break.
-            ["T30h"] = 9,  // Rebecca: 9/40, armor.
-            ["V50h"] = 9,  // Ace changed: 9/40, slow.
-            ["540h"] = 5   // Killer: 12/40, boss roles duplicate Usopp; armor only.
-        };
 
-    // 2.314 원랜디 갤 최신 조초 평가(2026-08-10): 예전의 조크봉 고정이 아니라
-    // 크제 또는 봉히 한 기로 홀딩 축을 잡고, 남은 패를 풀방깎과 보조딜에 쓴다.
-    private static readonly IReadOnlyDictionary<string, int> ZoroCommunityPriority =
-        new Dictionary<string, int>(StringComparer.Ordinal)
-        {
-            ["F50h"] = 30, // 크로커다일 제한: 다상위 항법의 우선 파트너.
-            ["O30h"] = 29, // 봉쿠레 히든: 1상위 항법의 저비용 대체.
-            ["830h"] = 18, // 시저: 순수 방깎 마감.
-            ["H30h"] = 17, // 크래커: 방깎 마감.
-            ["M30h"] = 16, // 사보 히든: 이감 + 방깎.
-            ["W50h"] = 15, // 비비 변화: 이감 + 방깎.
-            ["540h"] = 10  // 킬러: 풀방깎 뒤 보스 보완.
-        };
 
-    // 2.314 원랜디 갤 최신 징초 대깨 평가(2026-08-14~16): 징초 외 암브 한 기가
-    // 필수이며, 1상위에서는 스모커/베르고/퀸, 다상위에서는 킹/카벤(특성공학이면
-    // 알비다)을 패 상황에 맞춰 고른다. 점수는 같은 역할 안에서 제작 거리보다 우선한다.
-    private static readonly IReadOnlyDictionary<string, int> JinbeCommunityPriority =
-        new Dictionary<string, int>(StringComparer.Ordinal)
-        {
-            ["Q80h"] = 40, // 알비다 제한
-            ["IA0h"] = 38, // 킹 제한
-            ["B50h"] = 36, // 카벤딧슈 영원
-            ["V20h"] = 34, // 스모커 전설: 1상위 기본 암브 + 이감
-            ["W30h"] = 32, // 베르고 히든: 저비용 암브
-            ["IC0h"] = 30, // 퀸 히든: 암브 + 스턴 + 방깎
-            ["930h"] = 28  // 시키 전설: 암브 + 스턴
-        };
 
     public IReadOnlyList<Recommendation> Recommend(
         string goalUnitId,
@@ -299,6 +226,9 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
         // 유저는 1번부터 순서대로 조합한다 — 위 순위 빌드가 소비할 패를 차감한 잔여
         // 패로 아래 순위의 완료율·남은 조합을 다시 계산해, 같은 카드가 여러 순위에
         // 이중 집계되지 않게 한다(1번 완료 시 2번 %가 부풀어 보이던 문제).
+        // 세라핌은 초기 제한 뒤에 삽입될 수 있으므로 최종 목록에서도 take 계약을 지킨다.
+        results = RecommendationResultPolicy.Limit(results, take);
+
         IReadOnlyDictionary<string, int> cascadeInventory = counts;
         for (var i = 0; i < results.Count; i++)
         {
@@ -1009,16 +939,7 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
         if (clearScore is not null)
             return LiveStats.ApplyWeight(clearScore.Value, _liveStats.WeightFor(candidate.Id));
 
-        IReadOnlyDictionary<string, int>? priorities = null;
-        if (goal.Id.Equals("yamato_transcendent", StringComparison.OrdinalIgnoreCase) ||
-            goal.Rawcodes.Contains("DB0H", StringComparer.Ordinal))
-            priorities = YamatoCommunityPriority;
-        else if (goal.Rawcodes.Contains("B90H", StringComparer.Ordinal))
-            priorities = UsoppCommunityPriority;
-        else if (goal.Rawcodes.Contains("F90H", StringComparer.Ordinal))
-            priorities = ZoroCommunityPriority;
-        else if (goal.Rawcodes.Contains("A90H", StringComparer.Ordinal))
-            priorities = JinbeCommunityPriority;
+        var priorities = RecommendationCommunityPriorities.ForGoal(goal);
         if (priorities is null) return 0;
         return candidate.Rawcodes.Select(rawcode => priorities.GetValueOrDefault(rawcode))
             .DefaultIfEmpty().Max();

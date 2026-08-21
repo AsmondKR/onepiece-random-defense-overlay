@@ -909,16 +909,7 @@ public partial class MainWindow : Window
             if (_outcome.Outcome is "fail" or "clear")
                 SendMatchTelemetry();
             if (RecognitionPolicy.ShouldResetMatch(result))
-            {
-                SendMatchTelemetry();
-                _telemetryBuffer.Reset();
-                _outcome.Reset();
-                _matchDifficulty = "unknown";
-                _liveSessionActive = false;
-                _autoStartApplied = false;
-                _completedTopUnits.Reset();
-                _greenBloodUsage.Reset();
-            }
+                ResetMatchSession();
             RecognitionStatus.Text = KoreanLabels.RemoveLatin(result.Status);
             RecognitionStatus.Foreground = result.State switch
             {
@@ -950,6 +941,34 @@ public partial class MainWindow : Window
             cancellation.Dispose();
             _scanInProgress = false;
         }
+    }
+
+
+    /// <summary>
+    /// 확정된 세션 경계에서 이전 판의 패·추천 선택·추적 상태를 한 번에 비운다.
+    /// 일부 필드만 초기화하면 다음 판에 이전 패나 선택 카드가 다시 나타날 수 있다.
+    /// </summary>
+    private void ResetMatchSession()
+    {
+        SendMatchTelemetry();
+        _automatic.Clear();
+        _automaticStale = false;
+        _automaticDisconnected = true;
+        _telemetryBuffer.Reset();
+        _outcome.Reset();
+        _telemetrySessionStart = default;
+        _telemetryLastTop = [];
+        _matchDifficulty = "unknown";
+        _liveSessionActive = false;
+        _autoStartApplied = false;
+        _completedTopUnits.Reset();
+        _greenBloodUsage.Reset();
+        _selectedRouteId = null;
+        _clusterHeadRouteId = null;
+        _boardRecs = [];
+        _boardPlan = [];
+        _boardBanner = null;
+        _lastScanSignature = null;
     }
 
     private void GoalCombo_OnSelectionChanged(object sender, SelectionChangedEventArgs e)

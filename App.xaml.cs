@@ -30,8 +30,8 @@ public partial class App : System.Windows.Application
         }
 
         // 워크3 패치가 앱 릴리스보다 먼저 나와도 최신 검증 프로필을 받을 수 있게 한다.
-        // 최대 3초만 기다리며, 실패하면 기존 사용자 캐시/번들 프로필을 그대로 사용한다.
-        MemoryProfileRefreshService.TryRefreshAsync().GetAwaiter().GetResult();
+        // 시작 화면은 네트워크를 기다리지 않고, 실패하면 기존 캐시/번들 프로필을 사용한다.
+        _ = MemoryProfileRefreshService.TryRefreshAsync();
 
         ListenForActivationSignal();
         base.OnStartup(e);
