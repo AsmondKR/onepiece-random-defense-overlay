@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - 'chore/**'
+      - 'fix/**'
+      - 'feature/**'
+  pull_request:
+
+jobs:
+  build-and-smoke:
+    runs-on: windows-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore app
+        run: dotnet restore OrandOverlay.csproj
+
+      - name: Build app
+        run: dotnet build OrandOverlay.csproj -c Release --no-restore
+
+      - name: Restore smoke tests
+        run: dotnet restore SmokeTests/OrandOverlay.SmokeTests.csproj
+
+      - name: Run smoke tests
+        run: dotnet run --project SmokeTests/OrandOverlay.SmokeTests.csproj -c Release
