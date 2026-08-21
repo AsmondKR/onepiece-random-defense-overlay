@@ -1,1 +1,1 @@
-Temporary trigger for the patcher path correction workflow. The final workflow removes this file.
+Temporary trigger for the idempotent test exclusion patcher. The final workflow removes this file.
