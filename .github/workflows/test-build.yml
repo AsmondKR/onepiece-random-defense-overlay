@@ -1,0 +1,127 @@
+name: Test Build
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish-test-build:
+    runs-on: windows-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore OrandOverlay.csproj
+
+      - name: Run smoke tests
+        run: dotnet run --project SmokeTests/OrandOverlay.SmokeTests.csproj -c Release
+
+      - name: Run unit tests
+        run: dotnet test OrandOverlay.Tests/OrandOverlay.Tests.csproj -c Release
+
+      - name: Capture current TMO references
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path artifacts/reference | Out-Null
+          Invoke-WebRequest `
+            -Uri "https://raw.githubusercontent.com/tmo-gg/static.tmo.gg/main/ord-helper/assets.json" `
+            -OutFile "artifacts/reference/tmo-assets-current.json"
+
+          $urls = @(
+            "https://tmo.gg/g/ord/build-helper/42479",
+            "https://tmo.gg/ko/build-helper/42479",
+            "https://war3.tmo.gg/"
+          )
+          foreach ($url in $urls) {
+            $safe = ($url -replace '^https?://', '') -replace '[^a-zA-Z0-9.-]', '_'
+            try {
+              $response = Invoke-WebRequest -Uri $url -MaximumRedirection 10
+              $response.Content | Set-Content -Path "artifacts/reference/$safe.html" -Encoding UTF8
+              @(
+                "Requested: $url"
+                "Final: $($response.BaseResponse.RequestMessage.RequestUri)"
+                "Status: $($response.StatusCode)"
+              ) | Set-Content -Path "artifacts/reference/$safe.meta.txt" -Encoding UTF8
+            }
+            catch {
+              @(
+                "Requested: $url"
+                "Error: $($_.Exception.Message)"
+              ) | Set-Content -Path "artifacts/reference/$safe.error.txt" -Encoding UTF8
+            }
+          }
+
+      - name: Publish Windows test build
+        shell: pwsh
+        run: |
+          $testVersion = "0.6.17-test.${{ github.run_number }}"
+          dotnet publish OrandOverlay.csproj `
+            -c Release `
+            -r win-x64 `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:IncludeAllContentForSelfExtract=true `
+            -p:DebugType=None `
+            -p:DebugSymbols=false `
+            -p:InformationalVersion=$testVersion `
+            -o artifacts/test
+
+          $sourceExe = "artifacts/test/OrandOverlay.exe"
+          $testExe = "artifacts/test/OrandOverlay-Test.exe"
+          if (-not (Test-Path $sourceExe)) {
+            throw "Published executable was not created: $sourceExe"
+          }
+          Move-Item $sourceExe $testExe -Force
+
+          @(
+            "원랜디 오버레이 테스트 빌드"
+            "Version: $testVersion"
+            "Branch: ${{ github.head_ref || github.ref_name }}"
+            "Commit: ${{ github.sha }}"
+            "정식 오버레이를 완전히 종료한 뒤 실행하세요."
+            "업데이트 확인 시 '테스트 빌드라 GitHub 배포본으로 덮지 않습니다.'가 표시되어야 합니다."
+          ) | Set-Content -Path "artifacts/test/TEST-BUILD.txt" -Encoding UTF8
+
+      - name: Upload test build
+        uses: actions/upload-artifact@v4
+        with:
+          name: OrandOverlay-Test-${{ github.run_number }}
+          path: artifacts/test/**
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload TMO references
+        uses: actions/upload-artifact@v4
+        with:
+          name: tmo-reference-${{ github.run_number }}
+          path: artifacts/reference/**
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Upload temporary source snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-snapshot-${{ github.run_number }}
+          path: |
+            **
+            !.git/**
+            !bin/**
+            !obj/**
+            !artifacts/**
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1

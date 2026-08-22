@@ -45,6 +45,8 @@ public static class MapStateReader
     ];
     private static readonly string[] DifficultyRank = ["악몽", "신", "지옥", "어려움", "보통", "쉬움"];
     private const int MaximumRound = 200;
+    // 전체 프로세스 힙을 훑는 작업이라 게임 프레임과 CPU를 두고 경쟁하지 않도록 낮게 제한한다.
+    private const int MaximumScanParallelism = 2;
 
     internal static MapStateSample? TryRead(ReadOnlyProcessMemory memory, CancellationToken token)
     {
@@ -57,7 +59,7 @@ public static class MapStateReader
             Parallel.ForEach(memory.ReadableRegions(),
                 new ParallelOptions
                 {
-                    MaxDegreeOfParallelism = Math.Min(8, Environment.ProcessorCount),
+                    MaxDegreeOfParallelism = Math.Min(MaximumScanParallelism, Environment.ProcessorCount),
                     CancellationToken = token
                 },
                 () => new MapStateSample(0, 0, "unknown"),

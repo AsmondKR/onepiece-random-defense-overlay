@@ -29,6 +29,10 @@ public partial class App : System.Windows.Application
             return;
         }
 
+        // 워크3 패치가 앱 릴리스보다 먼저 나와도 최신 검증 프로필을 받을 수 있게 한다.
+        // 시작 화면은 네트워크를 기다리지 않고, 실패하면 기존 캐시/번들 프로필을 사용한다.
+        _ = MemoryProfileRefreshService.TryRefreshAsync();
+
         ListenForActivationSignal();
         base.OnStartup(e);
     }
