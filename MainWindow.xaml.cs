@@ -28,6 +28,7 @@ public partial class MainWindow : Window
     private GreenBloodAdvisor _greenBloodAdvisor = null!;
     private GreenBloodAdvisor.UsageTracker _greenBloodUsage = null!;
     private SpecialDismantleAdvisor _specialAdvisor = null!;
+    private NavigationAdvisor _navigationAdvisor = null!;
     private CombineHotkeyCatalog _combineHotkeys = null!;
     private AutoCombinePlanner _combinePlanner = null!;
     private ClearBuildStats _clearStats = ClearBuildStats.Empty;
@@ -58,6 +59,10 @@ public partial class MainWindow : Window
     private CancellationTokenSource? _scanCancellation;
     private int _scanGeneration;
     private string? _lastScanSignature;
+    private int _lastRound;
+    private bool _overlayHiddenByUser;
+    // 현재 패가 Ready·비어있지 않게 인식됐는지 — 오버레이 자동 표시의 단일 출처다.
+    private bool _overlayHandAvailable;
 
     public MainWindow()
     {
@@ -81,6 +86,7 @@ public partial class MainWindow : Window
             _greenBloodAdvisor = new GreenBloodAdvisor(_catalog);
             _greenBloodUsage = new GreenBloodAdvisor.UsageTracker(_catalog);
             _specialAdvisor = new SpecialDismantleAdvisor(_catalog);
+            _navigationAdvisor = new NavigationAdvisor(_catalog);
             _combinePlanner = new AutoCombinePlanner(_catalog, _combineHotkeys);
             _completedTopUnits = new CompletedTopUnitTracker(_catalog);
             _recognizer = new WarcraftMemoryRecognitionService(_catalog);
@@ -114,14 +120,19 @@ public partial class MainWindow : Window
         _overlay.Stats.RestorePosition(_settings.StatsOverlayLeft, _settings.StatsOverlayTop);
         _overlay.PositionCommitted += Overlay_OnPositionCommitted;
         _overlay.Stats.PositionCommitted += StatsOverlay_OnPositionCommitted;
-        _overlay.HiddenByUser += () => OverlayButton.Content = "오버레이 보이기";
+        _overlay.HiddenByUser += () =>
+        {
+            _overlayHiddenByUser = true;
+            HideOverlayWindows();
+            OverlayButton.Content = "오버레이 보이기";
+        };
         _overlay.ReRecommendRequested += ShowReRecommendMenu;
-        _overlay.SettlementRequested += ShowSettlement;
-        _overlay.Show();
+        // 인게임 패가 잡히기 전에는 오버레이를 띄우지 않는다.
         // 배율이 적용된 뒤라야 창 크기가 확정되므로 기본 배치는 로드 후에 잡는다.
         _overlay.Dispatcher.BeginInvoke(new Action(ApplyDefaultOverlayLayout),
             System.Windows.Threading.DispatcherPriority.Loaded);
         _overlay.SetClickThrough(_settings.ClickThroughOverlay);
+        OverlayButton.Content = "패 인식 대기 중";
         _timer.Interval = TimeSpan.FromSeconds(0.8);
         _timer.Tick += async (_, _) => await ScanAsync();
         Closed += (_, _) =>
@@ -431,7 +442,10 @@ public partial class MainWindow : Window
         }
     }
 
-    private void Settlement_OnClick(object sender, RoutedEventArgs e) => ShowSettlement();
+    private void Settlement_OnClick(object sender, RoutedEventArgs e)
+    {
+        // 버튼은 레이아웃에 남기고 동작만 임시 비활성화한다(정산 판정 안정화 대기).
+    }
 
     // 클리어 정산: 인식된 유닛(클리어 화면에선 필드 배치 유닛도 로컬 소유로 잡힘)을
     // 티어별로 세어 작은 창으로 보여준다.
@@ -745,9 +759,13 @@ public partial class MainWindow : Window
             : recommendationInventory.Count == 0 && recommendations.Count > 1
                 ? [recommendations[0]]
                 : recommendations;
+        var navHint = rarePhase || _lastRound >= NavigationAdvisor.DecisionRound
+            ? ""
+            : NavigationAdvisor.FormatHint(
+                _navigationAdvisor.Evaluate(recommendationInventory, goal, _lastRound));
         var phaseHint = rarePhase
             ? "7라운드까지 희귀함이 안 나오면 선택 위습 1~2개 사용 권장"
-            : null;
+            : string.IsNullOrWhiteSpace(navHint) ? null : navHint;
 
         var headId = BoardSelection.ClusterHeadId(
             visibleRecommendations, [], _selectedRouteId, _clusterHeadRouteId);
@@ -812,7 +830,8 @@ public partial class MainWindow : Window
             builder.Append(entry.UnitId).Append(':').Append(entry.Count).Append('|');
         builder.Append(_automaticStale).Append('|').Append(_automaticDisconnected).Append('|')
             .Append(_liveSessionActive).Append('|').Append(_autoStartApplied).Append('|')
-            .Append(_greenBloodUsage.Used).Append('|').Append(_greenBloodUsage.UsedOnUnit);
+            .Append(_greenBloodUsage.Used).Append('|').Append(_greenBloodUsage.UsedOnUnit)
+            .Append('|').Append(_lastRound);
         return builder.ToString();
     }
 
@@ -902,13 +921,22 @@ public partial class MainWindow : Window
                     _outcome.ObserveSettlement(mapState.SettlementCopies);
                     if (mapState.Difficulty is { Length: > 0 } difficulty &&
                         difficulty != "unknown")
+                    {
                         _matchDifficulty = difficulty;
+                        _outcome.ObserveDifficulty(difficulty);
+                    }
+                    _lastRound = Math.Max(_lastRound, mapState.MaxRound);
                 }
             }
             if (_outcome.Outcome is "fail" or "clear")
                 SendMatchTelemetry();
             if (RecognitionPolicy.ShouldResetMatch(result))
+            if (RecognitionPolicy.ShouldResetMatch(result))
+            {
                 ResetMatchSession();
+                _lastRound = 0;
+            }
+            SetOverlayHandAvailability(OverlayVisibilityPolicy.ShouldShow(result));
             RecognitionStatus.Text = KoreanLabels.RemoveLatin(result.Status);
             RecognitionStatus.Foreground = result.State switch
             {
@@ -927,6 +955,7 @@ public partial class MainWindow : Window
         {
             if (generation == _scanGeneration)
             {
+                SetOverlayHandAvailability(false);
                 _automaticStale = _automatic.Count > 0;
                 _automaticDisconnected = false;
                 RecognitionStatus.Text = "인식 오류 · 기존 패 유지";
@@ -968,6 +997,8 @@ public partial class MainWindow : Window
         _boardPlan = [];
         _boardBanner = null;
         _lastScanSignature = null;
+        _overlayHiddenByUser = false;
+        SetOverlayHandAvailability(false);
     }
 
     private void GoalCombo_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -1057,6 +1088,7 @@ private void BuildVariantCombo_OnSelectionChanged(object sender, SelectionChange
             _timer.Stop();
             _scanGeneration++;
             _scanCancellation?.Cancel();
+            SetOverlayHandAvailability(false);
             _automaticStale = _automatic.Count > 0;
             RecognitionStatus.Text = "수동 모드";
             RecognitionStatus.Foreground = Brushes.Khaki;
@@ -1117,6 +1149,11 @@ private void BuildVariantCombo_OnSelectionChanged(object sender, SelectionChange
 
     private void EnableOverlayMove_OnClick(object sender, RoutedEventArgs e)
     {
+        if (!_overlayHandAvailable)
+        {
+            FooterStatus.Text = "패가 인식되면 오버레이 위치를 옮길 수 있습니다.";
+            return;
+        }
         var wasClickThrough = _settings.ClickThroughOverlay;
         ClickThroughCheck.IsChecked = false;
         _relockAfterMove = wasClickThrough;
@@ -1209,18 +1246,65 @@ private void BuildVariantCombo_OnSelectionChanged(object sender, SelectionChange
 
     private void ToggleOverlayVisibility()
     {
-        if (_overlay.IsVisible)
+        if (!_overlayHandAvailable)
         {
-            _overlay.Hide();
+            HideOverlayWindows();
+            OverlayButton.Content = "패 인식 대기 중";
+            FooterStatus.Text = "게임 패가 인식되면 오버레이가 자동으로 표시됩니다.";
+            return;
+        }
+
+        if (_overlay.IsVisible || _overlay.Stats.IsVisible)
+        {
+            _overlayHiddenByUser = true;
+            HideOverlayWindows();
             OverlayButton.Content = "오버레이 보이기";
         }
         else
         {
-            _overlay.Show();
-            _overlay.EnsureVisible();
-            _overlay.SetClickThrough(_settings.ClickThroughOverlay);
-            OverlayButton.Content = "오버레이 숨기기";
+            _overlayHiddenByUser = false;
+            ShowOverlayWindows();
         }
+    }
+
+    private void SetOverlayHandAvailability(bool available)
+    {
+        if (_overlayHandAvailable == available)
+        {
+            if (!available) HideOverlayWindows();
+            return;
+        }
+
+        _overlayHandAvailable = available;
+        if (!available)
+        {
+            HideOverlayWindows();
+            OverlayButton.Content = "패 인식 대기 중";
+            return;
+        }
+
+        // 새 Ready 패는 사용자가 숨긴 상태여도 다시 표시 세션을 연다.
+        _overlayHiddenByUser = false;
+        ShowOverlayWindows();
+    }
+
+    private void ShowOverlayWindows()
+    {
+        if (!_overlayHandAvailable || _overlayHiddenByUser) return;
+        if (!_overlay.IsVisible) _overlay.Show();
+        if (!_overlay.Stats.IsVisible) _overlay.Stats.Show();
+        _overlay.Dispatcher.BeginInvoke(new Action(ApplyDefaultOverlayLayout),
+            System.Windows.Threading.DispatcherPriority.Loaded);
+        _overlay.EnsureVisible();
+        _overlay.Stats.EnsureVisible();
+        _overlay.SetClickThrough(_settings.ClickThroughOverlay);
+        OverlayButton.Content = "오버레이 숨기기";
+    }
+
+    private void HideOverlayWindows()
+    {
+        if (_overlay.IsVisible) _overlay.Hide();
+        if (_overlay.Stats.IsVisible) _overlay.Stats.Hide();
     }
 
     // 워크 창이 포커스를 가진 상태에서도 오버레이를 켜고 끌 수 있는 전역 단축키.

@@ -70,6 +70,41 @@ public static class RecommendationCommunityPriorities
             ["930h"] = 28
         };
 
+    // 신+ 거프 1상위 337판 채용률. 스턴은 거프 본인이 커버하고 이감·깎·버프·짤필러를 채운다.
+    private static readonly IReadOnlyDictionary<string, int> Garp =
+        new Dictionary<string, int>(StringComparer.Ordinal)
+        {
+            ["3A0h"] = 52, // S-호크
+            ["Q30h"] = 48, // 모비딕
+            ["H30h"] = 47, // 크래커
+            ["W50h"] = 45, // 비비 변이
+            ["M30h"] = 41, // 사보 히든
+            ["630h"] = 40, // 센고쿠
+            ["540h"] = 38, // 킬러
+            ["V50h"] = 32, // 에이스 왜곡
+            ["A30h"] = 30, // 레일리 전설
+            ["N30h"] = 28, // 료쿠규
+            ["E10h"] = 26, // 쵸파 두뇌강화 짤깍
+            ["F30h"] = 26, // 카르가라
+            ["830h"] = 26, // 시저
+            ["U30h"] = 25, // 레드포스
+            ["IC0h"] = 24, // 퀸
+            ["T30h"] = 24, // 레베카
+            ["S30h"] = 24, // 울티
+            ["HA0h"] = 21, // 킹
+            ["MC0h"] = 20, // 히바리
+            ["O30h"] = 16, // 봉쿠레
+            ["K30h"] = 16, // 히루루크
+            ["K50h"] = 15, // 페로나 짤이감
+            ["U10h"] = 14, // 바질 희귀 짤깍
+            ["W20h"] = 12, // 드래곤 전설
+            ["X90h"] = 12, // 드레이크 짤이감·짤깍
+            ["D20h"] = 10, // 키드 짤이감
+            ["B20h"] = 8,  // 아오키지 희귀 짤이감
+            ["H20h"] = 8,  // 크로커다일 희귀 짤이감
+            ["F10h"] = 6   // 스모커 특별 짤이감
+        };
+
     public static IReadOnlyDictionary<string, int>? ForGoal(UnitDefinition goal)
     {
         if (goal.Id.Equals("yamato_transcendent", StringComparison.OrdinalIgnoreCase) ||
@@ -78,6 +113,7 @@ public static class RecommendationCommunityPriorities
         if (goal.Rawcodes.Contains("B90H", StringComparer.Ordinal)) return Usopp;
         if (goal.Rawcodes.Contains("F90H", StringComparer.Ordinal)) return Zoro;
         if (goal.Rawcodes.Contains("A90H", StringComparer.Ordinal)) return Jinbe;
+        if (goal.Rawcodes.Contains("C40h", StringComparer.Ordinal)) return Garp;
         return null;
     }
 }

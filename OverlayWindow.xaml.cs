@@ -58,13 +58,14 @@ public partial class OverlayWindow : OverlayWindowBase
     private TextBlock GreenBloodHeader => Stats.GreenBloodHeader;
 
     public event Action<FrameworkElement>? ReRecommendRequested;
-    public event Action? SettlementRequested;
 
     private void ReRecommendButton_OnClick(object sender, RoutedEventArgs e) =>
         ReRecommendRequested?.Invoke((FrameworkElement)sender);
 
-    private void SettlementButton_OnClick(object sender, RoutedEventArgs e) =>
-        SettlementRequested?.Invoke();
+    private void SettlementButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        // 레이아웃 유지용 플레이스홀더 — 정산 동작은 임시 비활성화됐다.
+    }
 
     public void UpdateStatus(string status) => StatusText.Text = status;
 

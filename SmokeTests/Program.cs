@@ -419,6 +419,116 @@ var martialLawRecommendations = engine.RecommendNearestCrafts("yamato_transcende
 Assert(martialLawRecommendations.All(item =>
         !item.Route.GoalUnitId.Equals("yamato_transcendent", StringComparison.OrdinalIgnoreCase)),
     "계엄령에서는 조합 불가능한 목표 최상위를 추천하지 않음");
+{
+    var navAdvisor = new NavigationAdvisor(catalog);
+    Assert(navAdvisor.Evaluate([], catalog.Unit("rawcode:H90H"), 8).Count == 0,
+        "항법 추천: 빈 패는 안내하지 않음");
+    Assert(navAdvisor.Evaluate(Inventory("rawcode:K10h", "rawcode:K10h", "rawcode:K10h", "rawcode:K10h"),
+            catalog.Unit("rawcode:H90H"), 21).Count == 0,
+        "항법 추천: 21라운드 이후는 안내하지 않음");
+    var overlapped = navAdvisor.Evaluate(
+        Inventory("rawcode:K10h", "rawcode:K10h", "rawcode:K10h", "rawcode:K10h"),
+        catalog.Unit("rawcode:H90H"), 12);
+    Assert(overlapped.Any(item => item.OptionId == "AlliedForces.EmergencyCall") &&
+           overlapped.First(item => item.OptionId == "AlliedForces.EmergencyCall").Reason
+               .Contains("겹친", StringComparison.Ordinal) &&
+           overlapped.Any(item => item.OptionId == "Gambler.ContinuousBetting"),
+        "항법 추천: 같은 특별함이 겹치면 긴급소집으로 강제 풀고 연속베팅도 같이 안내");
+    var grow = navAdvisor.Evaluate(
+        Inventory("rawcode:K10h", "rawcode:Q00h", "rawcode:B00h", "rawcode:P00h"),
+        catalog.Unit("rawcode:H90H"), 12);
+    Assert(grow.Any(item => item.OptionId == "Gambler.ContinuousBetting") &&
+           grow.First(item => item.OptionId == "Gambler.ContinuousBetting").FollowUps
+               .Any(name => name.Contains("모비딕") || name.Contains("에넬") ||
+                            name.Contains("레드포스")) &&
+           grow.All(item => item.OptionId != "AlliedForces.EmergencyCall"),
+        "항법 추천: 특별함이 흩어져 있으면 연속베팅으로 패를 불리거나 풀고 긴급소집은 안 띄움");
+    var kizaru = navAdvisor.Evaluate(Inventory("rawcode:130h"), catalog.Unit("rawcode:5B0H"), 10);
+    Assert(kizaru.Any(item => item.OptionId == "AlliedForces.TraitEngineering") &&
+           kizaru.All(item => item.OptionId != "BestHelp.ReverseThinking"),
+        "항법 추천: 키자루 각은 특성공학이며 역발상은 강점이 없어 빼기");
+    var reverse = navAdvisor.Evaluate(Inventory("rawcode:H00I"), catalog.Unit("rawcode:760h"), 11);
+    Assert(reverse.Any(item => item.OptionId == "BestHelp.ReverseThinking") &&
+           reverse.First(item => item.OptionId == "BestHelp.ReverseThinking").FollowUps
+               .Any(name => name.Contains("피셔", StringComparison.Ordinal)),
+        "항법 추천: 아이템 상위 대깨는 역발상(레일리·피셔)");
+    var many = navAdvisor.Evaluate(
+        Inventory("rawcode:W20h", "rawcode:O30h", "rawcode:630h"),
+        catalog.Unit("rawcode:H90H"), 9);
+    Assert(many.Any(item => item.OptionId == "AlliedForces.DoubleBenefit"),
+        "항법 추천: 전설을 많이 짤 수 있으면 일석이조");
+    var garp = navAdvisor.Evaluate(Inventory("rawcode:V20h"), catalog.Unit("rawcode:C40h"), 10);
+    Assert(garp.Any(item => item.OptionId == "PathOfKings.BountyHunter") &&
+           garp.First(item => item.OptionId == "PathOfKings.BountyHunter").Reason
+               .Contains("거프", StringComparison.Ordinal),
+        "항법 추천: 거프 불멸처럼 라인딜이 미친 각이면 바운티헌터");
+    Assert(navAdvisor.Evaluate(Inventory("rawcode:930h"), catalog.Unit("rawcode:B40h"), 10)
+               .All(item => item.OptionId != "PathOfKings.BountyHunter") &&
+           navAdvisor.Evaluate(Inventory("rawcode:430h"), catalog.Unit("rawcode:H90H"), 10)
+               .All(item => item.OptionId != "PathOfKings.BountyHunter") &&
+           navAdvisor.Evaluate(Inventory("rawcode:S30h"), catalog.Unit("rawcode:190H"), 10)
+               .All(item => item.OptionId != "PathOfKings.BountyHunter") &&
+           navAdvisor.Evaluate(Inventory("rawcode:Z30h"), catalog.Unit("rawcode:590H"), 10)
+               .All(item => item.OptionId != "PathOfKings.BountyHunter"),
+        "항법 추천: 시키(함대)·상디초(준수 라인)·쵸파초(버퍼)·아카초(광보잡)는 바운티헌터 라인딜 깡패가 아님");
+    var ranked = navAdvisor.Evaluate(
+        Inventory("rawcode:K10h", "rawcode:K10h", "rawcode:K10h", "rawcode:K10h", "rawcode:130h"),
+        catalog.Unit("rawcode:5B0H"), 15);
+    Assert(ranked.Count >= 2 && NavigationAdvisor.FormatHint(ranked).Contains("21라 항법",
+            StringComparison.Ordinal),
+        "항법 추천: 신호가 겹치면 2~3개를 순위 문구로 보여 줌");
+}
+var garpOneTop = engine.RecommendNearestCrafts("rawcode:C40h", [], 8,
+    "PathOfKings.BountyHunter");
+var garpOneTopIds = garpOneTop.Select(item => item.Route.GoalUnitId).ToList();
+bool GarpHas(params string[] codes) => garpOneTop.Any(item =>
+    catalog.Unit(item.Route.GoalUnitId).Rawcodes.Any(code =>
+        codes.Contains(code, StringComparer.Ordinal)));
+Assert(garpOneTopIds.Count > 1 &&
+       catalog.Unit(garpOneTopIds[0]).Rawcodes.Contains("C40h", StringComparer.Ordinal),
+    "거프 1상위: 목표가 거프 불멸");
+Assert(garpOneTop.All(item =>
+        !catalog.Unit(item.Route.GoalUnitId).Rawcodes.Contains("190H", StringComparer.Ordinal)),
+    "거프 1상위 바운티헌터는 쵸파 초월을 넣지 않음");
+Assert(GarpHas("V50h", "H30h", "M30h", "W50h", "830h", "Q30h", "3A0h"),
+    "거프 1상위는 에이스왜곡·크래커·사보히든·비비·시저·모비딕·S호크 골격을 씀");
+Assert(GarpHas("K50h", "D20h", "H20h", "B20h", "F10h", "X90h"),
+    "거프 1상위 추천에 짤이감(페로나·키드·크로커·아오희귀·스모커특별)이 들어감");
+Assert(GarpHas("U10h", "E10h", "X90h", "610h"),
+    "거프 1상위 추천에 짤깍(바질희귀·쵸파두뇌·드레이크)이 들어감");
+var garpExtraStun = garpOneTop.Skip(1)
+    .Sum(item => AbilityValue(item.CompositionUnits[0], "스턴"));
+Assert(garpExtraStun <= 0.6,
+    "거프 자체 범위스턴이면 추가 스턴을 거의 안 쌓음");
+var garpWithShip = engine.RecommendNearestCrafts("rawcode:C40h", Inventory("rawcode:060h"), 8,
+    "PathOfKings.BountyHunter");
+Assert(garpWithShip.Any(item =>
+        catalog.Unit(item.Route.GoalUnitId).Rawcodes.Contains("Q30h", StringComparer.Ordinal)),
+    "거프 1상위는 배가 있으면 모비딕을 이감 코어로 추천");
+static bool RecHasCode(IReadOnlyList<Recommendation> recs, DataCatalog data, params string[] codes) =>
+    recs.Any(item => data.Unit(item.Route.GoalUnitId).Rawcodes.Any(code =>
+        codes.Contains(code, StringComparer.Ordinal)));
+var fujitora = engine.RecommendNearestCrafts("rawcode:X80H", [], 8, "PathOfKings.BountyHunter");
+Assert(fujitora.Skip(1).Sum(item => AbilityValue(item.CompositionUnits[0], "스턴")) >= 0.3,
+    "후지토라 원스턴 불안: 자체 1.1이어도 스턴을 더 채움");
+var gaban = engine.RecommendNearestCrafts("rawcode:F40h", [], 8, "PathOfKings.BountyHunter");
+Assert(gaban.Skip(1).Sum(item => AbilityValue(item.CompositionUnits[0], "스턴")) <= 0.6 &&
+       !RecHasCode(gaban, catalog, "K50h", "D20h", "Q30h"),
+    "가반 불멸: 이감·스턴 없이 풀방깎이라 짤이감·모비딕을 안 넣음");
+var doflamingo = engine.RecommendNearestCrafts("rawcode:E90H", [], 8, "PathOfKings.BountyHunter");
+var doflamingoSlows = doflamingo.Skip(1).Count(item =>
+    AbilityValue(item.CompositionUnits[0], "이동속도 감소") > 0 ||
+    AbilityValue(item.CompositionUnits[0], "발동이동속도 감소") > 0);
+Assert(doflamingoSlows <= 3,
+    "도플라밍고 혼자이감커버: 이감 전설을 다섯 기씩 안 쌓음");
+var shiki = engine.RecommendNearestCrafts("rawcode:B40h", [], 8, "PathOfKings.BountyHunter");
+Assert(shiki.Skip(1).Sum(item => AbilityValue(item.CompositionUnits[0], "스턴")) <= 0.6,
+    "시키 불멸 자체 1.9스턴이면 추가 스턴을 안 쌓음");
+var yamatoCheap = engine.RecommendNearestCrafts("yamato_transcendent", [], 8,
+    "PathOfKings.BountyHunter");
+Assert(RecHasCode(yamatoCheap, catalog, "K50h", "D20h", "H20h", "B20h", "F10h", "X90h") ||
+       RecHasCode(yamatoCheap, catalog, "U10h", "E10h", "610h"),
+    "야마토도 풀이감·풀깎 뒤에 짤이감 또는 짤깍을 추천");
 Assert(nearestCrafts.All(item => !string.IsNullOrWhiteSpace(item.CompositionUnits[0].Image)) &&
        nearestCrafts.SelectMany(item => item.RecipeProgress.Leaves)
            .All(leaf => !string.IsNullOrWhiteSpace(leaf.Image)),
@@ -558,13 +668,10 @@ Assert(catalog.Unit("rawcode:V50h").Tier == "왜곡됨" &&
        catalog.Unit("rawcode:840h").Tier == "왜곡됨",
     "43747 기준 에이스·퀸·코알라·페로나의 폐기된 구등급을 왜곡됨으로 교정");
 var distortedAce = catalog.Unit("rawcode:V50h");
-Assert(distortedAce.Recipe.Count == 4 &&
+Assert(distortedAce.Recipe.Count == 2 &&
        distortedAce.Recipe.GetValueOrDefault("rawcode:O20h") == 1 &&
-       distortedAce.Recipe.GetValueOrDefault("rawcode:Z10h") == 1 &&
-       distortedAce.Recipe.GetValueOrDefault("rawcode:210h") == 1 &&
-       distortedAce.Recipe.GetValueOrDefault("rawcode:LUMBER") == 3 &&
-       distortedAce.Description.Contains("해적왕의 아들", StringComparison.Ordinal),
-    "에이스 왜곡됨을 에이스 전설·마젤란·스쿼드·목재3과 해적왕의 아들 조건으로 교정");
+       distortedAce.Recipe.GetValueOrDefault("rawcode:LUMBER") == 10,
+    "에이스 왜곡됨 레시피는 현재 TMO 권위(에이스 전설 1 + 목재 10)를 따른다");
 Assert(catalog.Unit("mobydick").Tier == "해적선" &&
        catalog.Unit("rawcode:U30h").Tier == "해적선",
     "43747 해적선 장식 문자는 제거하고 앱의 정식 등급명으로 유지");
@@ -1197,6 +1304,9 @@ Assert(!sanjiSupports.Any(unit =>
         SupportAbility(unit, "마법방어력 감소", "스턴", "이동속도 감소", "발동이동속도 감소",
             "보스 잡기", "광폭화 잡기", "공중이동") <= 0),
     "마딜 상위에 방깎 전용 유닛을 추천하지 않음");
+Assert(sanjiSupports.Any(unit => unit.Rawcodes.Any(code => code is "K20h" or "D10h" or "N10h")) &&
+       sanjiSupports.All(unit => !unit.Rawcodes.Any(code => code is "U10h" or "E10h" or "610h")),
+    "마딜은 짤깍 대신 쵸파 혼포인트 같은 버퍼를 넣는다");
 Assert(sanjiSupports.Sum(unit => SupportAbility(unit, "마법방어력 감소")) >= 1,
     "마딜 상위는 마방깎 소스를 최소 한 점 확보");
 var sanjiStun = sanjiSupports.Sum(unit => SupportAbility(unit, "스턴"));
@@ -1207,6 +1317,25 @@ Assert(sanjiSupports.Sum(unit => SupportAbility(unit, "보스 잡기")) >= 1 &&
     "라인딜 상디는 보잡·광잡을 지원에서 확보");
 Assert(sanjiSupports.Any(unit => SupportAbility(unit, "끝딜") > 0),
     "단일 상위(상디)는 끝딜 한 기를 보완(딜 밸런스 규칙)");
+var zephyrOwned = engine.RecommendNearestCrafts("rawcode:H90H", Inventory("rawcode:I30h"), 8,
+    "AlliedForces.EmergencyCall");
+Assert(zephyrOwned.All(item => item.Route.GoalUnitId != "rawcode:Z30h"),
+    "제파(광보잡 스틱)가 있으면 아카이누 히든을 겹쳐 추천하지 않음");
+Assert(engine.RecommendNearestCrafts("rawcode:H90H",
+        Inventory("rawcode:I30h", "rawcode:1A0h"), 8, "AlliedForces.EmergencyCall")
+    .All(item => item.Route.GoalUnitId != "rawcode:Z30h"),
+    "제파와 쿠마 세라핌이 있으면 아카이누 히든을 추천하지 않음");
+var zephyrOwnedSupports = zephyrOwned
+    .Where(item => item.Route.GoalUnitId != "rawcode:H90H")
+    .Select(item => catalog.Unit(item.Route.GoalUnitId))
+    .ToList();
+Assert(zephyrOwnedSupports.Sum(unit => SupportAbility(unit, "마법방어력 감소")) >= 1,
+    "제파가 있어도 마방깎은 따로 채움");
+Assert(zephyrOwnedSupports.Sum(unit => SupportAbility(unit, "광폭화 잡기")) >= 1,
+    "제파가 있어도 마딜은 광보잡 한 기를 더 채움(네코·시노부 등)");
+Assert(!(sanjiSupports.Any(unit => unit.Rawcodes.Contains("I30h", StringComparer.Ordinal)) &&
+         sanjiSupports.Any(unit => unit.Rawcodes.Contains("Z30h", StringComparer.Ordinal))),
+    "빈 상디 보드에서 제파와 아카히든을 같이 추천하지 않음");
 
 var damageMixStats = new InventoryStatsCalculator(catalog).Calculate(
     Inventory("rawcode:J30h", "rawcode:S50h", "rawcode:130h"));
@@ -2231,6 +2360,50 @@ Assert(TelemetryUploader.DefaultEndpoint.StartsWith("https://") &&
         "맵 상태: 스크립트 원문 색코드 이름은 난이도가 아니다");
     Assert(MapStateReader.ScanBuffer(Utf8("난이도 : \"+vN+\"")).Difficulty == "unknown",
         "맵 상태: 스크립트 원문 난이도 줄은 무시");
+}
+
+// 클리어 라운드는 난이도마다 다르다(맵 AN=1 쉬움 40, AN=2 보통 50, 그 외 65 정산).
+{
+    var t0 = new DateTimeOffset(2026, 8, 19, 12, 0, 0, TimeSpan.Zero);
+    Assert(MatchOutcomeDetector.ClearRound("쉬움") == 40 &&
+           MatchOutcomeDetector.ClearRound("보통") == 50 &&
+           MatchOutcomeDetector.ClearRound("어려움") == 65 &&
+           MatchOutcomeDetector.ClearRound("지옥") == 65 &&
+           MatchOutcomeDetector.ClearRound("신") == 65 &&
+           MatchOutcomeDetector.ClearRound("악몽") == 65 &&
+           MatchOutcomeDetector.NeedsSettlement("신") &&
+           !MatchOutcomeDetector.NeedsSettlement("쉬움") &&
+           !MatchOutcomeDetector.NeedsSettlement("보통"),
+        "클리어 판정: 난이도별 클리어 라운드");
+
+    var easy = new MatchOutcomeDetector();
+    easy.ObserveDifficulty("쉬움");
+    easy.ObserveRound(1);
+    easy.Observe(8, 0, t0);
+    easy.ObserveRound(40);
+    easy.Observe(8, 0, t0.AddMinutes(20));
+    Assert(easy.Outcome == "unknown", "클리어 판정: 쉬움 40라운드 1회 생존만으로는 보류");
+    easy.Observe(8, 0, t0.AddMinutes(20).AddSeconds(3));
+    Assert(easy.Outcome == "clear" && easy.OutcomeSource == "clearRound",
+        "클리어 판정: 쉬움은 40라운드 진입 후 생존이면 클리어");
+
+    var normal = new MatchOutcomeDetector();
+    normal.ObserveDifficulty("보통");
+    normal.ObserveRound(2);
+    normal.Observe(6, 0, t0);
+    normal.ObserveRound(50);
+    normal.Observe(6, 0, t0.AddMinutes(25));
+    normal.Observe(6, 0, t0.AddMinutes(25).AddSeconds(3));
+    Assert(normal.Outcome == "clear" && normal.OutcomeSource == "clearRound",
+        "클리어 판정: 보통은 50라운드 진입 후 생존이면 클리어");
+
+    var staleEasy = new MatchOutcomeDetector();
+    staleEasy.ObserveDifficulty("쉬움");
+    staleEasy.ObserveRound(40);
+    staleEasy.Observe(8, 0, t0);
+    staleEasy.Observe(8, 0, t0.AddSeconds(5));
+    Assert(staleEasy.Outcome == "unknown",
+        "클리어 판정: 쉬움 첫 관측이 이미 40이면 옛 사본으로 보고 보류");
 }
 
 // 클리어 판정: 맵의 65라운드 정산("마지막 라운드 유닛 점수")이 곧 클리어 판정이다.

@@ -117,7 +117,8 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
             .Where(unit => counts.GetValueOrDefault(unit.Id) <= 0)
             .Where(unit => !seraphimBlocked || unit.Tier.Split('[', 2)[0].Trim() != "세라핌")
             .Where(unit => MeetsOwnedPrerequisites(unit, counts))
-            .Where(unit => IsRecommendedCraftTier(unit.Tier, navigation.AllowsMultipleTopUnits))
+            .Where(unit => IsRecommendedCraftTier(unit.Tier, navigation.AllowsMultipleTopUnits) ||
+                           IsCheapFillerFor(goal, unit))
             .Where(unit => !avoidTraitHungryTops ||
                            !unit.Rawcodes.Any(TraitHungryTopRawcodes.Contains))
             .Where(unit => !AvoidTraitPointCraftWithoutEconomy(navigation, unit, counts))
@@ -511,8 +512,13 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
         bool canCraftGoal)
     {
         var selected = new List<CraftCandidate>();
+        // 마딜 파이프라인이 활성인 동안은 공증·공속 버필러(쵸파 혼포인트 등)가
+        // 역할 수치·커뮤니티 점수와 무관하게 버프 슬롯 후보로 남아야 한다.
+        var includeBuffFillers = strategy.PreferCheapStatFillers &&
+                                 strategy.ArmorReductionTarget <= 0;
         var remaining = candidates
             .Where(candidate => candidate.Metrics.HasAny ||
+                                includeBuffFillers && IsCheapBuffFiller(candidate.Unit) ||
                                 strategy.FillCommunitySupports &&
                                 CommunityPriorityScore(goal, candidate.Unit) > 0)
             .ToList();
@@ -520,26 +526,34 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
         if (canCraftGoal && inventory.GetValueOrDefault(goal.Id) <= 0)
             projected += StrategyMetricsFor(goal);
 
+        // 마딜은 짤깍 칸 대신 쵸파 희귀 같은 버퍼 1기를 남긴다.
+        var magicBuffPending = strategy.PreferCheapStatFillers &&
+                               strategy.ArmorReductionTarget <= 0 &&
+                               !inventory.Any(pair => pair.Value > 0 &&
+                                                      IsCheapBuffFiller(catalog.Unit(pair.Key)));
+        var roleCap = Math.Max(0, take - (magicBuffPending ? 1 : 0));
+
         // 모든 물딜은 상위별 시너지보다 먼저 스턴 1.4를 확보해 라인을 안정시킨다.
-        if (strategy.StunBeforeSlow && selected.Count < take &&
+        if (strategy.StunBeforeSlow && selected.Count < roleCap &&
             projected.Stun + 0.0001 < strategy.StunTarget)
         {
             var stunSet = ChooseStunSet(goal, strategy, projected, remaining, selected, inventory,
-                take - selected.Count);
+                roleCap - selected.Count);
             foreach (var candidate in stunSet)
                 Add(candidate);
         }
 
         // 조초의 크제/봉히처럼 전용 파트너가 스턴 조합에 이미 포함되지 않았다면
         // 다음 순서에서 한 기만 보완한다.
-        while (selected.Count < take &&
+        while (selected.Count < roleCap &&
                selected.Count(candidate => IsCommunityCore(goal, candidate.Unit)) <
                strategy.CommunityCoreTarget)
         {
             var core = remaining
                 .Where(candidate => CommunityPriorityScore(goal, candidate.Unit) > 0)
                 .Where(candidate => IsCommunityCore(goal, candidate.Unit))
-                .Where(candidate => IsCompatibleSupport(goal, candidate.Unit, selected, inventory))
+                .Where(candidate => IsCompatibleSupport(goal, candidate.Unit, selected, inventory,
+                    projected, strategy))
                 .Where(candidate => FitsStunCap(projected, candidate, strategy.StunCap))
                 .OrderByDescending(candidate => CommunityPriorityScore(goal, candidate.Unit))
                 .ThenByDescending(candidate => candidate.Recommendation.RecipeProgress.CompletionRatio)
@@ -552,11 +566,12 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
 
         // 징초는 자체 암브 외에 한 기가 더 있어야 한다는 최신 공략을 별도 목표로
         // 둔다. 아머브레이크를 방깎 수치로 환산하지 않고 기수로만 센다.
-        while (selected.Count < take && projected.ArmorBreak + 0.0001 < strategy.ArmorBreakTarget)
+        while (selected.Count < roleCap && projected.ArmorBreak + 0.0001 < strategy.ArmorBreakTarget)
         {
             var armorBreak = OrderTowardsTarget(remaining
                     .Where(candidate => candidate.Metrics.ArmorBreak > 0)
-                    .Where(candidate => IsCompatibleSupport(goal, candidate.Unit, selected, inventory))
+                    .Where(candidate => IsCompatibleSupport(goal, candidate.Unit, selected, inventory,
+                    projected, strategy))
                     .Where(candidate => FitsStunCap(projected, candidate, strategy.StunCap)), projected.ArmorBreak,
                 strategy.ArmorBreakTarget, candidate => candidate.Metrics.ArmorBreak,
                 projected, strategy, goal)
@@ -565,23 +580,28 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
             Add(armorBreak);
         }
 
-        while (selected.Count < take && projected.Slow + 0.0001 < strategy.SlowTarget)
+        while (selected.Count < roleCap && projected.Slow + 0.0001 < strategy.SlowTarget)
         {
-            var next = OrderTowardsTarget(remaining
+            var slowPool = remaining
                     .Where(candidate => candidate.Metrics.Slow > 0)
-                    .Where(candidate => IsCompatibleSupport(goal, candidate.Unit, selected, inventory))
-                    .Where(candidate => FitsStunCap(projected, candidate, strategy.StunCap)), projected.Slow,
-                strategy.SlowTarget, candidate => candidate.Metrics.Slow, projected, strategy, goal)
+                    .Where(candidate => IsCompatibleSupport(goal, candidate.Unit, selected, inventory,
+                    projected, strategy))
+                    .Where(candidate => FitsStunCap(projected, candidate, strategy.StunCap));
+            var next = OrderTowardsTarget(
+                    PreferCheapFillers(slowPool, IsCheapSlowFiller, BigMetricCount(
+                        metrics => metrics.Slow, IsCheapSlowFiller), 2),
+                    projected.Slow, strategy.SlowTarget, candidate => candidate.Metrics.Slow,
+                    projected, strategy, goal)
                 .FirstOrDefault();
             if (next is null) break;
             Add(next);
         }
 
-        if (!strategy.StunBeforeSlow && selected.Count < take &&
+        if (!strategy.StunBeforeSlow && selected.Count < roleCap &&
             projected.Stun + 0.0001 < strategy.StunTarget)
         {
             var stunSet = ChooseStunSet(goal, strategy, projected, remaining, selected, inventory,
-                take - selected.Count);
+                roleCap - selected.Count);
             foreach (var candidate in stunSet)
                 Add(candidate);
         }
@@ -592,12 +612,13 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
         // 없을 때만 다른 유효 역할을 겸하는 공중이동 후보로 폴백한다.
         var finisherIsMagic = strategy.ArmorReductionTarget <= 0 &&
                               strategy.MagicArmorReductionTarget > 0;
-        while (selected.Count < take &&
+        while (selected.Count < roleCap &&
                projected.AirMovement + 0.0001 < strategy.AirMovementTarget)
         {
             var compatibleAir = remaining
                 .Where(candidate => candidate.Metrics.AirMovement > 0)
-                .Where(candidate => IsCompatibleSupport(goal, candidate.Unit, selected, inventory))
+                .Where(candidate => IsCompatibleSupport(goal, candidate.Unit, selected, inventory,
+                    projected, strategy))
                 .Where(candidate => FitsStunCap(projected, candidate, strategy.StunCap))
                 .ToList();
             Func<CraftCandidate, double> finisher = finisherIsMagic
@@ -616,15 +637,19 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
             Add(air);
         }
 
-        while (selected.Count < take &&
+        while (selected.Count < roleCap &&
                projected.ArmorReduction + 0.0001 < strategy.ArmorReductionTarget)
         {
-            var armor = OrderTowardsTarget(remaining
+            var armorPool = remaining
                     .Where(candidate => candidate.Metrics.ArmorReduction > 0)
-                    .Where(candidate => IsCompatibleSupport(goal, candidate.Unit, selected, inventory))
-                    .Where(candidate => FitsStunCap(projected, candidate, strategy.StunCap)), projected.ArmorReduction,
-                strategy.ArmorReductionTarget, candidate => candidate.Metrics.ArmorReduction,
-                projected, strategy, goal)
+                    .Where(candidate => IsCompatibleSupport(goal, candidate.Unit, selected, inventory,
+                    projected, strategy))
+                    .Where(candidate => FitsStunCap(projected, candidate, strategy.StunCap));
+            var armor = OrderTowardsTarget(
+                    PreferCheapFillers(armorPool, IsCheapArmorFiller, BigMetricCount(
+                        metrics => metrics.ArmorReduction, IsCheapArmorFiller), 3),
+                    projected.ArmorReduction, strategy.ArmorReductionTarget,
+                    candidate => candidate.Metrics.ArmorReduction, projected, strategy, goal)
                 .FirstOrDefault();
             if (armor is null) break;
             Add(armor);
@@ -632,12 +657,13 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
 
         // 마딜 상위의 마감 깎기: 마방깎 소스를 최소 목표만큼 확보한다. 물딜의 방깎
         // 211과 달리 큰 수치 목표를 두지 않는다(실측상 보편 스택이 아님).
-        while (selected.Count < take &&
+        while (selected.Count < roleCap &&
                projected.MagicArmorReduction + 0.0001 < strategy.MagicArmorReductionTarget)
         {
             var magicArmor = OrderTowardsTarget(remaining
                     .Where(candidate => candidate.Metrics.MagicArmorReduction > 0)
-                    .Where(candidate => IsCompatibleSupport(goal, candidate.Unit, selected, inventory))
+                    .Where(candidate => IsCompatibleSupport(goal, candidate.Unit, selected, inventory,
+                    projected, strategy))
                     .Where(candidate => FitsStunCap(projected, candidate, strategy.StunCap)),
                 projected.MagicArmorReduction,
                 strategy.MagicArmorReductionTarget,
@@ -648,11 +674,12 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
             Add(magicArmor);
         }
 
-        while (selected.Count < take && projected.BossControl + 0.0001 < strategy.BossControlTarget)
+        while (selected.Count < roleCap && projected.BossControl + 0.0001 < strategy.BossControlTarget)
         {
             var boss = OrderTowardsTarget(remaining
                     .Where(candidate => candidate.Metrics.BossControl > 0)
-                    .Where(candidate => IsCompatibleSupport(goal, candidate.Unit, selected, inventory))
+                    .Where(candidate => IsCompatibleSupport(goal, candidate.Unit, selected, inventory,
+                    projected, strategy))
                     .Where(candidate => FitsStunCap(projected, candidate, strategy.StunCap)), projected.BossControl,
                 strategy.BossControlTarget, candidate => candidate.Metrics.BossControl, projected, strategy, goal)
                 .FirstOrDefault();
@@ -660,12 +687,13 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
             Add(boss);
         }
 
-        while (selected.Count < take &&
+        while (selected.Count < roleCap &&
                projected.BerserkBossControl + 0.0001 < strategy.BerserkBossControlTarget)
         {
             var berserk = OrderTowardsTarget(remaining
                     .Where(candidate => candidate.Metrics.BerserkBossControl > 0)
-                    .Where(candidate => IsCompatibleSupport(goal, candidate.Unit, selected, inventory))
+                    .Where(candidate => IsCompatibleSupport(goal, candidate.Unit, selected, inventory,
+                    projected, strategy))
                     .Where(candidate => FitsStunCap(projected, candidate, strategy.StunCap)), projected.BerserkBossControl,
                 strategy.BerserkBossControlTarget, candidate => candidate.Metrics.BerserkBossControl,
                 projected, strategy, goal)
@@ -676,12 +704,13 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
 
         // 딜 밸런스(고인물 검증): 필수 유틸을 채운 뒤 남는 슬롯에서, 상위가 단일이면
         // 끝딜 한 기, 끝딜이면 단일 한 기를 보완한다. 패에 이미 있으면 건너뛴다.
-        while (selected.Count < take &&
+        while (selected.Count < roleCap &&
                projected.FinisherDamage + 0.0001 < strategy.FinisherDamageTarget)
         {
             var finisher = OrderTowardsTarget(remaining
                     .Where(candidate => candidate.Metrics.FinisherDamage > 0)
-                    .Where(candidate => IsCompatibleSupport(goal, candidate.Unit, selected, inventory))
+                    .Where(candidate => IsCompatibleSupport(goal, candidate.Unit, selected, inventory,
+                    projected, strategy))
                     .Where(candidate => FitsStunCap(projected, candidate, strategy.StunCap)),
                 projected.FinisherDamage, strategy.FinisherDamageTarget,
                 candidate => candidate.Metrics.FinisherDamage, projected, strategy, goal)
@@ -690,12 +719,13 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
             Add(finisher);
         }
 
-        while (selected.Count < take &&
+        while (selected.Count < roleCap &&
                projected.SingleDamage + 0.0001 < strategy.SingleDamageTarget)
         {
             var single = OrderTowardsTarget(remaining
                     .Where(candidate => candidate.Metrics.SingleDamage > 0)
-                    .Where(candidate => IsCompatibleSupport(goal, candidate.Unit, selected, inventory))
+                    .Where(candidate => IsCompatibleSupport(goal, candidate.Unit, selected, inventory,
+                    projected, strategy))
                     .Where(candidate => FitsStunCap(projected, candidate, strategy.StunCap)),
                 projected.SingleDamage, strategy.SingleDamageTarget,
                 candidate => candidate.Metrics.SingleDamage, projected, strategy, goal)
@@ -704,47 +734,72 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
             Add(single);
         }
 
-        if (strategy.OptionalBossSupportAfterCore && selected.Count < take &&
+        if (strategy.OptionalBossSupportAfterCore && selected.Count < roleCap &&
             projected.BossControl <= 0 && projected.BerserkBossControl <= 0)
         {
             var optionalBoss = OrderByCraftDistance(remaining
                     .Where(candidate => candidate.Metrics.BossControl > 0 ||
                                         candidate.Metrics.BerserkBossControl > 0)
-                    .Where(candidate => IsCompatibleSupport(goal, candidate.Unit, selected, inventory))
+                    .Where(candidate => IsCompatibleSupport(goal, candidate.Unit, selected, inventory,
+                    projected, strategy))
                     .Where(candidate => FitsStunCap(projected, candidate, strategy.StunCap)))
                 .FirstOrDefault();
             if (optionalBoss is not null) Add(optionalBoss);
         }
 
+        // 마딜은 짤깍이 필요 없다. 남는 한 칸은 쵸파 혼포인트 같은 공증·공속 버퍼.
+        if (strategy.PreferCheapStatFillers && strategy.ArmorReductionTarget <= 0 &&
+            selected.Count < take &&
+            !selected.Any(candidate => IsCheapBuffFiller(candidate.Unit)) &&
+            !inventory.Any(pair => pair.Value > 0 && IsCheapBuffFiller(catalog.Unit(pair.Key))))
+        {
+            var buff = remaining
+                .Where(candidate => IsCheapBuffFiller(candidate.Unit))
+                .Where(candidate => IsCompatibleSupport(goal, candidate.Unit, selected, inventory,
+                    projected, strategy))
+                .Where(candidate => FitsStunCap(projected, candidate, strategy.StunCap))
+                .OrderByDescending(candidate =>
+                    AbilityTotal(candidate.Unit, "공격력 증가") +
+                    AbilityTotal(candidate.Unit, "공격속도 증가"))
+                .ThenByDescending(candidate => CommunityPriorityScore(goal, candidate.Unit))
+                .ThenByDescending(candidate =>
+                    candidate.Recommendation.RecipeProgress.CompletionRatio)
+                .FirstOrDefault();
+            if (buff is not null) Add(buff);
+        }
+
         // A researched one-top profile can have mandatory buffers which are not expressible as
         // slow/stun/armor totals (for example Toki's attack speed for Mihawk eternal). Add those
         // only after the measurable core, retaining community priority before craft distance.
-        if (strategy.FillCommunitySupports && selected.Count < take)
+        while (strategy.FillCommunitySupports && selected.Count < take)
         {
-            foreach (var support in remaining
-                         .Where(candidate => CommunityPriorityScore(goal, candidate.Unit) > 0)
-                         .Where(candidate => IsCompatibleSupport(goal, candidate.Unit, selected, inventory))
-                         .Where(candidate => FitsStunCap(projected, candidate, strategy.StunCap))
-                         .OrderByDescending(candidate => CommunityPriorityScore(goal, candidate.Unit))
-                         .ThenByDescending(candidate =>
-                             candidate.Recommendation.RecipeProgress.CompletionRatio)
-                         .ThenBy(candidate => candidate.Recommendation.RecipeProgress.MissingLeaves
-                             .Sum(leaf => leaf.MissingCount))
-                         .Take(take - selected.Count)
-                         .ToList())
-                Add(support);
+            var support = remaining
+                .Where(candidate => CommunityPriorityScore(goal, candidate.Unit) > 0)
+                .Where(candidate => IsCompatibleSupport(goal, candidate.Unit, selected, inventory,
+                    projected, strategy))
+                .Where(candidate => FitsStunCap(projected, candidate, strategy.StunCap))
+                .OrderByDescending(candidate => CommunityPriorityScore(goal, candidate.Unit))
+                .ThenByDescending(candidate =>
+                    candidate.Recommendation.RecipeProgress.CompletionRatio)
+                .ThenBy(candidate => candidate.Recommendation.RecipeProgress.MissingLeaves
+                    .Sum(leaf => leaf.MissingCount))
+                .FirstOrDefault();
+            if (support is null) break;
+            Add(support);
         }
 
         // 다상위 항법에서만 핵심 수치 완성 뒤의 추가 상위 후보를 이어서 보여준다.
         // 패왕의길에서는 불필요한 방깎/보잡을 목표치 이상으로 억지 추천하지 않는다.
-        if (allowsMultipleTopUnits)
+        while (allowsMultipleTopUnits && selected.Count < take)
         {
-            foreach (var upper in OrderByCraftDistance(remaining
-                         .Where(candidate => IsTopTier(candidate.Unit.Tier))
-                         .Where(candidate => IsCompatibleSupport(goal, candidate.Unit, selected, inventory))
-                         .Where(candidate => FitsStunCap(projected, candidate, strategy.StunCap)))
-                     .Take(take - selected.Count).ToList())
-                Add(upper);
+            var upper = OrderByCraftDistance(remaining
+                    .Where(candidate => IsTopTier(candidate.Unit.Tier))
+                    .Where(candidate => IsCompatibleSupport(goal, candidate.Unit, selected, inventory,
+                        projected, strategy))
+                    .Where(candidate => FitsStunCap(projected, candidate, strategy.StunCap)))
+                .FirstOrDefault();
+            if (upper is null) break;
+            Add(upper);
         }
 
         return selected.Select(candidate => candidate.Recommendation).ToList();
@@ -754,6 +809,34 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
             selected.Add(candidate);
             remaining.Remove(candidate);
             projected += candidate.Metrics;
+        }
+
+        // 거프처럼 풀이감·풀깎을 전설로만 채우면 짤이감·짤깍이 밀린다.
+        // 큰 소스 2~3기를 고른 뒤에는 희귀/특별 필러로 숫자를 맞춘다.
+        IEnumerable<CraftCandidate> PreferCheapFillers(
+            IEnumerable<CraftCandidate> pool,
+            Func<UnitDefinition, bool> isCheap,
+            int bigCount,
+            int bigLimit)
+        {
+            if (!strategy.PreferCheapStatFillers || bigCount < bigLimit) return pool;
+            // 짤필러는 역할당 1기만 강제한다. 이감 20짜리 희귀함으로 102를 채우면
+            // 단일·끝딜·보잡 자리가 없어진다.
+            if (selected.Count(candidate => isCheap(candidate.Unit)) >= 1) return pool;
+            var cheap = pool.Where(candidate => isCheap(candidate.Unit)).ToList();
+            return cheap.Count > 0 ? cheap : pool;
+        }
+
+        int BigMetricCount(Func<StrategyMetrics, double> metric, Func<UnitDefinition, bool> isCheap)
+        {
+            var fromSelected = selected.Count(candidate =>
+                metric(candidate.Metrics) > 0 && !isCheap(candidate.Unit));
+            var fromOwned = inventory
+                .Where(pair => pair.Value > 0)
+                .Select(pair => catalog.Unit(pair.Key))
+                .Where(unit => CountsAsCompletedSupport(unit) && !isCheap(unit))
+                .Count(unit => metric(StrategyMetricsFor(unit)) > 0);
+            return fromSelected + fromOwned;
         }
     }
 
@@ -768,7 +851,8 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
         if (availableSlots <= 0) return [];
         var pool = OrderByCraftDistance(remaining
                 .Where(candidate => candidate.Metrics.Stun > 0)
-                .Where(candidate => IsCompatibleSupport(goal, candidate.Unit, alreadySelected, inventory)))
+                .Where(candidate => IsCompatibleSupport(goal, candidate.Unit, alreadySelected, inventory,
+                    projected, strategy)))
             .Take(24)
             .ToList();
         var maximumPicks = Math.Min(3, availableSlots);
@@ -833,8 +917,11 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
             for (var index = start; index < pool.Count; index++)
             {
                 var candidate = pool[index];
+                var liveProjected = projected;
+                foreach (var picked in current) liveProjected += picked.Metrics;
                 if (!IsCompatibleSupport(goal, candidate.Unit,
-                        alreadySelected.Concat(current).ToList(), inventory)) continue;
+                        alreadySelected.Concat(current).ToList(), inventory, liveProjected,
+                        strategy)) continue;
                 var totalStun = projected.Stun + current.Sum(item => item.Metrics.Stun) +
                                 candidate.Metrics.Stun;
                 if (totalStun > strategy.StunCap + 0.0001) continue;
@@ -884,6 +971,57 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
     // 이런 유닛은 실측 채용률 대신 수작업 커뮤니티 테이블 순위로 후퇴시킨다.
     private static readonly IReadOnlySet<string> LeftoverFillerRawcodes =
         new HashSet<string>(StringComparer.Ordinal) { "W50h" }; // 비비 변화
+
+    // 풀이감·풀깎을 맞출 때 전설 다음에 넣는 희귀/특별 필러(짤이감·짤깍).
+    private static readonly IReadOnlySet<string> CheapSlowRawcodes =
+        new HashSet<string>(StringComparer.Ordinal)
+        {
+            "K50h", // 페로나 희귀 이감20
+            "D20h", // 키드 희귀 이감15
+            "H20h", // 크로커다일 희귀 이감15
+            "B20h", // 아오키지 희귀 이감10
+            "F10h", // 스모커 특별 이감5
+            "X90h"  // 드레이크 희귀 이감10 깍5
+        };
+
+    private static readonly IReadOnlySet<string> CheapArmorRawcodes =
+        new HashSet<string>(StringComparer.Ordinal)
+        {
+            "U10h", // 바질 희귀 깍10
+            "X90h", // 드레이크 희귀 이감10 깍5
+            "E10h", // 쵸파 두뇌강화 깍3
+            "610h"  // 바질 특별 깍3
+        };
+
+    private static readonly IReadOnlySet<string> CheapBuffRawcodes =
+        new HashSet<string>(StringComparer.Ordinal)
+        {
+            "K20h", // 쵸파 혼포인트 희귀 공증25
+            "D10h", // 쵸파 가드포인트 특별 공증7
+            "N10h"  // 브룩 희귀 공속10
+        };
+
+    private static bool IsCheapSlowFiller(UnitDefinition unit) =>
+        unit.Rawcodes.Any(CheapSlowRawcodes.Contains);
+
+    private static bool IsCheapArmorFiller(UnitDefinition unit) =>
+        unit.Rawcodes.Any(CheapArmorRawcodes.Contains);
+
+    private static bool IsCheapBuffFiller(UnitDefinition unit) =>
+        unit.Rawcodes.Any(CheapBuffRawcodes.Contains);
+
+    private static bool IsCheapStatFiller(UnitDefinition unit) =>
+        IsCheapSlowFiller(unit) || IsCheapArmorFiller(unit) || IsCheapBuffFiller(unit);
+
+    private static bool IsCheapFillerFor(UnitDefinition goal, UnitDefinition unit)
+    {
+        if (IsCheapSlowFiller(unit)) return true;
+        return IsMagicDamageTier(goal.Tier) ? IsCheapBuffFiller(unit) : IsCheapArmorFiller(unit);
+    }
+
+    // 제파 전설 · 아카이누 히든. 둘 다 보잡+광보잡 스틱이라 한 보드에 같이 안 간다.
+    private static readonly IReadOnlySet<string> ExclusiveBerserkStickRawcodes =
+        new HashSet<string>(StringComparer.Ordinal) { "I30h", "Z30h" };
 
     // 가이드 43747 특강 노트 기준 "특강(필수)" 상위 — 특성포인트가 없으면 제 성능이
     // 안 나온다. 키자루 초월은 특강이 특포 반복 소모형 스킬강화라(특성공학 항법에서
@@ -1018,8 +1156,12 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
         // 신+ 클리어 데이터가 충분하면 실측 채용률(보유 앵커가 있으면 조건부 재집계)을
         // 쓰고, 표본이 부족한 목표는 기존 수작업 커뮤니티 테이블로 후퇴한다. 역할 코어
         // 우선 구조는 그대로이며 이 점수는 같은 역할 버킷 안의 순서만 바꾼다.
-        var isLeftoverFiller = candidate.Rawcodes.Any(LeftoverFillerRawcodes.Contains);
-        var clearScore = isLeftoverFiller || _activeClearProfile is null
+        // 비비 변화는 야마토 목박 필러라 채용률을 그대로 쓰면 안 된다.
+        // 거프 1상위에서는 이감+깎 코어(45%)라 실측 채용률을 유지한다.
+        var isYamatoLeftover = candidate.Rawcodes.Any(LeftoverFillerRawcodes.Contains) &&
+            (goal.Id.Equals("yamato_transcendent", StringComparison.OrdinalIgnoreCase) ||
+             goal.Rawcodes.Contains("DB0H", StringComparer.Ordinal));
+        var clearScore = isYamatoLeftover || _activeClearProfile is null
             ? (int?)null
             : (int)Math.Round(candidate.Rawcodes
                 .Select(code => _activeClearProfile.SupportShare.GetValueOrDefault(code))
@@ -1065,7 +1207,9 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
     private bool IsCompatibleSupport(UnitDefinition goal,
         UnitDefinition candidate,
         IReadOnlyCollection<CraftCandidate> selected,
-        IReadOnlyDictionary<string, int> inventory)
+        IReadOnlyDictionary<string, int> inventory,
+        StrategyMetrics projected,
+        GoalStrategyProfile strategy)
     {
         // 배 하나는 유닛 하나에만 들어간다. 이미 선택된 후보들이 보유한 배를 다
         // 예약했다면 추가 배 소비 후보는 함께 추천하지 않는다(유저 보고:
@@ -1083,6 +1227,33 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
                     code.Equals(shipCode, StringComparison.Ordinal));
                 if (reserved + required > ownedShips) return false;
             }
+        }
+
+        // 마딜은 물딜 짤깍(바질 희귀·쵸파 두뇌)이 역할이 없다. 이감도 있는
+        // 드레이크만 짤이감으로 남긴다.
+        if (IsMagicDamageTier(goal.Tier) && IsCheapArmorFiller(candidate) &&
+            !IsCheapSlowFiller(candidate) && !IsCheapBuffFiller(candidate))
+            return false;
+
+        // 제파와 아카히든은 같은 보잡+광보잡 스틱이다. 신+ 상디 2451판에서
+        // 제파가 있을 때 아카히든 동반은 5.8%뿐. 제파+쿠마 세라핌 보드에
+        // 아카히든을 또 올리면 그 피드백이 된다. 네코·시노부 같은 2기 광보잡은 허용.
+        if (candidate.Rawcodes.Any(ExclusiveBerserkStickRawcodes.Contains) &&
+            (selected.Any(item => item.Unit.Rawcodes.Any(ExclusiveBerserkStickRawcodes.Contains)) ||
+             inventory.Any(pair => pair.Value > 0 &&
+                                   catalog.Unit(pair.Key).Rawcodes
+                                       .Any(ExclusiveBerserkStickRawcodes.Contains))))
+            return false;
+
+        // 목표 기수를 채운 뒤의 순수 광보잡 추가는 막는다. 이감·끝딜을 겸하면 남긴다.
+        // 목표가 0인 상위(조로·야마토)는 선택 보잡을 이 규칙으로 막지 않는다.
+        if (strategy.BerserkBossControlTarget > 0 &&
+            AbilityTotal(candidate, "광폭화 잡기") > 0 &&
+            projected.BerserkBossControl + 0.0001 >= strategy.BerserkBossControlTarget)
+        {
+            var otherMetrics = StrategyMetricsFor(candidate) with { BerserkBossControl = 0 };
+            if (RemainingUsefulMetricCount(otherMetrics, projected, strategy) <= 0)
+                return false;
         }
 
         if (goal.Rawcodes.Contains("F90H", StringComparer.Ordinal) &&
@@ -1120,7 +1291,7 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
         foreach (var (unitId, count) in inventory.Where(pair => pair.Value > 0))
         {
             var unit = catalog.Unit(unitId);
-            if (!CountsAsCompletedSupport(unit.Tier)) continue;
+            if (!CountsAsCompletedSupport(unit)) continue;
             result += StrategyMetricsFor(unit) * count;
         }
         return result;
@@ -1130,7 +1301,9 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
     {
         var slow = AbilitySignedTotal(unit, "이동속도 감소", "발동이동속도 감소");
         var stun = AbilityTotal(unit, "스턴");
-        var armor = AbilityTotal(unit, "방어력 감소", "발동방어력 감소", "중첩방어력 감소");
+        // 거프 불멸의 적 방어 +15는 방깎 -15다. 절댓값으로 합치면 깎이 30 과대평가된다.
+        var armor = AbilitySignedTotal(unit, "방어력 감소") +
+                    AbilityTotal(unit, "발동방어력 감소", "중첩방어력 감소");
         var magicArmor = AbilityTotal(unit, "마법방어력 감소");
         var armorBreak = AbilityPresenceOrTotal(unit, "아머브레이크", "단일아머브레이크");
         var airMovement = AbilityPresenceOrTotal(unit, "공중이동");
@@ -1150,54 +1323,96 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
         // 2.314 recent-community profiles. A zero target means the selected top unit can
         // clear without reserving a separate support slot; the core 102 slow / 1.4 stun /
         // 211 armor targets still take precedence. Unknown physical tops stay conservative.
+        GoalStrategyProfile? profile = null;
         if (goal.Id.Equals("yamato_transcendent", StringComparison.OrdinalIgnoreCase) ||
             rawcode.Equals("DB0H", StringComparison.Ordinal))
-            return new GoalStrategyProfile(0, 0, StunBeforeSlow: true);
-        if (rawcode.Equals("B90H", StringComparison.Ordinal)) // Usopp transcendent: self boss/berserk.
-            return new GoalStrategyProfile(1, 1);
-        if (rawcode.Equals("F90H", StringComparison.Ordinal)) // Zoro: Crocodile limit OR Bon Clay hidden.
-            return new GoalStrategyProfile(0, 0, true, CommunityCoreTarget: 1);
-        if (rawcode.Equals("A90H", StringComparison.Ordinal)) // Jinbe: self + one external armor break.
-            return new GoalStrategyProfile(1, 1, ArmorBreakTarget: 2);
-        if (rawcode.Equals("B50h", StringComparison.Ordinal)) // Cavendish eternal: no forced extra support.
-            return new GoalStrategyProfile(0, 0);
-        if (rawcode.Equals("490H", StringComparison.Ordinal)) // Basil transcendent: recent reports need help.
-            return new GoalStrategyProfile(2, 1);
-        if (rawcode.Equals("I70h", StringComparison.Ordinal)) // Katakuri covers both only with full armor.
-            return new GoalStrategyProfile(1, 1);
-
-        // 니카(루초 KB0H·뱀초 KB0H_): 신+ 216판 실측이 두 갈래다 — 이감 버전 167판
-        // (스턴 1.6·이감 95)과 노이감 버전. 노이감은 유저 스펙대로 큰 스턴 지원
-        // 페어(0.8+0.9 또는 0.9+0.9)를 니카 자체 1.1에 더해 짠다(총 목표 2.9).
-        // 빌드 방향을 직접 고르거나, 자동이면 패의 스턴 1.8 이상에서 전환한다.
-        if (goal.Rawcodes.Any(code => code is "KB0H" or "KB0H_"))
+            profile = new GoalStrategyProfile(0, 0, StunBeforeSlow: true);
+        else if (rawcode.Equals("B90H", StringComparison.Ordinal)) // Usopp: self boss/berserk.
+            profile = new GoalStrategyProfile(1, 1);
+        else if (rawcode.Equals("F90H", StringComparison.Ordinal)) // Zoro: Croc limit OR Bon Clay.
+            profile = new GoalStrategyProfile(0, 0, true, CommunityCoreTarget: 1);
+        else if (rawcode.Equals("A90H", StringComparison.Ordinal)) // Jinbe: self + one armor break.
+            profile = new GoalStrategyProfile(1, 1, ArmorBreakTarget: 2);
+        else if (rawcode.Equals("B50h", StringComparison.Ordinal)) // Cavendish: no forced extra.
+            profile = new GoalStrategyProfile(0, 0);
+        else if (rawcode.Equals("490H", StringComparison.Ordinal)) // Basil: recent reports need help.
+            profile = new GoalStrategyProfile(2, 1);
+        else if (rawcode.Equals("I70h", StringComparison.Ordinal)) // Katakuri: full armor for both.
+            profile = new GoalStrategyProfile(1, 1);
+        else if (rawcode.Equals("C40h", StringComparison.Ordinal))
+            // 거프: 공중이동 슬롯을 안 쓰고 깎·버프에 쓴다. 스턴·짤필러는 추론이 채운다.
+            profile = new GoalStrategyProfile(1, 1, FillCommunitySupports: true,
+                AirMovementTarget: 0);
+        else if (goal.Rawcodes.Any(code => code is "KB0H" or "KB0H_"))
         {
+            // 니카(루초·뱀초): 신+ 216판이 이감 버전(스턴 1.6)과 노이감(2.9)으로 갈린다.
             var noSlow = buildVariant == "noslow" ||
                          buildVariant != "slow" && committedStun >= NikaNoSlowCommitStun;
-            return noSlow
+            profile = noSlow
                 ? new GoalStrategyProfile(1, 1, SlowTarget: 40, StunTarget: 2.9, StunCap: 3.0)
                 : new GoalStrategyProfile(1, 1, StunTarget: 1.6, StunCap: 1.7);
         }
-
-        // 마딜 상위는 바제스 가능이라도 물딜 방깎 파이프라인을 타면 안 된다.
-        // 신+ 상디초월 실측(92판): 이감 145·스턴 1.4·방깎 0·보잡/광잡 각 1.
-        // 공속·마뎀증 버퍼는 수치 목표 대신 클리어 채용률 정렬로 채운다.
-        // 딜 밸런스(고인물 검증): 상위가 단일이면 끝딜 한 기, 끝딜이면 단일 한 기를
-        // 보완해 딜 구성을 맞춘다. 상위가 양쪽 다 갖추면 보완 목표는 없다.
-        if (IsMagicDamageTier(goal.Tier))
+        else if (IsMagicDamageTier(goal.Tier))
         {
+            // 마딜 상위는 물딜 방깎 파이프라인을 타면 안 된다.
+            // 신+ 상디 2451판: 광보잡 1기 42% · 2기 28% · 2기 이상 37%.
             var goalSingle = AbilityTotal(goal, "단일");
             var goalFinisher = AbilityTotal(goal, "끝딜");
-            return new GoalStrategyProfile(1, 1, FillCommunitySupports: true,
+            profile = new GoalStrategyProfile(1, 2, FillCommunitySupports: true,
                 ArmorReductionTarget: 0, MagicArmorReductionTarget: MagicArmorSourceTarget,
                 SingleDamageTarget: goalFinisher > 0 && goalSingle <= 0 ? 1 : 0,
                 FinisherDamageTarget: goalSingle > 0 && goalFinisher <= 0 ? 1 : 0);
         }
+        else
+        {
+            var isPhysicalTop = goal.OfficialAbilities.Any(ability =>
+                ability.Name.Equals("바제스", StringComparison.Ordinal) &&
+                ability.DisplayValue.Equals("가능", StringComparison.Ordinal));
+            if (isPhysicalTop) profile = new GoalStrategyProfile(1, 1);
+        }
 
-        var isPhysicalTop = goal.OfficialAbilities.Any(ability =>
-            ability.Name.Equals("바제스", StringComparison.Ordinal) &&
-            ability.DisplayValue.Equals("가능", StringComparison.Ordinal));
-        return isPhysicalTop ? new GoalStrategyProfile(1, 1) : null;
+        return InferSupportNeeds(profile, goal);
+    }
+
+    /// <summary>
+    /// 43747 공략 문구와 자체 스턴·이감으로 상위별 목표를 보정한다.
+    /// 거프처럼 손댄 규칙(자체 원스턴이면 추가 스턴 생략, 솔딜이면 커뮤니티 코어,
+    /// 짤이감·짤깍)을 다른 상위에도 같은 근거로 적용한다.
+    /// </summary>
+    private static GoalStrategyProfile? InferSupportNeeds(GoalStrategyProfile? profile,
+        UnitDefinition goal)
+    {
+        if (profile is null) return null;
+        var p = profile.Value;
+        var text = goal.Description ?? "";
+        var selfStun = AbilityTotal(goal, "스턴");
+        var selfSlow = AbilitySignedTotal(goal, "이동속도 감소", "발동이동속도 감소");
+
+        if (p.SlowTarget >= 80 || p.ArmorReductionTarget >= 100)
+            p = p with { PreferCheapStatFillers = true };
+
+        var stunUnreliable = text.Contains("원스턴 불안", StringComparison.Ordinal) ||
+                             text.Contains("스턴 부족", StringComparison.Ordinal);
+        var skipSlowAndStun = text.Contains("이감·스턴 없이", StringComparison.Ordinal) ||
+                              text.Contains("이감 스턴 없이", StringComparison.Ordinal);
+        var selfSlowCovers = text.Contains("혼자이감커버", StringComparison.Ordinal);
+        var soloCarry = text.Contains("솔딜", StringComparison.Ordinal);
+        var buffScaler = text.Contains("버프 개수 비례", StringComparison.Ordinal) ||
+                         text.Contains("버프개수비례", StringComparison.Ordinal);
+
+        if (skipSlowAndStun)
+            p = p with { StunTarget = 0, StunBeforeSlow = false, SlowTarget = 0 };
+        else if (!stunUnreliable && selfStun >= 1.1 &&
+                 p.StunTarget <= StableStunTarget + 0.05)
+            p = p with { StunTarget = Math.Max(p.StunTarget, selfStun), StunBeforeSlow = false };
+
+        if (selfSlowCovers && p.SlowTarget >= FullSlowTarget - 0.1)
+            p = p with { SlowTarget = Math.Clamp(selfSlow + 20, 80, FullSlowTarget) };
+
+        if (soloCarry || buffScaler)
+            p = p with { FillCommunitySupports = true };
+
+        return p;
     }
 
     private static bool IsMagicDamageTier(string tier) => DamageTiers.IsMagic(tier);
@@ -1296,10 +1511,14 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
         return ids;
     }
 
-    // 아이템(흑도 슈스이 방깎 6 등)도 완성 전력으로 역할 목표에 합산한다.
+    // 아이템(흑도 슈스이 방깎 6 등)과 세라핌도 보드에 있으면 완성 전력으로 합산한다.
+    // 짤이감·짤깍(페로나 희귀, 바질 희귀 등)은 보드에 있으면 이감/깎 합산에 넣는다.
     private static bool CountsAsCompletedSupport(string tier) =>
         BaseTier(tier) is "전설" or "히든" or "변화된" or "왜곡됨" or "함선" or "해적선" or
-            "초월" or "불멸" or "영원" or "제한됨" or "아이템";
+            "초월" or "불멸" or "영원" or "제한됨" or "아이템" or "세라핌";
+
+    private static bool CountsAsCompletedSupport(UnitDefinition unit) =>
+        CountsAsCompletedSupport(unit.Tier) || IsCheapStatFiller(unit);
 
     /// <summary>
     /// 긴급소집 와일드카드(특별함 선택 3장) 사용처. 추천 빌드(목표 카드 우선)에
@@ -1733,7 +1952,7 @@ public sealed class RecommendationEngine(DataCatalog catalog, ClearBuildStats? c
         double ArmorBreakTarget = 0, int CommunityCoreTarget = 0, bool StunBeforeSlow = true,
         double AirMovementTarget = 1, double MagicArmorReductionTarget = 0,
         double SingleDamageTarget = 0, double FinisherDamageTarget = 0,
-        double StunCap = MaximumUsefulStun);
+        double StunCap = MaximumUsefulStun, bool PreferCheapStatFillers = false);
 
     private readonly record struct StrategyMetrics(double Slow = 0, double Stun = 0,
         double ArmorReduction = 0, double ArmorBreak = 0, double AirMovement = 0,
