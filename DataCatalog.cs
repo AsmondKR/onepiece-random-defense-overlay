@@ -36,6 +36,7 @@ public sealed class DataCatalog
             .GroupBy(x => x.rawcode, StringComparer.Ordinal)
             .ToDictionary(group => group.Key, group => group.First().Id, StringComparer.Ordinal);
         UnitsById = Data.Units
+            .Where(IsCurrentOrAppOnlyUnit)
             .Select(EnrichKnownUnit)
             .ToDictionary(x => x.Id, StringComparer.OrdinalIgnoreCase);
         AllUnits = UnitsById.Values
@@ -59,6 +60,19 @@ public sealed class DataCatalog
             if (!expanded.ContainsKey(alias) && expanded.TryGetValue(canonical, out var entry))
                 expanded[alias] = entry;
         return expanded;
+    }
+
+    // 현재 TMO 카탈로그에 존재하는 유닛과 앱 전용 가상 항목만 유닛 테이블에 남긴다.
+    // 구 세이브의 폐기된 데모 정의가 추천 후보로 새지 않게 하는 필터다.
+    private bool IsCurrentOrAppOnlyUnit(UnitDefinition unit)
+    {
+        if (unit.Id.Equals("item_greenblood", StringComparison.OrdinalIgnoreCase) ||
+            unit.Id.Equals("greenblood_buff", StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (unit.Rawcodes.Count == 0) return true;
+        return unit.Rawcodes
+            .Select(RawcodeAliases.Canonical)
+            .Any(RawcodeCatalog.ContainsKey);
     }
 
     public UnitDefinition Unit(string id)
@@ -100,7 +114,9 @@ public sealed class DataCatalog
             Name = unit.Name,
             Tier = unit.Tier,
             Roles = unit.Roles,
-            Recipe = unit.Recipe.Count > 0 || catalogEntry is null
+            // 현재 TMO assets가 레시피의 단일 권위다. 데모 정의는 안정적 ID를 유지할
+            // 수 있지만, 과거 레시피가 현재 데이터를 덮어쓰게 두지 않는다.
+            Recipe = catalogEntry is null
                 ? unit.Recipe
                 : RecipeFor(unit.Rawcodes.FirstOrDefault() ?? "", catalogEntry),
             Tags = unit.Tags,
@@ -258,7 +274,9 @@ public sealed class DataCatalog
                 Image = original.Image,
                 // Guide-specific distortion entries may have replaced the legacy recipe.
                 // Use an explicit guide recipe when captured; otherwise retain the base asset.
-                Recipe = guide.Recipe.Count > 0 ? guide.Recipe : original.Recipe,
+                // 43747 가이드 파일은 능력치·티어 교정 레이어로만 남는다.
+                // 그 역사적 레시피가 현재 42479 레시피를 대체하지 않게 한다.
+                Recipe = original.Recipe,
                 Abilities = guide.Abilities,
                 Description = guide.Description,
                 Commands = original.Commands

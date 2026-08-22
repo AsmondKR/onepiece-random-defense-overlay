@@ -668,13 +668,10 @@ Assert(catalog.Unit("rawcode:V50h").Tier == "왜곡됨" &&
        catalog.Unit("rawcode:840h").Tier == "왜곡됨",
     "43747 기준 에이스·퀸·코알라·페로나의 폐기된 구등급을 왜곡됨으로 교정");
 var distortedAce = catalog.Unit("rawcode:V50h");
-Assert(distortedAce.Recipe.Count == 4 &&
+Assert(distortedAce.Recipe.Count == 2 &&
        distortedAce.Recipe.GetValueOrDefault("rawcode:O20h") == 1 &&
-       distortedAce.Recipe.GetValueOrDefault("rawcode:Z10h") == 1 &&
-       distortedAce.Recipe.GetValueOrDefault("rawcode:210h") == 1 &&
-       distortedAce.Recipe.GetValueOrDefault("rawcode:LUMBER") == 3 &&
-       distortedAce.Description.Contains("해적왕의 아들", StringComparison.Ordinal),
-    "에이스 왜곡됨을 에이스 전설·마젤란·스쿼드·목재3과 해적왕의 아들 조건으로 교정");
+       distortedAce.Recipe.GetValueOrDefault("rawcode:LUMBER") == 10,
+    "에이스 왜곡됨 레시피는 현재 TMO 권위(에이스 전설 1 + 목재 10)를 따른다");
 Assert(catalog.Unit("mobydick").Tier == "해적선" &&
        catalog.Unit("rawcode:U30h").Tier == "해적선",
     "43747 해적선 장식 문자는 제거하고 앱의 정식 등급명으로 유지");
@@ -1298,9 +1295,6 @@ var sanjiPicks = engine.RecommendNearestCrafts("rawcode:H90H", [], take: 10,
 Assert(sanjiPicks.Count > 1 && sanjiPicks[0].Route.GoalUnitId == "rawcode:H90H",
     "긴급소집에서 상디초월 목표 카드를 먼저 표시");
 var sanjiStory = engine.RecipeLegendaryUnitIds("rawcode:H90H");
-Console.WriteLine("DEBUG sanjiSupports: " + string.Join(", ", sanjiPicks.Skip(1)
-    .Where(item => !sanjiStory.Contains(item.Route.GoalUnitId, StringComparer.OrdinalIgnoreCase))
-    .Select(item => catalog.Unit(item.Route.GoalUnitId).Name)));
 var sanjiSupports = sanjiPicks.Skip(1)
     .Where(item => !sanjiStory.Contains(item.Route.GoalUnitId, StringComparer.OrdinalIgnoreCase))
     .Select(item => catalog.Unit(item.Route.GoalUnitId))
