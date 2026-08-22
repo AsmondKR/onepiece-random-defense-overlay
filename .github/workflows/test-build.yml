@@ -32,6 +32,38 @@ jobs:
       - name: Run unit tests
         run: dotnet test OrandOverlay.Tests/OrandOverlay.Tests.csproj -c Release
 
+      - name: Capture current TMO references
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path artifacts/reference | Out-Null
+          Invoke-WebRequest `
+            -Uri "https://raw.githubusercontent.com/tmo-gg/static.tmo.gg/main/ord-helper/assets.json" `
+            -OutFile "artifacts/reference/tmo-assets-current.json"
+
+          $urls = @(
+            "https://tmo.gg/g/ord/build-helper/42479",
+            "https://tmo.gg/ko/build-helper/42479",
+            "https://war3.tmo.gg/"
+          )
+          foreach ($url in $urls) {
+            $safe = ($url -replace '^https?://', '') -replace '[^a-zA-Z0-9.-]', '_'
+            try {
+              $response = Invoke-WebRequest -Uri $url -MaximumRedirection 10
+              $response.Content | Set-Content -Path "artifacts/reference/$safe.html" -Encoding UTF8
+              @(
+                "Requested: $url"
+                "Final: $($response.BaseResponse.RequestMessage.RequestUri)"
+                "Status: $($response.StatusCode)"
+              ) | Set-Content -Path "artifacts/reference/$safe.meta.txt" -Encoding UTF8
+            }
+            catch {
+              @(
+                "Requested: $url"
+                "Error: $($_.Exception.Message)"
+              ) | Set-Content -Path "artifacts/reference/$safe.error.txt" -Encoding UTF8
+            }
+          }
+
       - name: Publish Windows test build
         shell: pwsh
         run: |
@@ -71,6 +103,14 @@ jobs:
           path: artifacts/test/**
           if-no-files-found: error
           retention-days: 14
+
+      - name: Upload TMO references
+        uses: actions/upload-artifact@v4
+        with:
+          name: tmo-reference-${{ github.run_number }}
+          path: artifacts/reference/**
+          if-no-files-found: error
+          retention-days: 1
 
       - name: Upload temporary source snapshot
         uses: actions/upload-artifact@v4
