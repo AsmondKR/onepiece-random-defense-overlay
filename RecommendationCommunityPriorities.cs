@@ -94,7 +94,7 @@ public static class RecommendationCommunityPriorities
             ["HA0h"] = 21, // 킹
             ["MC0h"] = 20, // 히바리
             ["O30h"] = 16, // 봉쿠레
-            ["K30h"] = 16, // 히루루크
+            ["K30h"] = 16, // 쵸파 유력강화(TMO 표기 '히루루크'는 구 명칭)
             ["K50h"] = 15, // 페로나 짤이감
             ["U10h"] = 14, // 바질 희귀 짤깍
             ["W20h"] = 12, // 드래곤 전설

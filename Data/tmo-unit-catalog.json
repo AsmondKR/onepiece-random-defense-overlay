@@ -2621,7 +2621,7 @@
     },
     {
       "rawcode": "X20h",
-      "name": "루피 Jet 개틀링",
+      "name": "블랙마리아",
       "tier": "전설 [마딜]",
       "image": "https://raw.githubusercontent.com/tmo-gg/static.tmo.gg/main/ord-helper/images/luffyld.webp",
       "recipe": [
@@ -2954,7 +2954,7 @@
     },
     {
       "rawcode": "K30h",
-      "name": "Dr. 히루루크",
+      "name": "쵸파 유력강화",
       "tier": "전설 [마딜]",
       "image": "https://raw.githubusercontent.com/tmo-gg/static.tmo.gg/main/ord-helper/images/hiluluk.webp",
       "recipe": [
@@ -6437,7 +6437,7 @@
     },
     {
       "rawcode": "U60h",
-      "name": "k'",
+      "name": "K",
       "tier": "랜덤유닛",
       "image": "https://raw.githubusercontent.com/tmo-gg/static.tmo.gg/main/ord-helper/images/k.png",
       "recipe": [],
@@ -6499,7 +6499,7 @@
     },
     {
       "rawcode": "Z60h",
-      "name": "전투펭귄",
+      "name": "엘리자베스",
       "tier": "랜덤유닛",
       "image": "https://raw.githubusercontent.com/tmo-gg/static.tmo.gg/main/ord-helper/images/penguin.png",
       "recipe": [],
@@ -7010,7 +7010,7 @@
     },
     {
       "rawcode": "FB0h",
-      "name": "키쿄우",
+      "name": "카마도 네즈코",
       "tier": "신비함",
       "image": "https://raw.githubusercontent.com/tmo-gg/static.tmo.gg/main/ord-helper/images/kikyo.webp",
       "recipe": [
@@ -7167,7 +7167,7 @@
     },
     {
       "rawcode": "X50h",
-      "name": "레일리(히든)",
+      "name": "레일리(희귀)",
       "tier": "기타",
       "image": "https://raw.githubusercontent.com/tmo-gg/static.tmo.gg/main/ord-helper/images/rayleighld.webp",
       "recipe": [],
@@ -7187,7 +7187,7 @@
     },
     {
       "rawcode": "I60h",
-      "name": "히루루크의 묘비",
+      "name": "라운드 제한",
       "tier": "기타",
       "image": "https://raw.githubusercontent.com/tmo-gg/static.tmo.gg/main/ord-helper/images/hilulukmyobi.png",
       "recipe": [
@@ -7306,7 +7306,7 @@
     },
     {
       "rawcode": "L80h",
-      "name": "미니스트로맨",
+      "name": "저주의 인형",
       "tier": "기타",
       "image": "https://media.tmo.gg/production-2eedc4c6-23f4-48cc-a3ec-b789a45a96aa",
       "recipe": [],

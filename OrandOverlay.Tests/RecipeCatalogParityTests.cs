@@ -42,6 +42,20 @@ public sealed class RecipeCatalogParityTests
             "번들 카탈로그와 로드된 레시피가 일치하지 않습니다:\n" + string.Join("\n", mismatches));
     }
 
+    [Theory]
+    [InlineData("K30h", "쵸파 유력강화")]
+    [InlineData("X20h", "블랙마리아")]
+    [InlineData("FB0h", "카마도 네즈코")]
+    [InlineData("Z60h", "엘리자베스")]
+    [InlineData("L80h", "저주의 인형")]
+    [InlineData("X50h", "레일리(희귀)")]
+    public void UsesCurrentMapNamesForUnitsTmoMislabeled(string rawcode, string expected)
+    {
+        var catalog = new DataCatalog();
+        catalog.Load();
+        Assert.Equal(expected, catalog.Unit("rawcode:" + rawcode).Name);
+    }
+
     // RecipeFor와 동일한 해석: 재료 rawcode는 그 코드를 보유한 데모 유닛 ID로,
     // 없으면 rawcode: 접두사 형태로 남는다.
     private static string ResolveIngredientUnitId(DataCatalog catalog, string ingredientRawcode)
