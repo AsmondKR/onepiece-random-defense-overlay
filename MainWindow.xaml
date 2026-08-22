@@ -111,7 +111,7 @@
                   ToolTip="클리어 직후 결과 화면에서 누르세요. 인식된 유닛(필드 배치 포함)을 티어별로 세어 몇 전설을 짰는지 보여줍니다."/>
           <Button Content="다시 추천" Click="ReRecommend_OnClick" Background="#FF1C2028"
                   ToolTip="지금 패 기준으로 조합이 가장 가까운(완성률 최고) 학습 상위를 다시 계산해 추천합니다."/>
-          <Button x:Name="OverlayButton" Content="오버레이 보이기" Click="ToggleOverlay_OnClick"/>
+          <Button x:Name="OverlayButton" Content="패 인식 대기 중" Click="ToggleOverlay_OnClick"/>
         </StackPanel>
       </Grid>
 
