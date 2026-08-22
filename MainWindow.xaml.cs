@@ -28,6 +28,7 @@ public partial class MainWindow : Window
     private GreenBloodAdvisor _greenBloodAdvisor = null!;
     private GreenBloodAdvisor.UsageTracker _greenBloodUsage = null!;
     private SpecialDismantleAdvisor _specialAdvisor = null!;
+    private NavigationAdvisor _navigationAdvisor = null!;
     private CombineHotkeyCatalog _combineHotkeys = null!;
     private AutoCombinePlanner _combinePlanner = null!;
     private ClearBuildStats _clearStats = ClearBuildStats.Empty;
@@ -58,6 +59,9 @@ public partial class MainWindow : Window
     private CancellationTokenSource? _scanCancellation;
     private int _scanGeneration;
     private string? _lastScanSignature;
+    private int _lastRound;
+    private bool _overlayHiddenByUser;
+    private bool _overlayShownForMatch;
 
     public MainWindow()
     {
@@ -81,6 +85,7 @@ public partial class MainWindow : Window
             _greenBloodAdvisor = new GreenBloodAdvisor(_catalog);
             _greenBloodUsage = new GreenBloodAdvisor.UsageTracker(_catalog);
             _specialAdvisor = new SpecialDismantleAdvisor(_catalog);
+            _navigationAdvisor = new NavigationAdvisor(_catalog);
             _combinePlanner = new AutoCombinePlanner(_catalog, _combineHotkeys);
             _completedTopUnits = new CompletedTopUnitTracker(_catalog);
             _recognizer = new WarcraftMemoryRecognitionService(_catalog);
@@ -114,10 +119,14 @@ public partial class MainWindow : Window
         _overlay.Stats.RestorePosition(_settings.StatsOverlayLeft, _settings.StatsOverlayTop);
         _overlay.PositionCommitted += Overlay_OnPositionCommitted;
         _overlay.Stats.PositionCommitted += StatsOverlay_OnPositionCommitted;
-        _overlay.HiddenByUser += () => OverlayButton.Content = "오버레이 보이기";
+        _overlay.HiddenByUser += () =>
+        {
+            _overlayHiddenByUser = true;
+            OverlayButton.Content = "오버레이 보이기";
+        };
         _overlay.ReRecommendRequested += ShowReRecommendMenu;
         _overlay.SettlementRequested += ShowSettlement;
-        _overlay.Show();
+        // 인게임 패가 잡히기 전에는 오버레이를 띄우지 않는다.
         // 배율이 적용된 뒤라야 창 크기가 확정되므로 기본 배치는 로드 후에 잡는다.
         _overlay.Dispatcher.BeginInvoke(new Action(ApplyDefaultOverlayLayout),
             System.Windows.Threading.DispatcherPriority.Loaded);
@@ -745,9 +754,13 @@ public partial class MainWindow : Window
             : recommendationInventory.Count == 0 && recommendations.Count > 1
                 ? [recommendations[0]]
                 : recommendations;
+        var navHint = rarePhase || _lastRound >= NavigationAdvisor.DecisionRound
+            ? ""
+            : NavigationAdvisor.FormatHint(
+                _navigationAdvisor.Evaluate(recommendationInventory, goal, _lastRound));
         var phaseHint = rarePhase
             ? "7라운드까지 희귀함이 안 나오면 선택 위습 1~2개 사용 권장"
-            : null;
+            : string.IsNullOrWhiteSpace(navHint) ? null : navHint;
 
         var headId = BoardSelection.ClusterHeadId(
             visibleRecommendations, [], _selectedRouteId, _clusterHeadRouteId);
@@ -812,7 +825,8 @@ public partial class MainWindow : Window
             builder.Append(entry.UnitId).Append(':').Append(entry.Count).Append('|');
         builder.Append(_automaticStale).Append('|').Append(_automaticDisconnected).Append('|')
             .Append(_liveSessionActive).Append('|').Append(_autoStartApplied).Append('|')
-            .Append(_greenBloodUsage.Used).Append('|').Append(_greenBloodUsage.UsedOnUnit);
+            .Append(_greenBloodUsage.Used).Append('|').Append(_greenBloodUsage.UsedOnUnit)
+            .Append('|').Append(_lastRound);
         return builder.ToString();
     }
 
@@ -902,13 +916,21 @@ public partial class MainWindow : Window
                     _outcome.ObserveSettlement(mapState.SettlementCopies);
                     if (mapState.Difficulty is { Length: > 0 } difficulty &&
                         difficulty != "unknown")
+                    {
                         _matchDifficulty = difficulty;
+                        _outcome.ObserveDifficulty(difficulty);
+                    }
+                    _lastRound = Math.Max(_lastRound, mapState.MaxRound);
                 }
             }
             if (_outcome.Outcome is "fail" or "clear")
                 SendMatchTelemetry();
             if (RecognitionPolicy.ShouldResetMatch(result))
+            if (RecognitionPolicy.ShouldResetMatch(result))
+            {
                 ResetMatchSession();
+                _lastRound = 0;
+            }
             RecognitionStatus.Text = KoreanLabels.RemoveLatin(result.Status);
             RecognitionStatus.Foreground = result.State switch
             {
@@ -1211,16 +1233,39 @@ private void BuildVariantCombo_OnSelectionChanged(object sender, SelectionChange
     {
         if (_overlay.IsVisible)
         {
+            _overlayHiddenByUser = true;
             _overlay.Hide();
             OverlayButton.Content = "오버레이 보이기";
         }
         else
         {
+            _overlayHiddenByUser = false;
             _overlay.Show();
             _overlay.EnsureVisible();
             _overlay.SetClickThrough(_settings.ClickThroughOverlay);
             OverlayButton.Content = "오버레이 숨기기";
         }
+    }
+
+    private void SyncOverlayToMatch(bool inMatchWithCards)
+    {
+        if (inMatchWithCards)
+        {
+            if (_overlayHiddenByUser || _overlay.IsVisible) return;
+            _overlay.Show();
+            _overlay.EnsureVisible();
+            _overlay.SetClickThrough(_settings.ClickThroughOverlay);
+            _overlayShownForMatch = true;
+            OverlayButton.Content = "오버레이 숨기기";
+            return;
+        }
+
+        if (!_overlayShownForMatch) return;
+        _overlayShownForMatch = false;
+        _overlayHiddenByUser = false;
+        if (!_overlay.IsVisible) return;
+        _overlay.Hide();
+        OverlayButton.Content = "오버레이 보이기";
     }
 
     // 워크 창이 포커스를 가진 상태에서도 오버레이를 켜고 끌 수 있는 전역 단축키.
